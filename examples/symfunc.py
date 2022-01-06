@@ -29,7 +29,7 @@ if __name__ == "__main__":
   N = 10
   DIM = 3
   R_CUT = 0.5
-  np.random.seed(12345)
+  torch.manual_seed(2022)
 
   x = torch.rand( N, DIM, dtype=torch.float, requires_grad=True)
   print(x)

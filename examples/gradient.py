@@ -2,13 +2,9 @@ import numpy as np
 from numpy.testing._private.utils import requires_memory
 import torch
 
-N = 10
-DIM = 3
-R_CUT = 0.5
-np.random.seed(12345)
 
 def kernel(x: torch.tensor) -> torch.tensor:
-  return x*x + x[0, 0]*x[0, 1]*x[0, 2]
+  return x*2 + x[0, 0]*x[0, 1]*x[0, 2]
 
 # https://discuss.pytorch.org/t/how-to-compute-jacobian-matrix-in-pytorch/14968/14
 def gradient(y, x, grad_outputs=None):
@@ -40,7 +36,13 @@ def divergence(y, x): # This one also might be slow!
 
 
 if __name__ == "__main__":
-  x = torch.tensor( [[1, 2, 3] for _ in range(N)], dtype=torch.float, requires_grad=True)
+
+  N = 10
+  DIM = 3
+  R_CUT = 0.5
+  np.random.seed(12345)
+
+  x = torch.tensor( [[d for d in range(1, DIM+1)] for _ in range(N)], dtype=torch.float, requires_grad=True)
   print(x)
 
   y = kernel(x)
