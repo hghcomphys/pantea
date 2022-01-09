@@ -1,6 +1,8 @@
 
+from.element import ElementMap
 from typing import TextIO, Tuple, List
 from collections import defaultdict
+import torch
 
 
 class Structure:
@@ -9,25 +11,7 @@ class Structure:
   """
 
   def __init__(self):
-    pass
-
-  # @staticmethod
-  # def prefetch(file: TextIO):
-  #   n_atoms = 0
-  #   is_begin = False
-  #   ref_pos = file.tell()
-  #   line = file.readline()
-  #   while line:
-  #     keyword = line.rstrip("/n").split()[0].lower()
-  #     if keyword == "begin":
-  #       is_begin = True
-  #     elif is_begin and ( keyword == "atom"):
-  #       n_atoms += 1
-  #     elif keyword == "end":
-  #       is_begin = False
-  #       break
-  #   file.seek(ref_pos)
-  #   return n_atoms
+    self._dict = None
 
   def _tokenize(self, line: str) -> Tuple[str, List[str]]:
     """
@@ -41,11 +25,27 @@ class Structure:
     else:
       return (None, None)
 
+  def _cast_to_tensors(self) -> None:
+    """
+    Set structure dict info to the (pytorch) tensors.
+    It should be defined along the read() method.
+    """
+    # TODO: logging
+    dtype = torch.double
+    device= torch.device("cpu")
+    self.pos = torch.tensor(self._dict["position"], dtype=dtype, device=device, requires_grad=True)
+    self.frc = torch.tensor(self._dict["force"], dtype=dtype, device=device)
+    self.chg = torch.tensor(self._dict["charge"], dtype=dtype, device=device)
+    self.eng = torch.tensor(self._dict["energy"], dtype=dtype, device=device)
+    self.type = torch.tensor(self._dict["atom_type"], dtype=torch.int, device=device)
+    self.cell = torch.tensor(self._dict["cell"], dtype=dtype, device=device)
+
   def read(self, file: TextIO) -> bool:
     """
     This method reads atomic configuration from the given input file.
     """
-    dict_ = defaultdict(list)
+    # Read structure
+    self._dict = defaultdict(list)
     while True:
       # Read one line from file
       line = file.readline()
@@ -54,23 +54,29 @@ class Structure:
       keyword, tokens = self._tokenize(line)
       # TODO: check begin keyword
       if keyword == "atom":
-        dict_["position"].append( [float(t) for t in tokens[:3]] )
-        dict_["element"].append( tokens[3] )
-        dict_["charge"].append( float(tokens[4]) )
-        dict_["energy"].append( float(tokens[5]) )
-        dict_["position"].append( [float(t) for t in tokens[6:9]] )
+        self._dict["position"].append( [float(t) for t in tokens[:3]] )
+        self._dict["element"].append( tokens[3] )
+        self._dict["charge"].append( float(tokens[4]) )
+        self._dict["energy"].append( float(tokens[5]) )
+        self._dict["force"].append( [float(t) for t in tokens[6:9]] )
       elif keyword == "lattice":
-        dict_["cell"].append( [float(t) for t in tokens[:3]] )
+        self._dict["cell"].append( [float(t) for t in tokens[:3]] )
       elif keyword == "energy":
-        dict_["total_energy"].append( float(tokens[0]) )
+        self._dict["total_energy"].append( float(tokens[0]) )
       elif keyword == "charge":
-        dict_["total_charge"].append( float(tokens[0]) )
+        self._dict["total_charge"].append( float(tokens[0]) )
       # TODO: what if it reaches EOF?
       elif keyword == "end": 
         break
 
-    # TODO: convert to pytorch tensors
-    print(dict_)
+    # Set atom types using element mapping
+    element_map = ElementMap(self._dict["element"])
+    self._dict["atom_type"] = [element_map[elem] for elem in self._dict["element"]] # TODO: optimize?
+
+    # Create tensors
+    #print(self._dict)
+    self._cast_to_tensors()
+
     return True
       
   def write(self):
