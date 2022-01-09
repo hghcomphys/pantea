@@ -1,9 +1,13 @@
 
 from.element import ElementMap
+from.neighbor import Neighbor
 from typing import TextIO, Tuple, List
 from collections import defaultdict
 import torch
 
+
+dtype = torch.double
+device = torch.device("cpu")
 
 class Structure:
   """
@@ -12,6 +16,7 @@ class Structure:
 
   def __init__(self):
     self._dict = None
+    self.neighbor = None
 
   def _tokenize(self, line: str) -> Tuple[str, List[str]]:
     """
@@ -31,8 +36,6 @@ class Structure:
     It should be defined along the read() method.
     """
     # TODO: logging
-    dtype = torch.double
-    device= torch.device("cpu")
     self.pos = torch.tensor(self._dict["position"], dtype=dtype, device=device, requires_grad=True)
     self.frc = torch.tensor(self._dict["force"], dtype=dtype, device=device)
     self.chg = torch.tensor(self._dict["charge"], dtype=dtype, device=device)
@@ -77,6 +80,10 @@ class Structure:
     #print(self._dict)
     self._cast_to_tensors()
 
+    # Neighbor atoms
+    self.neighbor = Neighbor(r_cutoff=11.0)
+    self.neighbor.build(self)
+
     return True
       
   def write(self):
@@ -84,5 +91,3 @@ class Structure:
 
   def __str__(self):
     pass
-
-
