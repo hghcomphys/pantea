@@ -12,8 +12,9 @@ _KNOWN_ELEMENTS_LIST = [
   "U" , "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md",
 ]
 
-_KNOWN_ELEMENTS_DICT = { element:atomic_number \
-  for atomic_number, element in enumerate(_KNOWN_ELEMENTS_LIST, start=1) }
+_KNOWN_ELEMENTS_DICT = {element:atomic_number \
+  for atomic_number, element in enumerate(_KNOWN_ELEMENTS_LIST, start=1) 
+}
 
 
 class ElementMap:
@@ -36,11 +37,11 @@ class ElementMap:
     Create dictionary to map element, atom type, and atomic numbers.
     The given atom types are set based on elements' atomic number.
     """
-    self._elem_to_atomic_num = { elem:_KNOWN_ELEMENTS_DICT[elem] \
+    self._elem_to_atomic_num = {elem:_KNOWN_ELEMENTS_DICT[elem] \
       for elem in self.unique_elements}
-    self._elem_to_atom_type = { elem:atom_type \
+    self._elem_to_atom_type = {elem:atom_type \
       for atom_type, elem in enumerate(sorted(self._elem_to_atomic_num, key=self._elem_to_atomic_num.get), start=1)}
-    self._atom_type_to_elem = { atom_type:elem \
+    self._atom_type_to_elem = {atom_type:elem \
       for elem, atom_type in self._elem_to_atom_type.items()}
 
   def clear_maps(self) -> None:
@@ -51,7 +52,7 @@ class ElementMap:
 
   def __getitem__(self, item: Union[str, int]) -> Union[int, str]:
     """
-    Map element to atom type and vice versa.
+    Map an element to the atom type and vice versa.
     """
     if isinstance(item, int):
       return self._atom_type_to_elem[item]
@@ -59,7 +60,7 @@ class ElementMap:
       return self._elem_to_atom_type[item]
     else:
       #TODO: log and raise error
-      raise TypeError
+      raise TypeError(f"Unknown item type '{type(item)}'")
 
   def __str__(self):
     pass

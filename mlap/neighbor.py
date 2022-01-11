@@ -19,14 +19,14 @@ class Neighbor:
     """
     Build neighbor atoms
     """
-    n_atoms = structure.pos.shape[0]
+    natoms = structure.pos.shape[0]
     box = Box(structure.cell)
-    self.nn = torch.zeros(n_atoms, dtype=torch.int, device=device)
-    self.ngb = torch.zeros(n_atoms, n_atoms, dtype=torch.int, device=device)
+    self.nn = torch.zeros(natoms, dtype=torch.long, device=device)
+    self.ngb = torch.zeros(natoms, natoms, dtype=torch.long, device=device) # TODO: natoms*natoms
 
     # TODO: optimization
     x = structure.pos.detach()
-    for aid in range(n_atoms):
+    for aid in range(natoms):
       distances_ = torch.norm(x-x[aid], dim=1)
       neighbors_ = torch.nonzero( distances_ < self.r_cutoff, as_tuple=True)[0].tolist()
       neighbors_.remove(aid)  # remove self-neighboring
