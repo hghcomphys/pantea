@@ -1,4 +1,3 @@
-from .element import ElementMap
 from typing import Tuple, List, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
@@ -8,6 +7,7 @@ class StructureLoader:
   """
   A base class which loads atom structure in different (file) formats. 
   For now it's only implemented for RuNNer file format.
+  TODO: logging
   """
 
   def __init__(self, filename: Path) -> None:

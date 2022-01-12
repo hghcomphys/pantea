@@ -1,3 +1,3 @@
-from .system import *
+from .potential import *
 from .loader import *
 from .descriptor import *

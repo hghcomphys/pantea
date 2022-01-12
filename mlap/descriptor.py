@@ -14,7 +14,7 @@ def gradient(y, x, grad_outputs=None):
         grad_outputs = torch.ones_like(y)
     grad = torch.autograd.grad(y, [x], grad_outputs = grad_outputs, create_graph=True)[0]
     return grad
-    
+
 
 class ASF:
   """
@@ -30,10 +30,10 @@ class ASF:
     """
     Calculate descriptor values for the input given structure.
     """
-    x = structure.pos
-    nn  = structure._neighbor.nn
-    ngb = structure._neighbor.ngb
-    self.r_cutoff = structure._neighbor.r_cutoff  # has to be set durning class instantiation
+    x = structure.position
+    nn  = structure.neighbor.numbers
+    ngb = structure.neighbor.indices
+    self.r_cutoff = structure.neighbor.r_cutoff  # has to be set durning class instantiation
 
     result = torch.tensor(0.0, dtype=torch.float)
     rij = torch.norm(x[ngb[aid, :nn[aid]]]-x[0], dim=1)
