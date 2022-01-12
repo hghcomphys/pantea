@@ -1,16 +1,19 @@
+from .logger import logger
 from .box import Box
+from collections import defaultdict
 import torch
-
 
 device = torch.device("cpu")
 
+
 class Neighbor:
   """
-  Calculate list of neighbor atoms for the given structure.
+  Calculate a list of neighbor atoms for a structure.
   """
   def __init__(self, r_cutoff: float): 
     # TODO: cutoff
     self.r_cutoff = r_cutoff
+    self._tensors = defaultdict()
     self.nn = None    # number of neighbors for each atom
     self.ngb = None   # neighbor indices for atoms
     pass
@@ -19,23 +22,26 @@ class Neighbor:
     """
     Build neighbor atoms
     """
-    natoms = structure.pos.shape[0]
+    natoms = structure.position.shape[0]
     box = Box(structure.cell)
-    self.nn = torch.zeros(natoms, dtype=torch.long, device=device)
-    self.ngb = torch.zeros(natoms, natoms, dtype=torch.long, device=device) # TODO: natoms*natoms
+    self._tensors["numbers"] = torch.empty(natoms, dtype=torch.long, device=device)
+    self._tensors["indices"] = torch.empty(natoms, natoms, dtype=torch.long, device=device) # TODO: natoms*natoms?
+    self._set_tensors_as_attr()
 
     # TODO: optimization
-    x = structure.pos.detach()
+    x = structure.position.detach()
     for aid in range(natoms):
       distances_ = torch.norm(x-x[aid], dim=1)
       neighbors_ = torch.nonzero( distances_ < self.r_cutoff, as_tuple=True)[0].tolist()
-      neighbors_.remove(aid)  # remove self-neighboring
-      self.nn[aid] = len(neighbors_)
+      neighbors_.remove(aid)  # remove self-counting
+      self.numbers[aid] = len(neighbors_)
       for i, neighbor_index in enumerate(neighbors_):
-        self.ngb[aid, i] = neighbor_index 
+        self.indices[aid, i] = neighbor_index 
 
-    # print(self.nn)
-    # print(self.ngb)
+  def _set_tensors_as_attr(self):
+    logger.info(f"Setting {len(self._tensors)} tensors as attributes: {', '.join(self._tensors.keys())}")
+    for name, tensor in self._tensors.items():
+      setattr(self, name, tensor)
 
 
 
