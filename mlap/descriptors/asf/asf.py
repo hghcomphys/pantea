@@ -1,25 +1,15 @@
-from .structure import Structure
+from ...logger import logger
+from ...structure import Structure
+from ..base import Descriptor
 import torch
 
 dtype = torch.double
 device = torch.device("cpu")
 
 
-def gradient(y, x, grad_outputs=None):
-    """
-    Compute dy/dx @ grad_outputs
-    Ref: https://discuss.pytorch.org/t/how-to-compute-jacobian-matrix-in-pytorch/14968/14
-    """
-    if grad_outputs is None:
-        grad_outputs = torch.ones_like(y)
-    grad = torch.autograd.grad(y, [x], grad_outputs = grad_outputs, create_graph=True)[0]
-    return grad
-
-
-class ASF:
+class ASF (Descriptor):
   """
-  Atomic Symmetry Function.
-  Base class (Descriptor) -> Derived class (ASF)
+  Atomic Symmetry Function (ASF) descriptor.
   ASF is vector of different radial and angular terms.
   """
 

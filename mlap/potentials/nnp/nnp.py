@@ -1,14 +1,14 @@
 
-from .logger import logger
-from .structure import Structure
-from .loader import StructureLoader
+from ...logger import logger
+from ...structure import Structure
+from ...loader import StructureLoader
+from ..base import Potential
 
 
-class Potential:
+class NeuralNetworkPotential (Potential):
   """
-  This class contains all required data and operations to train the ML potential 
-  including structures, descriptors, models, etc. 
-  TODO: A base class for different types of potentials such as NNP and GAP.
+  This class contains all required data and operations to train a high-dimensional neural network potential 
+  including structures, descriptors, and neural networks. 
   TODO: split structures from the potential model
   """
 
