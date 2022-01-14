@@ -1,6 +1,8 @@
+from collections import defaultdict
 from ...logger import logger
 from ...structure import Structure
 from ..base import Descriptor
+from .cutoff_function import CutoffFunction
 import torch
 
 dtype = torch.double
@@ -14,7 +16,7 @@ class ASF (Descriptor):
   """
 
   def __init__(self):
-    pass
+    self._terms = {}
 
   def __call__(self, structure:Structure, aid: int) -> torch.tensor: 
     """
@@ -24,7 +26,10 @@ class ASF (Descriptor):
     nn  = structure.neighbor.numbers
     ngb = structure.neighbor.indices
     self.r_cutoff = structure.neighbor.r_cutoff  # has to be set durning class instantiation
+    self._cutoff_func= CutoffFunction(self.r_cutoff, "tanh")
 
+    # Loop over neighbors
+    # TODO: optimize
     result = torch.tensor(0.0, dtype=torch.float)
     rij = torch.norm(x[ngb[aid, :nn[aid]]]-x[0], dim=1)
     neighbors_ = torch.nonzero( rij < self.r_cutoff, as_tuple=True)[0]
@@ -33,9 +38,8 @@ class ASF (Descriptor):
     return result
 
   def kernel(self, rij: torch.tensor) -> torch.tensor:
-    # TODO: define cutoff function class
     # TODO: improve design for kernel arguments
-    return torch.exp(-rij**2) * torch.tanh(1.0 - rij/self.r_cutoff).pow(3)
+    return torch.exp(-rij**2) * self._cutoff_func(rij) #  torch.tanh(1.0 - rij/self.r_cutoff).pow(3)
 
 
 
