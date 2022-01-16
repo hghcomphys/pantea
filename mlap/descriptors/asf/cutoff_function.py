@@ -29,4 +29,7 @@ class CutoffFunction:
     return torch.tanh(1.0 - r/self.r_cutoff).pow(3)
 
   def _cos(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.sqrt(torch.cos(math.pi * r/self.r_cutoff) + 1.0)
+    return 0.5 * (torch.cos(math.pi * r/self.r_cutoff) + 1.0)
+
+  def _exp(self, r: torch.Tensor) -> torch.Tensor:
+    return torch.exp(1.0 - 1.0 / (1.0 - (r/self.r_cutoff)**2) )
