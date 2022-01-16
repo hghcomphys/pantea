@@ -1,0 +1,42 @@
+from mlap.descriptors.base import Descriptor
+from mlap.structure import Structure
+from .cutoff_function import CutoffFunction
+import torch
+
+
+class RadialSymmetryFunction:
+  """
+  Two body symmetry function.
+  TODO: define generic **params input arguments in the base class?
+  TODO: add __call__() method?
+  TODO: define a internal cutoff radius
+  """
+  def __init__(self, r_cutoff: float, cutoff_type: str):
+    self.cutoff_function = CutoffFunction(r_cutoff, cutoff_type)
+
+  def kernel(self, rij: torch.tensor) -> torch.tensor:
+    raise NotImplementedError
+
+
+class G1 (RadialSymmetryFunction):
+  """
+  Plain cutoff function.
+  """
+  def __init__(self, r_cutoff: float, cutoff_type: str):
+    super().__init__(r_cutoff, cutoff_type)
+
+  def kernel(self, rij: torch.tensor) -> torch.tensor:
+    return self.cutoff_function(rij)
+
+
+class G2 (RadialSymmetryFunction):
+  """
+  Radial exponential term.
+  """
+  def __init__(self, r_cutoff: float, cutoff_type: str, r_shift: float, eta: float):
+    super().__init__(r_cutoff, cutoff_type)
+    self.r_shift = r_shift
+    self.eta = eta
+
+  def kernel(self, rij: torch.tensor) -> torch.tensor:
+    return torch.exp( -self.eta * (rij - self.r_shift) ) * self.cutoff_function(rij)
