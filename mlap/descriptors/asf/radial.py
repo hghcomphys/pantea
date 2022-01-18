@@ -12,6 +12,8 @@ class RadialSymmetryFunction:
   TODO: define a internal cutoff radius
   """
   def __init__(self, r_cutoff: float, cutoff_type: str):
+    self.r_cutoff = r_cutoff
+    self.cutoff_type = cutoff_type
     self.cutoff_function = CutoffFunction(r_cutoff, cutoff_type)
 
   def kernel(self, rij: torch.tensor) -> torch.tensor:

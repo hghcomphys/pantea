@@ -1,9 +1,7 @@
-from collections import defaultdict
-from mlap.descriptors.asf.angular import AngularSymmetryFunction
 from ...logger import logger
 from ...structure import Structure
 from ..base import Descriptor
-from .cutoff_function import CutoffFunction
+from .angular import AngularSymmetryFunction
 from .radial import G1, G2, RadialSymmetryFunction
 from typing import Union
 import torch
@@ -15,8 +13,8 @@ device = torch.device("cpu")
 class ASF (Descriptor):
   """
   Atomic Symmetry Function (ASF) descriptor.
-  ASF is vector of different radial and angular terms.
-  # TODO: ASF should be independent of the structure 
+  ASF is a vector of different radial and angular terms.
+  # TODO: ASF should be independent of the input structure 
   """
 
   def __init__(self, element: str) -> None:
@@ -25,19 +23,20 @@ class ASF (Descriptor):
     self._angular = []
     # TODO: read from input.nn
 
-  def add(self, asf: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
+  def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
                 neighbor_element2: str = None) -> None:
     """
     This method adds an input radial symmetry function to the list of ASFs.
     # TODO: tuple of dict? (tuple is fine if it's used internally)
+    # TODO: solve the confusion for aid, starting from 0 or 1?!
     """
-    if isinstance(asf, RadialSymmetryFunction):
-      self._radial.append((asf, self.element, neighbor_element1))
-    elif isinstance(asf, RadialSymmetryFunction):
-      self._angular((asf, self.element, neighbor_element1, neighbor_element2))
+    if isinstance(symmetry_function, RadialSymmetryFunction):
+      self._radial.append((symmetry_function, self.element, neighbor_element1))
+    elif isinstance(symmetry_function, RadialSymmetryFunction):
+      self._angular((symmetry_function, self.element, neighbor_element1, neighbor_element2))
     else:
-      msg = f"Unknown input symmetry function object type"
+      msg = f"Unknown input symmetry function type"
       logger.error(msg)
       raise TypeError(msg)
 
@@ -53,6 +52,12 @@ class ASF (Descriptor):
 
     result = torch.zeros(len(self._radial), dtype=dtype, device=device)
 
+    # Check aid atom type
+    if not emap[self.element] == at[aid]:
+      msg = f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')"
+      logger.error(msg)
+      raise AssertionError(msg)
+
     # Get the list of neighboring atom indices
     ni_ = ngb[aid, :nn[aid]]
     # Calculate the distances of neighboring atoms and the corresponding atom types
@@ -60,12 +65,12 @@ class ASF (Descriptor):
     rij = torch.norm(x[ni_]-x[0], dim=1) 
     tij = at[ni_] 
     # Loop of radial terms
-    for i, g in enumerate(self._radial):
+    for i, sf in enumerate(self._radial):
       # Find the neighboring atom indices that match the given ASF cutoff radius and atom type
-      ngb_rc_ = (rij < g[0].r_cutoff ).detach()
-      ngb_ = torch.nonzero(torch.logical_and(ngb_rc_, tij == emap[g[2]]), as_tuple=True)[0]
+      ngb_rc_ = (rij < sf[0].r_cutoff ).detach()
+      ngb_ = torch.nonzero(torch.logical_and(ngb_rc_, tij == emap[sf[2]]), as_tuple=True)[0]
       # Apply the ASF term and sum over the neighboring atoms
-      result[i] = torch.sum( g[0].kernel(rij[ngb_] ), dim=0)
+      result[i] = torch.sum( sf[0].kernel(rij[ngb_] ), dim=0)
 
     return result
 
