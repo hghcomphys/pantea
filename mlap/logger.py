@@ -11,7 +11,7 @@ file_handler.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p'))
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.DEBUG)
 
 # logger.addHandler(file_handler)
 logger.addHandler(console_handler)

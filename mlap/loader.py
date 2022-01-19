@@ -55,7 +55,7 @@ class StructureLoader:
         self._data["energy"].append( float(tokens[5]) )
         self._data["force"].append( [float(t) for t in tokens[6:9]] )
       elif keyword == "lattice":
-        self._data["cell"].append( [float(t) for t in tokens[:3]] )
+        self._data["lattice"].append( [float(t) for t in tokens[:3]] )
       elif keyword == "energy":
         self._data["total_energy"].append( float(tokens[0]) )
       elif keyword == "charge":

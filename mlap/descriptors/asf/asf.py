@@ -10,13 +10,12 @@ dtype = torch.double
 device = torch.device("cpu")
 
 
-class ASF (Descriptor):
+class ASF(Descriptor):
   """
   Atomic Symmetry Function (ASF) descriptor.
   ASF is a vector of different radial and angular terms.
   # TODO: ASF should be independent of the input structure 
   """
-
   def __init__(self, element: str) -> None:
     self.element = element
     self._radial = []
@@ -46,8 +45,8 @@ class ASF (Descriptor):
     """
     x = structure.position
     at = structure.atom_type
-    nn  = structure.neighbor.numbers
-    ngb = structure.neighbor.indices
+    nn  = structure.neighbor_number
+    ngb = structure.neighbor_index
     emap= structure.element_map
 
     result = torch.zeros(len(self._radial), dtype=dtype, device=device)

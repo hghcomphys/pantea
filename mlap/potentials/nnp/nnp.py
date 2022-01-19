@@ -8,15 +8,13 @@ from ...utils import read_structures
 from ..base import Potential
 
 
-
-class NeuralNetworkPotential (Potential):
+class NeuralNetworkPotential(Potential):
   """
   This class contains all required data and operations to train a high-dimensional neural network potential 
   including structures, descriptors, and neural networks. 
   TODO: split structures from the potential model
   TODO: implement structure dumper/writer
   """
-
   def __init__(self, filename: str) -> None:
     self.filename = filename
 
