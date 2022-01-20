@@ -1,6 +1,6 @@
 from .logger import logger
 from .structure import Structure
-from .loader import StructureLoader
+from .loaders import StructureLoader
 from typing import List
 import torch
 
