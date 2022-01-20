@@ -20,7 +20,7 @@ class RadialSymmetryFunction:
     raise NotImplementedError
 
 
-class G1 (RadialSymmetryFunction):
+class G1(RadialSymmetryFunction):
   """
   Plain cutoff function.
   """
@@ -31,7 +31,7 @@ class G1 (RadialSymmetryFunction):
     return self.cutoff_function(rij)
 
 
-class G2 (RadialSymmetryFunction):
+class G2(RadialSymmetryFunction):
   """
   Radial exponential term.
   """

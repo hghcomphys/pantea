@@ -22,7 +22,6 @@ class ElementMap:
   This class maps elements to atomic number end vice versa. 
   Also assign an atomic type to each element. 
   """
-  
   def __init__(self, elements: List[str] = None) -> None:
     self.clear_maps()
     if elements is not None:
