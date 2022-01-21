@@ -1,4 +1,4 @@
 from .asf import *
-from .cutoff_function import *
+from .cutoff import *
 from .radial import *
 from .angular import *
