@@ -1,6 +1,6 @@
 from mlap.descriptors.base import Descriptor
 from mlap.structure import Structure
-from .cutoff_function import CutoffFunction
+from .cutoff import CutoffFunction
 import torch
 
 

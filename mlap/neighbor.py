@@ -2,8 +2,6 @@ from .logger import logger
 # from .structure import Structure # TODO: circular import error
 import torch
 
-device = torch.device("cpu")
-
 
 class Neighbor:
   """
@@ -24,7 +22,7 @@ class Neighbor:
       x = structure.position.detach()
       nn = structure.neighbor_number
       ngb = structure.neighbor_index
-      for aid in range(structure.natoms):
+      for aid in range(structure.natoms): # TODO: optimization: torch unbind or vmap
         distances_ = torch.norm(x-x[aid], dim=1) # TODO: apply PBC
         neighbors_ = torch.nonzero( distances_ < self.r_cutoff, as_tuple=True)[0].tolist()
         neighbors_.remove(aid)  # remove self-counting
