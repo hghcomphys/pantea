@@ -10,8 +10,8 @@ import torch
 class ASF(Descriptor):
   """
   Atomic Symmetry Function (ASF) descriptor.
-  ASF is a vector of different radial and angular terms.
-  TODO: ASF should be independent of the input structure 
+  ASF is a vector of different radial and angular terms which describe the chemical environment of an atom.
+  TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
   """
   def __init__(self, element: str) -> None:
     self.element = element

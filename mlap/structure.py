@@ -11,6 +11,13 @@ import torch
 class Structure:
   """
   This class contains a collection of atoms in a box including position, forces, energy, cell, etc.   
+  Structure is unit atomic data which are used to calculate atomic descreptors.
+  For the computational efficiency, vectors (more precisely tensors) of atomic data were considered 
+  instead of each atom as a unit of data. 
+  The most critical par of this class is calculating neighbor list and it can be done by inputing 
+  an instance of Structure to the Neighbor class.
+  For the MPI implementation, this class can be considerend as one domain in domain decomposition method.
+  An C++ implementation might be required for MD simulation but not necessarily developing ML potential.     
   """
   def __init__(self, data: Dict[str, List], **param) -> None:
     """

@@ -5,11 +5,13 @@ import torch
 
 class Neighbor:
   """
-  Calculate a list of neighbor atoms for a structure.
-  TODO: Optimization update() method using cell mesh method, bining, etc.
+  This class creates neighbor list of atom for an input structure.
+  It basically should be independent of the input structure. 
+  For MD simulations, re-neighboring the list is required every few steps. 
+  TODO: optimize way to update the list, for example using the cell mesh, bin atoms (miniMD), etc.
+  TODO: is the any benefit to move neighbor list tensors from structure to here?
   """
   def __init__(self, r_cutoff: float): 
-    # TODO: cutoff
     self.r_cutoff = r_cutoff
 
   def update(self, structure) -> None:

@@ -20,7 +20,8 @@ _KNOWN_ELEMENTS_DICT = {element:atomic_number \
 class ElementMap:
   """
   This class maps elements to atomic number end vice versa. 
-  Also assign an atomic type to each element. 
+  Also assign an atomic type to each element which allows efficient tensor processing based on 
+  numbers (atom types) rather than strings. 
   """
   def __init__(self, elements: List[str] = None) -> None:
     self.clear_maps()
