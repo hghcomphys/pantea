@@ -1,5 +1,5 @@
-
 from .logger import logger
+from .config import CFG
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
@@ -7,19 +7,19 @@ from typing import List, Dict
 from collections import defaultdict
 import torch
 
-# TODO: define a global config for device and dtype
-dtype = torch.double
-device = torch.device("cpu")
-
 
 class Structure:
   """
   This class contains a collection of atoms in a box including position, forces, energy, cell, etc.   
   """
-  def __init__(self, data: Dict[str, List]) -> None:
+  def __init__(self, data: Dict[str, List], **param) -> None:
     """
     Initializations including tensors, neighbor atoms, and box.
-    """
+    TODO: delete the intermediate variable _data, structure loader can instantiate Structure directly
+    """ 
+    self.device = param.get("device", CFG["device"])
+    self.dtype = param.get("dtype", CFG["dtype"])
+
     self._data = data
     self._tensors = defaultdict(None)
     self.neighbor = Neighbor(r_cutoff=12.0) # TODO: cutoff value from descriptor
@@ -44,25 +44,25 @@ class Structure:
     TODO: take care of some missing items.
     """
     # Direct casting
-    self._tensors["position"] = torch.tensor(self._data["position"], dtype=dtype, device=device, requires_grad=True)
-    self._tensors["force"] = torch.tensor(self._data["force"], dtype=dtype, device=device)
-    self._tensors["charge"] = torch.tensor(self._data["charge"], dtype=dtype, device=device)
-    self._tensors["energy"] = torch.tensor(self._data["energy"], dtype=dtype, device=device)
-    self._tensors["lattice"] = torch.tensor(self._data["lattice"], dtype=dtype, device=device)
+    self._tensors["position"] = torch.tensor(self._data["position"], dtype=self.dtype, device=self.device, requires_grad=True)
+    self._tensors["force"] = torch.tensor(self._data["force"], dtype=self.dtype, device=self.device)
+    self._tensors["charge"] = torch.tensor(self._data["charge"], dtype=self.dtype, device=self.device)
+    self._tensors["energy"] = torch.tensor(self._data["energy"], dtype=self.dtype, device=self.device)
+    self._tensors["lattice"] = torch.tensor(self._data["lattice"], dtype=self.dtype, device=self.device)
 
     # Set atom types using element mapping
     self.element_map = ElementMap(self._data["element"])
     atom_type = [self.element_map[elem] for elem in self._data["element"]] # TODO: optimize?
-    self._tensors["atom_type"] = torch.tensor(atom_type, dtype=torch.long, device=device)
+    self._tensors["atom_type"] = torch.tensor(atom_type, dtype=torch.long, device=self.device)
 
     # Neighbor atoms info
-    self._tensors["neighbor_number"] = torch.empty(self.natoms, dtype=torch.long, device=device)
-    self._tensors["neighbor_index"] = torch.empty(self.natoms, self.natoms, dtype=torch.long, device=device) # TODO: natoms*natoms?
+    self._tensors["neighbor_number"] = torch.empty(self.natoms, dtype=torch.long, device=self.device)
+    self._tensors["neighbor_index"] = torch.empty(self.natoms, self.natoms, dtype=torch.long, device=self.device) # TODO: natoms*natoms?
 
     # Logging existing tensors
     for name, tensor in self._tensors.items():
       logger.info(
-        f"Allocated '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
+        f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
 
   def _set_tensors_as_attr(self):
     logger.info(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"

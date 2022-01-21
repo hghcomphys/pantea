@@ -6,15 +6,12 @@ from .radial import G1, G2, RadialSymmetryFunction
 from typing import Union
 import torch
 
-dtype = torch.double
-device = torch.device("cpu")
-
 
 class ASF(Descriptor):
   """
   Atomic Symmetry Function (ASF) descriptor.
   ASF is a vector of different radial and angular terms.
-  # TODO: ASF should be independent of the input structure 
+  TODO: ASF should be independent of the input structure 
   """
   def __init__(self, element: str) -> None:
     self.element = element
@@ -49,7 +46,7 @@ class ASF(Descriptor):
     ngb = structure.neighbor_index
     emap= structure.element_map
 
-    result = torch.zeros(len(self._radial), dtype=dtype, device=device)
+    result = torch.zeros(len(self._radial), dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type
     if not emap[self.element] == at[aid]:
