@@ -42,7 +42,7 @@ class Structure:
     self.box = Box(self.lattice) 
     
     # Find neighboring atoms
-    self.update_neighbor()
+    # self.update_neighbor()
 
   def _cast_data_to_tensors(self):
     """
@@ -68,11 +68,11 @@ class Structure:
 
     # Logging existing tensors
     for name, tensor in self._tensors.items():
-      logger.info(
+      logger.debug(
         f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
 
   def _set_tensors_as_attr(self):
-    logger.info(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"
+    logger.debug(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"
                 f" class attributes: {', '.join(self._tensors.keys())}")
     for name, tensor in self._tensors.items():
       setattr(self, name, tensor)
@@ -89,12 +89,17 @@ class Structure:
     return self._tensors["position"].shape[0]
 
   def update_neighbor(self) -> None:
+    """
+    update neighbor list.
+    This is a computationally expensive method.
+    """
     self.neighbor.update(self)
 
   def calculate_distance(self, aid: int, detach=False, neighbors=None) -> torch.Tensor:
     """
     This method calculates an array of distances of all atoms existing in the structure from an input atom. 
     TODO: input pbc flag, using default pbc from global configuration
+    TODO: also see torch.cdist
     """
     def _apply_pbc(dx, l):   
       dx = torch.where(dx >  0.5*l, dx - l, dx)

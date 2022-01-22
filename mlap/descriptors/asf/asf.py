@@ -40,6 +40,10 @@ class ASF(Descriptor):
     """
     Calculate descriptor values for the input given structure.
     """
+    # Update neighbor list first if needed
+    if not structure.is_neighbor:
+      structure.update_neighbor()
+
     #x = structure.position
     at = structure.atom_type
     nn  = structure.neighbor_number
