@@ -21,16 +21,17 @@ class Neighbor:
     """    
     if not structure.is_neighbor:
       structure.is_neighbor = True
-      x = structure.position.detach()
       nn = structure.neighbor_number
       ngb = structure.neighbor_index
       for aid in range(structure.natoms): # TODO: optimization: torch unbind or vmap
-        distances_ = torch.norm(x-x[aid], dim=1) # TODO: apply PBC
-        neighbors_ = torch.nonzero( distances_ < self.r_cutoff, as_tuple=True)[0].tolist()
-        neighbors_.remove(aid)  # remove self-counting
-        nn[aid] = len(neighbors_)
-        for i, neighbor_index in enumerate(neighbors_):
-          ngb[aid, i] = neighbor_index 
+        rij = structure.calculate_distance(aid, detach=False)
+        # Get atom indices within the cutoff radius
+        ngb_ = torch.nonzero( rij < self.r_cutoff, as_tuple=True)[0]
+        # Remove self-counting index
+        ngb_ = ngb_[ ngb_ != aid ] 
+        # Set neighbor list tensors
+        nn[aid] = ngb_.shape[0]
+        ngb[aid, :nn[aid]] = ngb_ 
     else:
       logger.warning("Skiping to update neighboring atoms in the structure")
 
