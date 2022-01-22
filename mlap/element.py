@@ -62,6 +62,9 @@ class ElementMap:
       #TODO: log and raise error
       raise TypeError(f"Unknown item type '{type(item)}'")
 
+  def __call__(self, item: Union[str, int]) -> Union[int, str]:
+    return self[item]
+
   def __str__(self):
     pass
 
