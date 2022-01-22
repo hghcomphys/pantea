@@ -1,3 +1,4 @@
+from ...logger import logger
 from ..base import StructureLoader
 from typing import Tuple, List, TextIO, Dict
 from collections import defaultdict
@@ -14,13 +15,14 @@ class RunnerStructureLoader(StructureLoader):
   def __init__(self, filename: Path) -> None:
     self.filename = Path(filename)
     self._data = None
+    logger.info(f"Initializing {self.__class__.__name__} with an input file: {self.filename}")
 
   def get_data(self) -> Dict[str, List]:
     """
     A generator method which returns a each snapshot of atomic data structure as a dictionary.
     """
     with open(str(self.filename), "r") as file:
-      if self.read(file):
+      while self.read(file):
         yield self._data
 
   def _tokenize(self, line: str) -> Tuple[str, List[str]]:
