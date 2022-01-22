@@ -90,3 +90,28 @@ class Structure:
 
   def update_neighbor(self) -> None:
     self.neighbor.update(self)
+
+  def calculate_distance(self, aid: int, detach=False, neighbors=None) -> torch.Tensor:
+    """
+    This method calculates an array of distances of all atoms existing in the structure from an input atom. 
+    TODO: input pbc flag, using default pbc from global configuration
+    """
+    def _apply_pbc(dx, l):   
+      dx = torch.where(dx >  0.5*l, dx - l, dx)
+      dx = torch.where(dx < -0.5*l, dx + l, dx)
+      return dx
+
+    x = self.position.detach() if detach else self.position
+    x = x[neighbors] if neighbors is not None else x 
+    dx = self.position[aid] - x
+
+    # Apply PBC along x,y,and z directions
+    dx[:, 0] = _apply_pbc(dx[:, 0], self.box.lx)
+    dx[:, 1] = _apply_pbc(dx[:, 1], self.box.ly)
+    dx[:, 2] = _apply_pbc(dx[:, 2], self.box.lz)
+
+    # Calculate distance from dx tensor
+    distance = torch.norm(dx, dim=1)
+
+    return distance
+
