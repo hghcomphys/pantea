@@ -8,6 +8,8 @@ class Box:
   """
   A class which contains lattice info.
   Currently, it only works for orthogonal lattice.
+  TODO: box variables as numpy or pytorch?
+  TODO: triclinic lattice
   """
   def __init__(self, lattice: torch.Tensor) -> None:
     """
@@ -25,3 +27,19 @@ class Box:
     self.xhi = lattice[0, 0]
     self.yhi = lattice[1, 1]
     self.zhi = lattice[2, 2]
+
+  @property
+  def lx(self):
+    return self.xhi - self.xlo
+
+  @property
+  def ly(self):
+    return self.yhi - self.ylo
+
+  @property
+  def lz(self):
+    return self.zhi - self.zlo
+
+  @property
+  def length(self):
+    return self.lx, self.ly, self.lz
