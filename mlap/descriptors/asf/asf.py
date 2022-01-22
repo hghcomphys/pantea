@@ -40,15 +40,16 @@ class ASF(Descriptor):
     """
     Calculate descriptor values for the input given structure.
     """
-    x = structure.position
+    #x = structure.position
     at = structure.atom_type
     nn  = structure.neighbor_number
     ngb = structure.neighbor_index
     emap= structure.element_map
 
+    # Create output tensor
     result = torch.zeros(len(self._radial), dtype=structure.dtype, device=structure.device)
 
-    # Check aid atom type
+    # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
       msg = f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')"
       logger.error(msg)
@@ -56,16 +57,17 @@ class ASF(Descriptor):
 
     # Get the list of neighboring atom indices
     ni_ = ngb[aid, :nn[aid]]
-    # Calculate the distances of neighboring atoms and the corresponding atom types
-    # TODO: apply PBC
-    rij = torch.norm(x[ni_]-x[0], dim=1) 
+    # Calculate the distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
+    rij = structure.calculate_distance(aid, detach=False, neighbors=ni_)
+    # Get the corresponding neighboring atom types
     tij = at[ni_] 
-    # Loop of radial terms
+    
+    # Loop over the radial terms
     for i, sf in enumerate(self._radial):
-      # Find the neighboring atom indices that match the given ASF cutoff radius and atom type
+      # Find the neighboring atom indices that match the given ASF cutoff radius AND atom type
       ngb_rc_ = (rij < sf[0].r_cutoff ).detach()
-      ngb_ = torch.nonzero(torch.logical_and(ngb_rc_, tij == emap[sf[2]]), as_tuple=True)[0]
-      # Apply the ASF term and sum over the neighboring atoms
+      ngb_ = torch.nonzero( torch.logical_and(ngb_rc_, tij == emap(sf[2]) ), as_tuple=True)[0]
+      # Apply the ASF term kernels and sum over the neighboring atoms
       result[i] = torch.sum( sf[0].kernel(rij[ngb_] ), dim=0)
 
     return result
