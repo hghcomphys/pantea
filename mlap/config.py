@@ -1,18 +1,7 @@
 from .logger import logger
+# from pathlib import Path
 from typing import Any
 import torch
-
-
-def _get_device() -> torch.device:
-  """
-  Return and log available CUDA device.
-  TODO: multiple GPU
-  """
-  is_cuda = torch.cuda.is_available()
-  device = 'cuda' if is_cuda else 'cpu'
-  logger.info(f"CUDA availability: {is_cuda}")
-  logger.info(f"Default device: {device}")
-  return torch.device(device)
 
 
 class CFG:
@@ -20,8 +9,15 @@ class CFG:
   A global configuration class of default values for variables.
   """
   __conf = {
-    "device" : _get_device(),
+    # Device
+    "is_cuda": torch.cuda.is_available(),
+    "device" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+    # Dtype
     "dtype": torch.double,
+    "dtype_index": torch.long,
+    # Logging TODO: circular import error between CFG & logger
+    # "logging_level": logging.INFO,
+    # "log_file": Path("mlap.log"),
   }
   __setters = list(__conf.keys()) # TODO: limit the setters?
  
@@ -32,7 +28,7 @@ class CFG:
   @staticmethod
   def set(name, value) -> None:
     if name in CFG.__setters:
-      logger.info(f"Setting default {name} as '{value}'")
+      logger.info(f"Resetting default {name} as '{value}'")
       CFG.__conf[name] = value
     else:
       msg = f"Name '{name}' not accepted in the global configuration"
