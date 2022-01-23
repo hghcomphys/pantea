@@ -4,9 +4,10 @@ sys.path.append('../')
 from mlap.config import CFG
 from mlap.logger import logger
 from mlap.loaders import RunnerStructureLoader as StructureLoader
+from mlap.loaders import read_structures
 from mlap.descriptors import ASF, CutoffFunction, G1, G2
 from mlap.potentials import NeuralNetworkPotential
-from mlap import gradient, read_structures
+from mlap.utils import gradient
 # from mlap.models import NeuralNetwork
 import torch
 
@@ -21,7 +22,7 @@ CFG.set("device", "cpu")
 
 # Read structure
 loader = StructureLoader("/home/hossein/Desktop/n2p2_conf_3816/input.data")
-structures = read_structures(loader, between=(1, 10)) # TODO: structure index 0 or 1?
+structures = read_structures(loader, between=(1, 5)) # TODO: structure index 0 or 1?
 str0 = structures[0] 
 print(str0.lattice)
 print(str0.atype)
@@ -29,8 +30,8 @@ print(str0.box.length)
 print(str0.calculate_distance(aid=0, detach=True))
 # Neighbor list
 str0.update_neighbor()
-print(str0.neighbor_number)
-print(str0.neighbor_index)
+print(str0.neighbor.number)
+print(str0.neighbor.index)
 
 # Cutoff functions
 # cfn = CutoffFunction(0.5, "tanh")

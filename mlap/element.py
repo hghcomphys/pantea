@@ -1,3 +1,4 @@
+from asyncio.log import logger
 from typing import Union, List
 
 
@@ -53,14 +54,16 @@ class ElementMap:
   def __getitem__(self, item: Union[str, int]) -> Union[int, str]:
     """
     Map an element to the atom type and vice versa.
+    TODO: raise an error when element type or atom type is unknown
     """
     if isinstance(item, int):
       return self._atom_type_to_elem[item]
     elif isinstance(item, str):
       return self._elem_to_atom_type[item]
     else:
-      #TODO: log and raise error
-      raise TypeError(f"Unknown item type '{type(item)}'")
+      msg = f"Unknown item type '{type(item)}'"
+      logger.error(msg)
+      raise TypeError(msg)
 
   def __call__(self, item: Union[str, int]) -> Union[int, str]:
     return self[item]

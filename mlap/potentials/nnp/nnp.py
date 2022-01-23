@@ -1,10 +1,9 @@
 
 from ...logger import logger
 from ...structure import Structure
-from ...loaders import StructureLoader
+from ...loaders import StructureLoader, read_structures
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.radial import G1, G2
-from ...utils import read_structures
 from ..base import Potential
 
 

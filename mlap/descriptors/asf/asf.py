@@ -2,7 +2,7 @@ from ...logger import logger
 from ...structure import Structure
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
-from .radial import G1, G2, RadialSymmetryFunction
+from .radial import RadialSymmetryFunction
 from typing import Union
 import torch
 
@@ -14,9 +14,9 @@ class ASF(Descriptor):
   TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
   """
   def __init__(self, element: str) -> None:
-    self.element = element
-    self._radial = []
-    self._angular = []
+    self.element = element    # central element
+    self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element)
+    self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # TODO: read from input.nn
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
@@ -44,11 +44,11 @@ class ASF(Descriptor):
     if not structure.is_neighbor:
       structure.update_neighbor()
 
-    #x = structure.position
-    at = structure.atype
-    nn  = structure.neighbor_number
-    ni = structure.neighbor_index
-    emap= structure.element_map
+    #x = structure.position           # tensor
+    at = structure.atype              # tensor
+    nn  = structure.neighbor.number   # tensor
+    ni = structure.neighbor.index     # tensor
+    emap= structure.element_map       # element map instance
 
     # Create output tensor
     result = torch.zeros(len(self._radial), dtype=structure.dtype, device=structure.device)

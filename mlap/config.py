@@ -7,15 +7,13 @@ import torch
 class CFG:
   """
   A global configuration class of default values for variables.
+  # TODO: circular import error between CFG & logger
   """
   __conf = {
-    # Device
     "is_cuda": torch.cuda.is_available(),
     "device" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-    # Dtype
     "dtype": torch.double,
-    "dtype_index": torch.long,
-    # Logging TODO: circular import error between CFG & logger
+    "dtype_index": torch.long, 
     # "logging_level": logging.INFO,
     # "log_file": Path("mlap.log"),
   }
