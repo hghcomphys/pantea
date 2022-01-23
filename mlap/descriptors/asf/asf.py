@@ -45,9 +45,9 @@ class ASF(Descriptor):
       structure.update_neighbor()
 
     #x = structure.position
-    at = structure.atom_type
+    at = structure.atype
     nn  = structure.neighbor_number
-    ngb = structure.neighbor_index
+    ni = structure.neighbor_index
     emap= structure.element_map
 
     # Create output tensor
@@ -60,7 +60,7 @@ class ASF(Descriptor):
       raise AssertionError(msg)
 
     # Get the list of neighboring atom indices
-    ni_ = ngb[aid, :nn[aid]]
+    ni_ = ni[aid, :nn[aid]]
     # Calculate the distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
     rij = structure.calculate_distance(aid, detach=False, neighbors=ni_)
     # Get the corresponding neighboring atom types
@@ -69,10 +69,10 @@ class ASF(Descriptor):
     # Loop over the radial terms
     for i, sf in enumerate(self._radial):
       # Find the neighboring atom indices that match the given ASF cutoff radius AND atom type
-      ngb_rc_ = (rij < sf[0].r_cutoff ).detach()
-      ngb_ = torch.nonzero( torch.logical_and(ngb_rc_, tij == emap(sf[2]) ), as_tuple=True)[0]
+      ni_rc_ = (rij < sf[0].r_cutoff ).detach()
+      ni_ = torch.nonzero( torch.logical_and(ni_rc_, tij == emap(sf[2]) ), as_tuple=True)[0]
       # Apply the ASF term kernels and sum over the neighboring atoms
-      result[i] = torch.sum( sf[0].kernel(rij[ngb_] ), dim=0)
+      result[i] = torch.sum( sf[0].kernel(rij[ni_] ), dim=0)
 
     return result
 

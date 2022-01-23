@@ -7,5 +7,13 @@ Machine Learning Atomistic Potential Package (MLAP2) is a generic and optimized 
 MLAP2 is NOT a molecular dynamics (MD) simulation package but a toolset to construct the ML-based force fields employed for MD simulations.
 
 <!--  -->
-The current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
+The current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401))
+
+
+### TODOs
+- [x] optimize loader to read thousands of structures from input file
+- [x] quickly ignore unwanted structure  
+- [x] add dtype_index to CFG
+- [x] remove intermediate _data from loader and structure classes
+
 
