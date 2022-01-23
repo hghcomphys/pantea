@@ -15,20 +15,29 @@ class RunnerStructureLoader(StructureLoader):
   def __init__(self, filename: Path) -> None:
     self.filename = Path(filename)
     self._data = None
+    self._ignore_next = False
     logger.info(f"Initializing {self.__class__.__name__} with an input file: {self.filename}")
 
   def get_data(self) -> Dict[str, List]:
     """
     A generator method which returns a each snapshot of atomic data structure as a dictionary.
+    The output data can be used to instantiate, for example, Structure class. 
     """
     with open(str(self.filename), "r") as file:
-      while self.read(file):
-        yield self._data
+      try:
+        while ( self.read(file) if not self._ignore_next else self.ignore(file) ):
+          yield self._data
+      except AttributeError:
+        logger.warning(f"It seems that {self.__class__.__name__} has no 'ignore()' method defined")
+        while self.read(file):
+          yield self._data
+    # Clean up
+    self._data = None
+    self._ignore_next = False
 
   def _tokenize(self, line: str) -> Tuple[str, List[str]]:
     """
-    Read the input line as a keyword and list of tokens.
-    An utility method. 
+    An utility method to read the input line as a keyword and list of tokens.
     """
     tokens = line.rstrip("/n").split()
     if len(tokens) > 1:
@@ -45,10 +54,11 @@ class RunnerStructureLoader(StructureLoader):
     self._data = defaultdict(list)
     # Read next structure
     while True:
-      # Read one line from file
+      # Read one line from file handler
       line = file.readline()
       if not line:
         return False
+      # Read keyword and values
       keyword, tokens = self._tokenize(line)
       # TODO: check begin keyword
       if keyword == "atom":
@@ -63,7 +73,33 @@ class RunnerStructureLoader(StructureLoader):
         self._data["total_energy"].append( float(tokens[0]) )
       elif keyword == "charge":
         self._data["total_charge"].append( float(tokens[0]) )
-      # TODO: what if it reaches EOF?
       elif keyword == "end": 
         break
     return True
+
+  def ignore(self, file: TextIO) -> bool:
+    """
+    This method ignores the next structure.
+    It reduces time spending on reading a range of structures and not all of them.
+    This is an optional method that can be define in a derived structure loader to reach a better I/O performance.
+    """
+    self._data = None
+    # Read next structure
+    while True:
+      # Read one line from file
+      line = file.readline()
+      if not line:
+        return False
+      keyword, tokens = self._tokenize(line)
+      # TODO: check begin keyword
+      if keyword == "end": 
+        break
+    self._ignore_next = False
+    return True
+
+  def ignore_next(self):
+    """
+    Set the internal variable true.
+    """
+    self._ignore_next = True
+
