@@ -1,4 +1,7 @@
 from .logger import logger
+from .config import CFG
+from .utils.attribute import set_tensors_as_attr
+from collections import defaultdict
 # from .structure import Structure # TODO: circular import error
 import torch
 
@@ -9,10 +12,11 @@ class Neighbor:
   It basically should be independent of the input structure. 
   For MD simulations, re-neighboring the list is required every few steps. 
   TODO: optimize way to update the list, for example using the cell mesh, bin atoms (miniMD), etc.
-  TODO: is the any benefit to move neighbor list tensors from structure to here?
+  TODO: natoms*natoms tensor size?!
   """
   def __init__(self, r_cutoff: float): 
     self.r_cutoff = r_cutoff
+    self._tensors = defaultdict(None)
 
   def update(self, structure) -> None:
     """
@@ -22,8 +26,15 @@ class Neighbor:
     """    
     if not structure.is_neighbor:
       structure.is_neighbor = True
-      nn = structure.neighbor_number
-      ni = structure.neighbor_index
+
+      # Neighbor atoms numbers and indices
+      # TODO: torch._resize, use idea of max_num_neighbor
+      self._tensors["number"] = torch.empty(structure.natoms, dtype=CFG["dtype_index"], device=structure.device)
+      self._tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=CFG["dtype_index"], device=structure.device) 
+      set_tensors_as_attr(self, self._tensors)
+
+      nn = self.number
+      ni = self.index
       for aid in range(structure.natoms): # TODO: optimization: torch unbind or vmap
         rij = structure.calculate_distance(aid, detach=False)
         # Get atom indices within the cutoff radius
