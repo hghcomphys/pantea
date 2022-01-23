@@ -3,6 +3,7 @@ from .config import CFG
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
+from .utils.attribute import set_tensors_as_attr
 from typing import List, Dict
 from collections import defaultdict
 import torch
@@ -36,7 +37,7 @@ class Structure:
 
     # Prepare tensors from input structure data
     self._cast_data_to_tensors(data)
-    self._set_tensors_as_attr()
+    set_tensors_as_attr(self, self._tensors)
     
     # Create a box using the lattice matrix (useful for non-orthogonal lattice)
     self.box = Box(self.lattice) 
@@ -57,23 +58,19 @@ class Structure:
 
     # Set atom types using element mapping
     self.element_map = ElementMap(data["element"])
-    atom_type = [self.element_map[elem] for elem in data["element"]] # TODO: optimize?
-    self._tensors["atype"] = torch.tensor(atom_type, dtype=CFG["dtype_index"], device=self.device) # atom type
-
-    # Neighbor atoms info
-    self._tensors["neighbor_number"] = torch.empty(self.natoms, dtype=CFG["dtype_index"], device=self.device)
-    self._tensors["neighbor_index"] = torch.empty(self.natoms, self.natoms, dtype=CFG["dtype_index"], device=self.device) # TODO: natoms*natoms?
+    atype = [self.element_map[elem] for elem in data["element"]] # TODO: optimize?
+    self._tensors["atype"] = torch.tensor(atype, dtype=CFG["dtype_index"], device=self.device) # atom type
 
     # Logging existing tensors
     for name, tensor in self._tensors.items():
       logger.debug(
         f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
 
-  def _set_tensors_as_attr(self):
-    logger.debug(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"
-                f" class attributes: {', '.join(self._tensors.keys())}")
-    for name, tensor in self._tensors.items():
-      setattr(self, name, tensor)
+  # def _set_tensors_as_attr(self):
+  #   logger.debug(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"
+  #               f" class attributes: {', '.join(self._tensors.keys())}")
+  #   for name, tensor in self._tensors.items():
+  #     setattr(self, name, tensor)
       
   def _cast_tensors_to_data(self) -> Dict[str, List]:
     """
