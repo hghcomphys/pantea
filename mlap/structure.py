@@ -65,12 +65,6 @@ class Structure:
     for name, tensor in self._tensors.items():
       logger.debug(
         f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
-
-  # def _set_tensors_as_attr(self):
-  #   logger.debug(f"Setting {len(self._tensors)} tensors as '{self.__class__.__name__}'"
-  #               f" class attributes: {', '.join(self._tensors.keys())}")
-  #   for name, tensor in self._tensors.items():
-  #     setattr(self, name, tensor)
       
   def _cast_tensors_to_data(self) -> Dict[str, List]:
     """

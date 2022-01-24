@@ -1,5 +1,6 @@
 from ...logger import logger
 from ..base import StructureLoader
+from ...utils.tokenize import tokenize
 from typing import Tuple, List, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
@@ -35,18 +36,6 @@ class RunnerStructureLoader(StructureLoader):
     self._data = None
     self._ignore_next = False
 
-  def _tokenize(self, line: str) -> Tuple[str, List[str]]:
-    """
-    An utility method to read the input line as a keyword and list of tokens.
-    """
-    tokens = line.rstrip("/n").split()
-    if len(tokens) > 1:
-      return (tokens[0].lower(), tokens[1:])
-    elif len(tokens) > 0:
-      return (tokens[0].lower(), None)
-    else:
-      return (None, None)
-
   def read(self, file: TextIO) -> bool:
     """
     This method reads the next structure from the given input file.
@@ -59,7 +48,7 @@ class RunnerStructureLoader(StructureLoader):
       if not line:
         return False
       # Read keyword and values
-      keyword, tokens = self._tokenize(line)
+      keyword, tokens = tokenize(line)
       # TODO: check begin keyword
       if keyword == "atom":
         self._data["position"].append( [float(t) for t in tokens[:3]] )

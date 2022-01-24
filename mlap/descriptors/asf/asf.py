@@ -15,7 +15,7 @@ class ASF(Descriptor):
   """
   def __init__(self, element: str) -> None:
     self.element = element    # central element
-    self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element)
+    self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # TODO: read from input.nn
 
