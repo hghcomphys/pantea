@@ -28,7 +28,7 @@ class RunnerStructureLoader(StructureLoader):
       try:
         while ( self.read(file) if not self._ignore_next else self.ignore(file) ):
           yield self._data
-      except AttributeError:
+      except AttributeError as err:
         logger.warning(f"It seems that {self.__class__.__name__} has no 'ignore()' method defined")
         while self.read(file):
           yield self._data
@@ -79,7 +79,7 @@ class RunnerStructureLoader(StructureLoader):
       line = file.readline()
       if not line:
         return False
-      keyword, tokens = self._tokenize(line)
+      keyword, tokens = tokenize(line)
       # TODO: check begin keyword
       if keyword == "end": 
         break
