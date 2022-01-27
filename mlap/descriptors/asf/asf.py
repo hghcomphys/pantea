@@ -12,12 +12,12 @@ class ASF(Descriptor):
   Atomic Symmetry Function (ASF) descriptor.
   ASF is a vector of different radial and angular terms which describe the chemical environment of an atom.
   TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
+  See N2P2 -> https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
   """
   def __init__(self, element: str) -> None:
     self.element = element    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
-    # TODO: read from input.nn
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -73,6 +73,8 @@ class ASF(Descriptor):
       ni_ = torch.nonzero( torch.logical_and(ni_rc_, tij == emap(sf[2]) ), as_tuple=True)[0]
       # Apply the ASF term kernels and sum over the neighboring atoms
       result[i] = torch.sum( sf[0].kernel(rij[ni_] ), dim=0)
+
+    # TODO: add angular terms
 
     return result
 
