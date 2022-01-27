@@ -1,5 +1,3 @@
-
-from calendar import c
 from ...logger import logger
 from ...structure import Structure
 from ...loaders import StructureLoader, read_structures
@@ -20,20 +18,27 @@ class NeuralNetworkPotential(Potential):
   def __init__(self, filename: str) -> None:
     self.filename = filename
     self._config = None
-    self.descriptor = {}  # A dictionary of {element: Descriptor} # TODO: short and long descriptor
-    self.model = {}        # A dictionary of {element: Model}
+    self.descriptor = {}   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
+    self.model = {}        # A dictionary of {element: Model} # TODO: short and long models
 
     self._read_config()
-    self._construct_descriptors()
+    self._construct_descriptor()
 
   def _read_config(self):
     """
     This method read all NNP configurations from the input file including elements, cutoff type, 
     symmetry functions, neural network, traning parameters, etc. 
     # TODO: read all NNP configuration file.
+    # See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
-    _to_cutoff_type = {'2': 'tanh'}  # TODO: complete the list, move to ASF class?
-    _to_asf_type  = {'2': 'radial', '3': 'angular'}  # TODO: complete the list, move to ASF class?
+    _to_cutoff_type = {  # TODO: poly 3 & 4
+        '1': 'hard',
+        '2': 'tanhu',
+        '3': 'tanh',
+        '4': 'exp',
+        '5': 'poly1',
+        '6': 'poly2',
+      }  
     self._config = defaultdict(list)
     with open(self.filename, 'r') as file:
       while True:
@@ -50,23 +55,25 @@ class NeuralNetworkPotential(Potential):
         elif keyword == "cutoff_type":
           self._config[keyword] = _to_cutoff_type[tokens[0]]
         elif keyword == "symfunction_short":
-          asf_type = _to_asf_type[tokens[1]] # TODO: there are multiple type of SF terms both for radial and angular terms
-          if asf_type == 'radial':
-            self._config[keyword].append((tokens[0],                   # central element
-                                    int(tokens[1]),               # asf type
-                                    tokens[2],                    # neighbor element1
-                                    float(tokens[3]),             # eta
-                                    float(tokens[4]),             # r-shift
-                                    float(tokens[5])) )           # r_cutoff
+          try:
+            asf_ = (tokens[0], int(tokens[1]), tokens[2]) + tuple([float(t) for t in tokens[3:]])
+          except ValueError:
+            asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
+          self._config[keyword].append(asf_) 
           # TODO: read angular parameters
         # TODO: asf scaler parameters
 
     # TODO: add logging
     print("NNP configuration")
     for k, v in self._config.items():
-      print(f"{k}: {v}")
+      if isinstance(v, list):
+        print(k)
+        for i in v:
+          print(i)
+      else:
+          print(f"{k}: {v}")
 
-  def _construct_descriptors(self):
+  def _construct_descriptor(self):
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
     functions from the potential configuration. 
@@ -74,13 +81,13 @@ class NeuralNetworkPotential(Potential):
     for element in self._config["elements"]:
       logger.info(f"Instantiating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
       self.descriptor[element] = ASF(element)
-    for asf in self._config["symfunction_short"]:
+    for cfg in self._config["symfunction_short"]:
       # logger.info(f"Adding symmetry function: {asf}") # TODO: move logging inside .add() method
-      if asf[1] == 2:
-        # TODO: use **kwargs as input argument
-        self.descriptor[asf[0]].add(
-            symmetry_function=G2(r_cutoff=asf[5], cutoff_type=self._config["cutoff_type"], r_shift=asf[4], eta=asf[3]), 
-            neighbor_element1=asf[2]) 
+      if cfg[1] == 2:
+        # TODO: use **kwargs as input argument?
+        self.descriptor[cfg[0]].add(
+            symmetry_function=G2(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"], r_shift=cfg[4], eta=cfg[3]), 
+            neighbor_element1=cfg[2]) 
 
   def train(self, structure_loader: StructureLoader):
     """
@@ -89,7 +96,7 @@ class NeuralNetworkPotential(Potential):
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
     structures = read_structures(structure_loader, between=(1, 10))
-    return self.descriptor["H"](structures[0], aid=2)
+    return self.descriptor["H"](structures[0], aid=5), structures[0].position
 
      
 
