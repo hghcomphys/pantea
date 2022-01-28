@@ -10,6 +10,7 @@ class RadialSymmetryFunction:
   TODO: define generic **params input arguments in the base class?
   TODO: add __call__() method?
   TODO: define a internal cutoff radius
+  TODO: add other variant of radial symmetry functions.
   """
   def __init__(self, r_cutoff: float, cutoff_type: str):
     self.r_cutoff = r_cutoff
@@ -41,4 +42,4 @@ class G2(RadialSymmetryFunction):
     self.eta = eta
 
   def kernel(self, rij: torch.tensor) -> torch.tensor:
-    return torch.exp( -self.eta * (rij - self.r_shift) ) * self.cutoff_function(rij)
+    return torch.exp( -self.eta * (rij - self.r_shift)**2 ) * self.cutoff_function(rij)
