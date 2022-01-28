@@ -18,6 +18,7 @@ class ASF(Descriptor):
     self.element = element    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
+    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -29,8 +30,8 @@ class ASF(Descriptor):
     """
     if isinstance(symmetry_function, RadialSymmetryFunction):
       self._radial.append((symmetry_function, self.element, neighbor_element1))
-    elif isinstance(symmetry_function, RadialSymmetryFunction):
-      self._angular((symmetry_function, self.element, neighbor_element1, neighbor_element2))
+    elif isinstance(symmetry_function, AngularSymmetryFunction):
+      self._angular.append((symmetry_function, self.element, neighbor_element1, neighbor_element2))
     else:
       msg = f"Unknown input symmetry function type"
       logger.error(msg)
@@ -44,14 +45,14 @@ class ASF(Descriptor):
     if not structure.is_neighbor:
       structure.update_neighbor()
 
-    #x = structure.position           # tensor
+    x = structure.position            # tensor
     at = structure.atype              # tensor
     nn  = structure.neighbor.number   # tensor
     ni = structure.neighbor.index     # tensor
     emap= structure.element_map       # element map instance
 
     # Create output tensor
-    result = torch.zeros(len(self._radial), dtype=structure.dtype, device=structure.device)
+    result = torch.zeros(self.n_radial + self.n_angular, dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
@@ -62,20 +63,46 @@ class ASF(Descriptor):
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]
     # Calculate the distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
-    rij = structure.calculate_distance(aid, detach=False, neighbors=ni_)
+    rij_ = structure.calculate_distance(aid, detach=False, neighbors=ni_)
     # Get the corresponding neighboring atom types
-    tij = at[ni_] 
+    tij_ = at[ni_] 
     
     # Loop over the radial terms
-    for i, sf in enumerate(self._radial):
+    for index, sf in enumerate(self._radial):
       # Find the neighboring atom indices that match the given ASF cutoff radius AND atom type
-      ni_rc_ = (rij < sf[0].r_cutoff ).detach()
-      ni_ = torch.nonzero( torch.logical_and(ni_rc_, tij == emap(sf[2]) ), as_tuple=True)[0]
+      ni_rc_ = (rij_ < sf[0].r_cutoff ).detach()
+      ni_ = torch.nonzero( torch.logical_and(ni_rc_, tij_ == emap(sf[2]) ), as_tuple=True)[0]
       # Apply the ASF term kernels and sum over the neighboring atoms
-      result[i] = torch.sum( sf[0].kernel(rij[ni_] ), dim=0)
+      result[index] = torch.sum( sf[0].kernel(rij_[ni_] ), dim=0)
 
-    # TODO: add angular terms
+    # Loop over the angular terms
+    for index, sf in enumerate(self._angular):
+      # Find neighboring atom indices that match the given ASF cutoff radius
+      ni_rc_ = (rij_ < sf[0].r_cutoff ).detach()
+      # Find atom indices of neighboring elements 1 and 2 
+      ni_1_ = torch.nonzero( torch.logical_and(ni_rc_, tij_ == emap(sf[2])), as_tuple=True)[0]
+      ni_2_ = torch.nonzero( torch.logical_and(ni_rc_, tij_ == emap(sf[3])), as_tuple=True)[0]
+      # Apply the ASF term kernels and sum over the neighboring atoms
+      # TODO: broad casting calculation to void extra loop over j
+      for j in ni_1_:
+        Rij = x[aid] - x[j]           # a vector
+        Rik = x[aid] - x[ni_2_]       # vectors
+        #Rjk = x[j]   - x[ni_2_]      # vectors
+        cost =  Rik[..., 0] #self.__cosine_similarity(Rij, Rik) # TODO: move it to structure
+        rij = structure.calculate_distance(aid, neighbors=j)
+        rik = structure.calculate_distance(aid, neighbors=ni_2_)
+        rjk = structure.calculate_distance(j, neighbors=ni_2_)
+        result[index] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)
 
     return result
+
+
+  @property
+  def n_radial(self) -> int:
+    return len(self._radial)
+
+  @property
+  def n_angular(self) -> int:
+    return len(self._radial)
 
 
