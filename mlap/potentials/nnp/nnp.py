@@ -3,6 +3,7 @@ from ...structure import Structure
 from ...loaders import StructureLoader, read_structures
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.radial import G1, G2
+from ...descriptors.asf.angular import G3
 from ...utils.tokenize import tokenize
 from ..base import Potential
 from collections import defaultdict
@@ -77,6 +78,7 @@ class NeuralNetworkPotential(Potential):
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
     functions from the potential configuration. 
+    TODO: add logging
     """
     for element in self._config["elements"]:
       logger.info(f"Instantiating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
@@ -86,8 +88,13 @@ class NeuralNetworkPotential(Potential):
       if cfg[1] == 2:
         # TODO: use **kwargs as input argument?
         self.descriptor[cfg[0]].add(
-            symmetry_function=G2(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"], r_shift=cfg[4], eta=cfg[3]), 
-            neighbor_element1=cfg[2]) 
+            symmetry_function = G2(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"], r_shift=cfg[4], eta=cfg[3]), 
+            neighbor_element1 = cfg[2]) 
+      if cfg[1] == 3:
+        self.descriptor[cfg[0]].add(
+            symmetry_function = G3(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"], eta=cfg[4], zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
+            neighbor_element1 = cfg[2],
+            neighbor_element2 = cfg[3]) 
 
   def train(self, structure_loader: StructureLoader):
     """
@@ -96,7 +103,7 @@ class NeuralNetworkPotential(Potential):
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
     structures = read_structures(structure_loader, between=(1, 10))
-    return self.descriptor["H"](structures[0], aid=5), structures[0].position
+    return self.descriptor["H"](structures[0], aid=0), structures[0].position
 
      
 
