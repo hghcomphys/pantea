@@ -18,7 +18,7 @@ class ASF(Descriptor):
     self.element = element    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
-    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6) # instantiate 
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -76,23 +76,23 @@ class ASF(Descriptor):
       result[index] = torch.sum( sf[0].kernel(rij_[ni_] ), dim=0)
 
     # Loop over the angular terms
-    for index, sf in enumerate(self._angular):
+    for index, sf in enumerate(self._angular, start=self.n_radial):
       # Find neighboring atom indices that match the given ASF cutoff radius
       ni_rc_ = (rij_ < sf[0].r_cutoff ).detach()
       # Find atom indices of neighboring elements 1 and 2 
       ni_1_ = torch.nonzero( torch.logical_and(ni_rc_, tij_ == emap(sf[2])), as_tuple=True)[0]
       ni_2_ = torch.nonzero( torch.logical_and(ni_rc_, tij_ == emap(sf[3])), as_tuple=True)[0]
       # Apply the ASF term kernels and sum over the neighboring atoms
-      # TODO: broad casting calculation to void extra loop over j
+      rik = structure.calculate_distance(aid, neighbors=ni_2_)        # shape=(*)
       for j in ni_1_:
-        Rij = x[aid] - x[j]           # a vector
-        Rik = x[aid] - x[ni_2_]       # vectors
-        #Rjk = x[j]   - x[ni_2_]      # vectors
-        cost =  Rik[..., 0] #self.__cosine_similarity(Rij, Rik) # TODO: move it to structure
-        rij = structure.calculate_distance(aid, neighbors=j)
-        rik = structure.calculate_distance(aid, neighbors=ni_2_)
-        rjk = structure.calculate_distance(j, neighbors=ni_2_)
-        result[index] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)
+        Rij = x[aid] - x[j]                                           # shape=(3)
+        Rik = x[aid] - x[ni_2_]                                       # shape=(*, 3)
+        #Rjk = x[j]   - x[ni_2_]                                      # shape=(*, 3)
+        # TODO: move cos calculation to structure
+        cost =  self.__cosine_similarity(Rij.expand(Rik.shape), Rik)  # shape=(*)
+        rij = structure.calculate_distance(aid, neighbors=j)          # shape=(1)
+        rjk = structure.calculate_distance(j, neighbors=ni_2_)        # shape=(*)
+        result[index] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0) # broadcasting computation
 
     return result
 
@@ -103,6 +103,6 @@ class ASF(Descriptor):
 
   @property
   def n_angular(self) -> int:
-    return len(self._radial)
+    return len(self._angular)
 
 
