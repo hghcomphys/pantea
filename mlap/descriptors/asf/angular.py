@@ -30,7 +30,7 @@ class G3(AngularSymmetryFunction):
     self._scale_factor = math.pow(2.0, 1.0-self.zeta)
     
   def kernel(self, rij: torch.tensor, rik: torch.tensor, rjk: torch.tensor, cost: torch.tensor) -> torch.tensor:
-    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )
+    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )  # TODO: r_shift
     return res * self.cutoff_function(rij) * self.cutoff_function(rik) * self.cutoff_function(rjk)
 
 
@@ -48,5 +48,5 @@ class G9(AngularSymmetryFunction):
     self._scale_factor = math.pow(2.0, 1.0-self.zeta)
     
   def kernel(self, rij: torch.tensor, rik: torch.tensor, rjk: torch.tensor, cost: torch.tensor) -> torch.tensor:
-    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2) )
+    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2) ) # TODO: r_shift
     return res * self.cutoff_function(rij) * self.cutoff_function(rik)
