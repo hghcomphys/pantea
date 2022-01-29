@@ -97,12 +97,13 @@ class Structure:
 
     x = self.position.detach() if detach else self.position
     x = x[neighbors] if neighbors is not None else x 
+    x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # for when neighbors index is only a number
     dx = self.position[aid] - x
 
     # Apply PBC along x,y,and z directions
-    dx[:, 0] = _apply_pbc(dx[:, 0], self.box.lx)
-    dx[:, 1] = _apply_pbc(dx[:, 1], self.box.ly)
-    dx[:, 2] = _apply_pbc(dx[:, 2], self.box.lz)
+    dx[..., 0] = _apply_pbc(dx[..., 0], self.box.lx)
+    dx[..., 1] = _apply_pbc(dx[..., 1], self.box.ly)
+    dx[..., 2] = _apply_pbc(dx[..., 2], self.box.lz)
 
     # Calculate distance from dx tensor
     distance = torch.norm(dx, dim=1)
