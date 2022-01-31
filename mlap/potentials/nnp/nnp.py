@@ -3,7 +3,7 @@ from ...structure import Structure
 from ...loaders import StructureLoader, read_structures
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.radial import G1, G2
-from ...descriptors.asf.angular import G3
+from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
 from ..base import Potential
 from collections import defaultdict
@@ -18,27 +18,30 @@ class NeuralNetworkPotential(Potential):
   """
   def __init__(self, filename: str) -> None:
     self.filename = filename
-    self._config = None
-    self.descriptor = {}   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
-    self.model = {}        # A dictionary of {element: Model} # TODO: short and long models
+    self._config = None      # A dictionary representation of the NNP configuration file including descriptor and model
+    self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
+    self.model = None        # A dictionary of {element: Model} # TODO: short and long models
 
     self._read_config()
     self._construct_descriptor()
 
-  def _read_config(self):
+  def _read_config(self) -> None:
     """
     This method read all NNP configurations from the input file including elements, cutoff type, 
     symmetry functions, neural network, traning parameters, etc. 
     # TODO: read all NNP configuration file.
     # See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
+    if self._config is not None:
+      return
+
     _to_cutoff_type = {  # TODO: poly 3 & 4
-        '1': 'hard',
-        '2': 'tanhu',
-        '3': 'tanh',
-        '4': 'exp',
-        '5': 'poly1',
-        '6': 'poly2',
+        '1': 'HARD',
+        '2': 'TANHU',
+        '3': 'TANH',
+        '4': 'EXP',
+        '5': 'POLY1',
+        '6': 'POLY2',
       }  
     self._config = defaultdict(list)
     with open(self.filename, 'r') as file:
@@ -64,38 +67,66 @@ class NeuralNetworkPotential(Potential):
           # TODO: read angular parameters
         # TODO: asf scaler parameters
 
-    # TODO: add logging
-    print("NNP configuration")
-    for k, v in self._config.items():
-      if isinstance(v, list):
-        print(k)
-        for i in v:
-          print(i)
-      else:
-          print(f"{k}: {v}")
+    # # TODO: add logging
+    # print("NNP configuration")
+    # for k, v in self._config.items():
+    #   if isinstance(v, list):
+    #     print(k)
+    #     for i in v:
+    #       print(i)
+    #   else:
+    #       print(f"{k}: {v}")
 
-  def _construct_descriptor(self):
+  def _construct_descriptor(self) -> None:
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
     functions from the potential configuration. 
     TODO: add logging
     """
+    if self.descriptor is not None:
+      return
+    self.descriptor = {}
+
+    # Instantiate ASF for each element 
     for element in self._config["elements"]:
       logger.info(f"Instantiating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
       self.descriptor[element] = ASF(element)
+
+    # Add symmetry functions
+    logger.info(f"Adding symmetry functions: radial and angular") # TODO: move logging inside .add() method
     for cfg in self._config["symfunction_short"]:
-      # logger.info(f"Adding symmetry function: {asf}") # TODO: move logging inside .add() method
-      if cfg[1] == 2:
+      if cfg[1] == 1:
+        # TODO: use **kwargs as input argument?
+        self.descriptor[cfg[0]].add(
+            symmetry_function = G1(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"]), 
+            neighbor_element1 = cfg[2]) 
+      elif cfg[1] == 2:
         # TODO: use **kwargs as input argument?
         self.descriptor[cfg[0]].add(
             symmetry_function = G2(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"], r_shift=cfg[4], eta=cfg[3]), 
             neighbor_element1 = cfg[2]) 
-      if cfg[1] == 3:
+      elif cfg[1] == 3:
         self.descriptor[cfg[0]].add(
-            symmetry_function = G3(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"], eta=cfg[4], zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
+            symmetry_function = G3(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"], eta=cfg[4], 
+              zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
+            neighbor_element1 = cfg[2],
+            neighbor_element2 = cfg[3]) 
+      elif cfg[1] == 9:
+        self.descriptor[cfg[0]].add(
+            symmetry_function = G9(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"], eta=cfg[4], 
+              zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
             neighbor_element1 = cfg[2],
             neighbor_element2 = cfg[3]) 
 
+  def _construct_model(self) -> None:
+    """
+    Construct a neural network for each element.
+    TODO: complete
+    """
+    if self.model is not None:
+      return
+    self.model = {}
+     
   def train(self, structure_loader: StructureLoader):
     """
     Train the model using the input structure loader.
