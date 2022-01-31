@@ -19,8 +19,8 @@ def read_structures(structure_loader: StructureLoader, between: Tuple[int, int]=
         structure_loader.ignore_next()
         next(structure_generator)
       else:
-        logger.debug(f"Reading structure #{index}")
         data = next(structure_generator)
+        logger.debug(f"Reading structure #{index}")
         structures.append( Structure(data) )   
     except StopIteration:
       index -= 1 # correct over counting

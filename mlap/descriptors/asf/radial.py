@@ -11,6 +11,7 @@ class RadialSymmetryFunction:
   TODO: add __call__() method?
   TODO: define a internal cutoff radius
   TODO: add other variant of radial symmetry functions.
+  TODO: add logging when initializing each symmetry function.
   """
   def __init__(self, r_cutoff: float, cutoff_type: str):
     self.r_cutoff = r_cutoff

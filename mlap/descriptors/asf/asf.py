@@ -68,7 +68,7 @@ class ASF(Descriptor):
     dis_ = structure.calculate_distance(aid, detach=False, neighbors=ni_) # self-count excluded, PBC applied
     # Get the corresponding neighboring atom types and position
     at_ = at[ni_]   # at_ refers to the array atom type of only neighbors
-    #x_ = x[ni_]     # x_ refers to the array position of only neighbor atoms
+    #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
     
     # Loop over the radial terms
     for index, sf in enumerate(self._radial):
@@ -88,15 +88,15 @@ class ASF(Descriptor):
       # Apply angular ASF term kernels and sum over the neighboring atoms
       # loop over neighbor element 1 (j)
       for j in ni_rc_at_j_:                                                            
-        ni_j_ = ni_[j]                                                      # neighbor atom index for j
-        ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                    # apply k > j (k,j != i already applied in neighbor list)
-        ni_k_  = ni_[ni_k__]                                                # neighbor atom index for k (an array)
+        ni_j_ = ni_[j]                                                     # neighbor atom index for j (a scaler)
+        ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                   # apply k > j (k,j != i already applied in the neighbor list)
+        ni_k_  = ni_[ni_k__]                                               # neighbor atom index for k (an array)
         # ---
-        Rij = x[aid] - x[ni_j_]                                             # shape=(3)
-        Rik = x[aid] - x[ni_k_]                                             # shape=(*, 3)
-        #Rjk = x[ni_j_] - x[ni_k_]                                          # shape=(*, 3)
+        Rij = x[aid] - x[ni_j_]                                            # shape=(3)
+        Rik = x[aid] - x[ni_k_]                                            # shape=(*, 3)
+        #Rjk = x[ni_j_] - x[ni_k_]                                         # shape=(*, 3)
         # TODO: move cosine calculation to structure
-        cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)         # shape=(*)
+        cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)        # shape=(*)
         # ---
         rij = dis_[j]                                                      # shape=(1), LOCAL index (j)
         rik = dis_[ni_k__]                                                 # shape=(*), LOCAL index (k) - an array 

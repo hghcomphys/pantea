@@ -11,7 +11,7 @@ class CutoffFunction:
   TODO: add poly 3 & 4 funcions
   See N2P2 -> https://compphysvienna.github.io/n2p2/api/cutoff_functions.html?highlight=cutoff#
   """
-  _TANH_PRE = math.pow((math.e + 1 / math.e) / (math.e - 1 / math.e), 3);
+  _TANH_PRE = math.pow((math.e + 1 / math.e) / (math.e - 1 / math.e), 3)
 
   def __init__(self, r_cutoff: float, fn_type: str = "tanh"):
     self.r_cutoff = r_cutoff
