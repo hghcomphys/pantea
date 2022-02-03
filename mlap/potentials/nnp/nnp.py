@@ -2,6 +2,7 @@ from ...logger import logger
 from ...structure import Structure
 from ...loaders import StructureLoader, read_structures
 from ...descriptors.asf.asf import ASF
+from ...descriptors.asf.scaler import AsfScaler
 from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
@@ -21,6 +22,7 @@ class NeuralNetworkPotential(Potential):
     self._config = None      # A dictionary representation of the NNP configuration file including descriptor and model
     self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
     self.model = None        # A dictionary of {element: Model} # TODO: short and long models
+    self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long models
 
     self._read_config()
     self._construct_descriptor()
@@ -118,6 +120,11 @@ class NeuralNetworkPotential(Potential):
             neighbor_element1 = cfg[2],
             neighbor_element2 = cfg[3]) 
 
+    # Assign an ASF scaler to each element 
+    for element in self._config["elements"]:
+      logger.info(f"Instantiating an descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
+      self.scaler[element] = ASF()
+
   def _construct_model(self) -> None:
     """
     Construct a neural network for each element.
@@ -133,10 +140,14 @@ class NeuralNetworkPotential(Potential):
     """
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
-    structures = read_structures(structure_loader, between=(1, 10))
-    return self.descriptor["H"](structures[0], aid=0), structures[0].position
-
-     
+    # structures = read_structures(structure_loader, between=(1, 10))
+    # return self.descriptor["H"](structures[0], aid=0), structures[0].position
+    # for index, data in enumerate(structure_loader.get_data()):
+    #     structure = Structure(data)
+    #     for element in self.descriptor:
+    #       descriptor = self.descriptor[element](structure, aid=0)
+    #       self.scaler[element].fit(descriptor)
+    pass
 
 
 
