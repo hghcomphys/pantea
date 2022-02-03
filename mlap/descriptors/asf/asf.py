@@ -3,11 +3,11 @@ from ...structure import Structure
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Union
+from typing import Union, List
 import torch
 
 
-class ASF(Descriptor):
+class AtomicSymmetryFunction(Descriptor):
   """
   Atomic Symmetry Function (ASF) descriptor.
   ASF is a vector of different radial and angular terms which describe the chemical environment of an atom.
@@ -19,6 +19,7 @@ class ASF(Descriptor):
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6) # instantiate 
+    self.__result = None
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -37,31 +38,48 @@ class ASF(Descriptor):
       logger.error(msg)
       raise TypeError(msg)
 
-  def __call__(self, structure:Structure, aid: int) -> torch.tensor: 
+  def __call__(self, structure:Structure, aid: Union[List[int], int]) -> torch.Tensor: 
     """
-    Calculate descriptor values for the input given structure.
+    Calculate descriptor values for the input given structure and atom id(s).
     """
     # Update neighbor list first if needed
     if not structure.is_neighbor:
       structure.update_neighbor()
 
+    # Check number of symmetry functions
+    if self.n_descriptor == 0:
+      logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
+
+    if isinstance(aid, int):
+      result = self._compute(structure, aid)
+    else:
+      result = torch.empty((len(aid), self.n_descriptor), dtype=structure.dtype, device=structure.device)
+      # TODO: optimization, process pool?
+      for index, aid_ in enumerate(aid):
+        result[index] = self._compute(structure, aid_)
+    # else:
+    #   raise ValueError("Unknown atom id type")
+    
+    return result
+        
+   
+  def _compute(self, structure:Structure, aid: int) -> torch.Tensor:
+    """
+    Comute descriptor vector for an input atom id. 
+    """
     x = structure.position            # tensor
     at = structure.atype              # tensor
     nn  = structure.neighbor.number   # tensor
     ni = structure.neighbor.index     # tensor
     emap= structure.element_map       # element map instance
-
-    # Create output tensor
-    if self.n_descriptor == 0:
-      logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
-    result = torch.zeros(self.n_radial + self.n_angular, dtype=structure.dtype, device=structure.device)
+    result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
       msg = f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')"
       logger.error(msg)
       raise AssertionError(msg)
-
+        
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    
     # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
@@ -120,3 +138,6 @@ class ASF(Descriptor):
     return self.n_radial + self.n_angular
 
 
+# Define ASF alias
+ASF = AtomicSymmetryFunction
+ 
