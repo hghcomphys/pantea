@@ -18,7 +18,6 @@ class AtomicSymmetryFunctionScaler:
     self.sigma = None                     # standard deviation
     self.max = None                       # maximum
     self.min = None                       # minimum
-
     self.smin = kwargs.get("smin", 0.0)
     self.smax = kwargs.get("smax", 1.0)
 
@@ -29,7 +28,7 @@ class AtomicSymmetryFunctionScaler:
     This method can also extract the required quantities even batch-wise.
     """
     data = descriptor_values.detach()  # no gradient history is required
-    data = torch.atleast_2d(data)
+    data = torch.unsqueeze(data, dim=0) if data.ndim <2 else data
 
     # First time initialization
     if self.num == 0:
@@ -55,25 +54,25 @@ class AtomicSymmetryFunctionScaler:
       mean = self.mean
 
       self.mean = m/(m+n)*mean + n/(m+n)*new_mean
-      self.sigma  = torch.sqrt( m/(m+n)*self.std**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 )
-      self.min = torch.minimum(self.min, new_min)
-      self.max = torch.maximum(self.max, new_max)
+      self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 )
+      self.max = torch.maximum(self.max[0], new_max[0])
+      self.min = torch.minimum(self.min[0], new_min[0])
       self.num += n
 
    
   def transform(self, descriptor_values: Dict[str, torch.Tensor]):
     pass
 
-  def _center(self, G: torch.Tensor, element: str) -> torch.Tensor:
+  def _center(self, G: torch.Tensor) -> torch.Tensor:
     return G - self.mean
 
-  def _scale(self, G: torch.Tensor, element: str) -> torch.Tensor:
+  def _scale(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.min) / (self.max - self.min)
 
-  def _scalecenter(self, G: torch.Tensor, element: str) -> torch.Tensor:
+  def _scalecenter(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.mean) / (self.max- self.min)
   
-  def _scalesigma(self, G: torch.Tensor, element: str) -> torch.Tensor:
+  def _scalesigma(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.mean) / self.sigma
 
 
