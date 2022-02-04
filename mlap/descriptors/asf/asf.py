@@ -19,7 +19,7 @@ class AtomicSymmetryFunction(Descriptor):
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6) # instantiate 
-    self.__result = None
+    self.result = None
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -51,19 +51,21 @@ class AtomicSymmetryFunction(Descriptor):
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
     if isinstance(aid, int):
-      result = self._compute(structure, aid)
+      self.result = torch.zeros((1, self.n_descriptor), dtype=structure.dtype, device=structure.device)
+      self._compute(structure, aid)
     else:
-      result = torch.empty((len(aid), self.n_descriptor), dtype=structure.dtype, device=structure.device)
       # TODO: optimization, process pool?
+      self.result = torch.zeros((len(aid), self.n_descriptor), dtype=structure.dtype, device=structure.device)
       for index, aid_ in enumerate(aid):
-        result[index] = self._compute(structure, aid_)
+        self._compute(structure, aid_, index)
     # else:
     #   raise ValueError("Unknown atom id type")
+    self.result = torch.squeeze(self.result)
     
-    return result
+    return self.result
         
    
-  def _compute(self, structure:Structure, aid: int) -> torch.Tensor:
+  def _compute(self, structure:Structure, aid: int, index=0) -> None:
     """
     Comute descriptor vector for an input atom id. 
     """
@@ -72,7 +74,6 @@ class AtomicSymmetryFunction(Descriptor):
     nn  = structure.neighbor.number   # tensor
     ni = structure.neighbor.index     # tensor
     emap= structure.element_map       # element map instance
-    result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
@@ -89,15 +90,15 @@ class AtomicSymmetryFunction(Descriptor):
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
     
     # Loop over the radial terms
-    for index, sf in enumerate(self._radial):
+    for sf_i, sf in enumerate(self._radial):
       # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
       ni_rc__ = ( dis_ < sf[0].r_cutoff ).detach() # a logical array
       ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(sf[2]) ), as_tuple=True)[0]
       # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
-      result[index] = torch.sum( sf[0].kernel(dis_[ni_rc_at_] ), dim=0)
+      self.result[index, sf_i] = torch.sum( sf[0].kernel(dis_[ni_rc_at_] ), dim=0)
 
     # Loop over the angular terms
-    for index, sf in enumerate(self._angular, start=self.n_radial):
+    for sf_i, sf in enumerate(self._angular, start=self.n_radial):
       # Find neighboring atom indices that match the given ASF cutoff radius
       ni_rc__ = (dis_ < sf[0].r_cutoff ).detach() # a logical array
       # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
@@ -120,10 +121,7 @@ class AtomicSymmetryFunction(Descriptor):
         rik = dis_[ni_k__]                                                 # shape=(*), LOCAL index (k) - an array 
         rjk = structure.calculate_distance(j, neighbors=ni_k_)             # shape=(*)
         # Broadcasting computation
-        result[index] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)  
-
-    # Return array of ASF values
-    return result
+        self.result[index, sf_i] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)  
 
   @property
   def n_radial(self) -> int:
