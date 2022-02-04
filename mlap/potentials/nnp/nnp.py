@@ -88,6 +88,7 @@ class NeuralNetworkPotential(Potential):
     if self.descriptor is not None:
       return
     self.descriptor = {}
+    self.scaler = {}
 
     # Instantiate ASF for each element 
     for element in self._config["elements"]:
@@ -121,9 +122,10 @@ class NeuralNetworkPotential(Potential):
             neighbor_element2 = cfg[3]) 
 
     # Assign an ASF scaler to each element 
+    # TODO: move scaler to the ASF descriptor
     for element in self._config["elements"]:
       logger.info(f"Instantiating an descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
-      self.scaler[element] = ASF()
+      self.scaler[element] = AsfScaler()
 
   def _construct_model(self) -> None:
     """
@@ -142,12 +144,16 @@ class NeuralNetworkPotential(Potential):
     # TODO: descriptor element should be the same atom type as the aid
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
-    # for index, data in enumerate(structure_loader.get_data()):
-    #     structure = Structure(data)
-    #     for element in self.descriptor:
-    #       descriptor = self.descriptor[element](structure, aid=0)
-    #       self.scaler[element].fit(descriptor)
-    pass
+    index = 0
+    for data in structure_loader.get_data():
+      index += 1
+      print(f"Structure {index}")
+      structure = Structure(data)
+      for element in self.descriptor.keys():
+        descriptor = self.descriptor[element](structure, aid=structure.select(element)[:30]) 
+        self.scaler[element].fit(descriptor)
+      if index >= 2:
+        break
 
 
 
