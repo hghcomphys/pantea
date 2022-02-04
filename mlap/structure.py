@@ -110,3 +110,10 @@ class Structure:
 
     return distance
 
+  def select(self, element: str) -> torch.Tensor:
+    """
+    Return all atom ids with atom type same as the input element. 
+    """
+    return torch.nonzero( self.atype == self.element_map[element], as_tuple=True)[0].tolist()
+
+
