@@ -22,10 +22,9 @@ class AtomicSymmetryFunctionScaler:
     # Set min/max range for scaler
     self.smin = kwargs.get("scale_min_short", 0.0)                 
     self.smax = kwargs.get("scale_max_short", 1.0)     
-    # Set scaler type function  # TODO: complete this (a class dictionary?)            
-    self._scaler_function = getattr(self, 'scale_center')         
-    if 'scale_symmetry_functions_sigma' in kwargs.keys():
-      self._scaler_function = getattr(self, 'scale_center')
+    self.scaler_type =  kwargs.get('scaler_type', 'scale_center')    
+    # Set scaler type function     
+    self._scaler_function = getattr(self, f'_{self.scaler_type}')         
 
   def fit(self, descriptor_values: torch.Tensor) -> None:
     """
@@ -73,16 +72,16 @@ class AtomicSymmetryFunctionScaler:
     """
     return self._scaler_function(descriptor_values)
 
-  def center(self, G: torch.Tensor) -> torch.Tensor:
+  def _center(self, G: torch.Tensor) -> torch.Tensor:
     return G - self.mean
 
-  def scale(self, G: torch.Tensor) -> torch.Tensor:
+  def _scale(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.min) / (self.max - self.min)
 
-  def scale_center(self, G: torch.Tensor) -> torch.Tensor:
+  def _scale_center(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.mean) / (self.max- self.min)
   
-  def scale_sigma(self, G: torch.Tensor) -> torch.Tensor:
+  def _scale_sigma(self, G: torch.Tensor) -> torch.Tensor:
     return self.smin + (self.smax - self.smin) * (G - self.mean) / self.sigma
 
 

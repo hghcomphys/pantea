@@ -9,7 +9,6 @@ from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
 from ..base import Potential
 from collections import defaultdict
-import numpy as np
 
 
 class NeuralNetworkPotential(Potential):
@@ -19,12 +18,13 @@ class NeuralNetworkPotential(Potential):
   TODO: split structures from the potential model
   TODO: implement structure dumper/writer
   """
+  
   def __init__(self, filename: str) -> None:
     self.filename = filename
     self._config = None      # A dictionary representation of the NNP configuration file including descriptor and model
     self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
+    self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model} # TODO: short and long models
-    self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long models
 
     self._read_config()
     self._construct_descriptor()
@@ -38,15 +38,20 @@ class NeuralNetworkPotential(Potential):
     """
     if self._config is not None:
       return
-
+    # Define conversion dictionary
     _to_cutoff_type = {  # TODO: poly 3 & 4
-        '1': 'HARD',
-        '2': 'TANHU',
-        '3': 'TANH',
-        '4': 'EXP',
-        '5': 'POLY1',
-        '6': 'POLY2',
+      '1': 'HARD',
+      '2': 'TANHU',
+      '3': 'TANH',
+      '4': 'EXP',
+      '5': 'POLY1',
+      '6': 'POLY2',
       }  
+    _to_scaler_type = {   # TODO: center & scaler
+      'scale_symmetry_functions': 'scale_center',
+      'scale_symmetry_functions_sigma': 'scale_sigma',
+    }
+    # Read configs from file
     self._config = defaultdict(list)
     with open(self.filename, 'r') as file:
       while True:
@@ -70,24 +75,14 @@ class NeuralNetworkPotential(Potential):
           self._config[keyword].append(asf_) 
         # Read symmetry function scaler parameters
         elif keyword == "scale_symmetry_functions":
-          self._config[keyword] = True
+          self._config["scaler_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_symmetry_functions_sigma":
-          self._config[keyword] = True
+          self._config["scaler_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_min_short":
           self._config[keyword] = float(tokens[0])
         elif keyword == "scale_max_short":
           self._config[keyword] = float(tokens[0])
         # Read neural network parameters
-
-    # # TODO: add logging
-    # print("NNP configuration")
-    # for k, v in self._config.items():
-    #   if isinstance(v, list):
-    #     print(k)
-    #     for i in v:
-    #       print(i)
-    #   else:
-    #       print(f"{k}: {v}")
 
   def _construct_descriptor(self) -> None:
     """
@@ -102,7 +97,7 @@ class NeuralNetworkPotential(Potential):
 
     # Instantiate ASF for each element 
     for element in self._config["elements"]:
-      logger.info(f"Instantiating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
+      logger.info(f"Creating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
       self.descriptor[element] = ASF(element)
 
     # Add symmetry functions
@@ -134,7 +129,7 @@ class NeuralNetworkPotential(Potential):
     # Assign an ASF scaler to each element 
     # TODO: move scaler to the ASF descriptor
     for element in self._config["elements"]:
-      logger.info(f"Instantiating an descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
+      logger.info(f"Creating a descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
       self.scaler[element] = AsfScaler()
 
   def _construct_model(self) -> None:
@@ -145,15 +140,12 @@ class NeuralNetworkPotential(Potential):
     if self.model is not None:
       return
     self.model = {}
-     
-  def train(self, structure_loader: StructureLoader):
+
+  def fit_scaler(self, structure_loader: StructureLoader):
     """
-    Train the model using the input structure loader.
+    Fit scalers of descriptor for each element based on provided structure loader.
+    # TODO: split scaler, define it as separate step in pipeline
     """
-    # TODO: avoid reading and calculating descriptor multiple times
-    # TODO: descriptor element should be the same atom type as the aid
-    # structures = read_structures(structure_loader, between=(1, 10))
-    # return self.descriptor["H"](structures[0], aid=0), structures[0].position
     index = 0
     for data in structure_loader.get_data():
       index += 1
@@ -168,6 +160,18 @@ class NeuralNetworkPotential(Potential):
           break
       if index >= 2:
         break
+     
+  def fit(self, structure_loader: StructureLoader):
+    """
+    Fit the model using the input structure loader.
+    """
+    # TODO: avoid reading and calculating descriptor multiple times
+    # TODO: descriptor element should be the same atom type as the aid
+    # structures = read_structures(structure_loader, between=(1, 10))
+    # return self.descriptor["H"](structures[0], aid=0), structures[0].position
+    pass
+
+    
 
     
 
