@@ -6,8 +6,10 @@ from ...descriptors.asf.scaler import AsfScaler
 from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
+from ...utils.batch import create_batch
 from ..base import Potential
 from collections import defaultdict
+import numpy as np
 
 
 class NeuralNetworkPotential(Potential):
@@ -52,7 +54,7 @@ class NeuralNetworkPotential(Potential):
         line = file.readline()
         if not line:
           break
-        # Read keyword and values
+        # Read descriptor parameters
         keyword, tokens = tokenize(line, comment='#')
         if keyword == "number_of_elements":
           self._config[keyword] = int(tokens[0])
@@ -66,8 +68,16 @@ class NeuralNetworkPotential(Potential):
           except ValueError:
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
           self._config[keyword].append(asf_) 
-          # TODO: read angular parameters
-        # TODO: asf scaler parameters
+        # Read symmetry function scaler parameters
+        elif keyword == "scale_symmetry_functions":
+          self._config[keyword] = True
+        elif keyword == "scale_symmetry_functions_sigma":
+          self._config[keyword] = True
+        elif keyword == "scale_min_short":
+          self._config[keyword] = float(tokens[0])
+        elif keyword == "scale_max_short":
+          self._config[keyword] = float(tokens[0])
+        # Read neural network parameters
 
     # # TODO: add logging
     # print("NNP configuration")
@@ -147,13 +157,19 @@ class NeuralNetworkPotential(Potential):
     index = 0
     for data in structure_loader.get_data():
       index += 1
-      print(f"Structure {index}")
       structure = Structure(data)
       for element in self.descriptor.keys():
-        descriptor = self.descriptor[element](structure, aid=structure.select(element)[:30]) 
-        self.scaler[element].fit(descriptor)
+        aids = structure.select(element).numpy()
+        for aids_batch in create_batch(aids, 20):
+          print(f"Structure={index}, element={element}, batch={aids_batch}")
+          descriptor = self.descriptor[element](structure, aid=aids_batch) 
+          self.scaler[element].fit(descriptor)
+          self.scaler[element].transform(descriptor)
+          break
       if index >= 2:
         break
+
+    
 
 
 
