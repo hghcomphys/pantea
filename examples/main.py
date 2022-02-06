@@ -5,7 +5,7 @@ from mlap.config import CFG
 from mlap.logger import logger
 from mlap.loaders import RunnerStructureLoader as StructureLoader
 from mlap.loaders import read_structures
-from mlap.descriptors import ASF, CutoffFunction, G1, G2
+from mlap.descriptors import ASF, CutoffFunction, G1, G2, G3
 from mlap.potentials import NeuralNetworkPotential
 from mlap.utils import gradient
 # from mlap.models import NeuralNetwork
@@ -17,11 +17,12 @@ torch.manual_seed(2022)
 logger.info(f"CUDA availability: {CFG['is_cuda']}")
 logger.info(f"Default device: '{CFG['device']}'")
 
+torch.set_num_threads(2)
 CFG.set("device", "cpu")
 # print(CFG["device"])
 
 # Read structure
-loader = StructureLoader("/home/hossein/Desktop/n2p2_conf_3816/input.data")
+loader = StructureLoader("input.data") # /home/hossein/Desktop/n2p2_conf_3816/
 # structures = read_structures(loader, between=(1, 5)) # TODO: structure index 0 or 1?
 # str0 = structures[0] 
 # print(str0.lattice)
@@ -32,6 +33,7 @@ loader = StructureLoader("/home/hossein/Desktop/n2p2_conf_3816/input.data")
 # str0.update_neighbor()
 # print(str0.neighbor.number)
 # print(str0.neighbor.index)
+# print(str0.select("O"))
 
 # Cutoff functions
 # cfn = CutoffFunction(0.5, "tanh")
@@ -47,17 +49,24 @@ loader = StructureLoader("/home/hossein/Desktop/n2p2_conf_3816/input.data")
 # dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "H")
 # dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "O")
 # dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.5), "H")
+# dsr.add( G3(r_cutoff, cutoff_type, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "H")
 # # Calculate values
-# str1 = structures[1]
-# val = dsr(str1, aid=1)
+# val = dsr(str0, aid=range(100))
 # print(val)
-# print(gradient(val, str1.position)[:10]) 
+# print(gradient(val[0], str0.position)[:10]) 
 
 # Potential
 pot = NeuralNetworkPotential("input.nn")
-res, pos = pot.train(loader)
-print(res)
-print(gradient(res, pos)[:10]) 
+pot.fit_scaler(loader)
+# pot.read_scaler("scaling.data")
+
+str0 = read_structures(loader, between=(1, 1))[0]
+for element in pot.descriptor.keys():
+  print("Element:", element)
+  print(pot.scaler[element].__dict__)
+  val = pot.descriptor[element](str0, str0.select(element)[:1])
+  print(val)
+  print(gradient(val, str0.position)[:10])
 
 
 

@@ -146,6 +146,7 @@ class NeuralNetworkPotential(Potential):
     Fit scalers of descriptor for each element based on provided structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
+    logger.info("Fitting atomic symmetry function scalers...")
     index = 0
     for data in structure_loader.get_data():
       index += 1
@@ -156,10 +157,17 @@ class NeuralNetworkPotential(Potential):
           print(f"Structure={index}, element={element}, batch={aids_batch}")
           descriptor = self.descriptor[element](structure, aid=aids_batch) 
           self.scaler[element].fit(descriptor)
-          self.scaler[element].transform(descriptor)
+          # self.scaler[element].transform(descriptor)
           break
       if index >= 2:
         break
+
+  def read_scaler(self, filename: str):
+    """
+    Read scaler parameters.
+    No need to fit the scalers in this case. 
+    """
+    pass
      
   def fit(self, structure_loader: StructureLoader):
     """
@@ -170,6 +178,7 @@ class NeuralNetworkPotential(Potential):
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
     pass
+
 
     
 

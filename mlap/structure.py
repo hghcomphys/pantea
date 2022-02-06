@@ -114,6 +114,6 @@ class Structure:
     """
     Return all atom ids with atom type same as the input element. 
     """
-    return torch.nonzero( self.atype == self.element_map[element], as_tuple=True)[0].tolist()
+    return torch.nonzero( self.atype == self.element_map[element], as_tuple=True)[0]
 
 
