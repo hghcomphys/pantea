@@ -1,5 +1,3 @@
-from mlap.descriptors.base import Descriptor
-from mlap.structure import Structure
 from .cutoff import CutoffFunction
 import torch
 

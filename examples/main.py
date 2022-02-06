@@ -1,16 +1,16 @@
 import sys
 sys.path.append('../')
 
-from mlap.config import CFG
-from mlap.logger import logger
-from mlap.loaders import RunnerStructureLoader as StructureLoader
-from mlap.loaders import read_structures
-from mlap.descriptors import ASF, CutoffFunction, G1, G2, G3
-from mlap.potentials import NeuralNetworkPotential
-from mlap.utils import gradient
+from mlp.config import CFG
+from mlp.logger import logger
+from mlp.loaders import RunnerStructureLoader as StructureLoader
+from mlp.loaders import read_structures
+from mlp.descriptors import ASF, CutoffFunction, G1, G2, G3
+from mlp.potentials import NeuralNetworkPotential
+from mlp.utils import gradient
 # from mlap.models import NeuralNetwork
-import torch
 
+import torch
 torch.manual_seed(2022)
 
 # TODO: move to root mlap import

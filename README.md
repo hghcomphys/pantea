@@ -16,9 +16,10 @@ The current focus is on the implementation of high-dimensional neural network po
 - [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
 - [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
 - [ ] Complete ASF including reading input.nn 
-- [ ] ASF scalers
 - [ ] validating ASF values and gradients
 - [ ] vectorize descriptor calculation for array of atom ids
+- [ ] torch multi-thread
+- [x] ASF scalers
 - [x] add angular ASF
 - [x] optimize loader to read thousands of structures from input file
 - [x] quickly ignore unwanted structure  
