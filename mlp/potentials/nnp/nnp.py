@@ -52,6 +52,7 @@ class NeuralNetworkPotential(Potential):
       'scale_symmetry_functions_sigma': 'scale_sigma',
     }
     # Read configs from file
+    logger.info(f"Reading NNP configuration: file='{self.filename}'")
     self._config = defaultdict(list)
     with open(self.filename, 'r') as file:
       while True:
@@ -61,6 +62,8 @@ class NeuralNetworkPotential(Potential):
           break
         # Read descriptor parameters
         keyword, tokens = tokenize(line, comment='#')
+        if keyword is not None:
+          logger.debug(f"keyword='{keyword}', values={tokens}")
         if keyword == "number_of_elements":
           self._config[keyword] = int(tokens[0])
         elif keyword == "elements":
@@ -83,6 +86,7 @@ class NeuralNetworkPotential(Potential):
         elif keyword == "scale_max_short":
           self._config[keyword] = float(tokens[0])
         # Read neural network parameters
+    logger.info(f"Finished reading NNP configuration")
 
   def _construct_descriptor(self) -> None:
     """
@@ -96,6 +100,7 @@ class NeuralNetworkPotential(Potential):
     self.scaler = {}
 
     # Instantiate ASF for each element 
+    logger.info(f"Elements={self._config['elements']}")
     for element in self._config["elements"]:
       logger.info(f"Creating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
       self.descriptor[element] = ASF(element)
@@ -125,6 +130,7 @@ class NeuralNetworkPotential(Potential):
               zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
             neighbor_element1 = cfg[2],
             neighbor_element2 = cfg[3]) 
+    logger.info("Finished adding symmetry functions")
 
     # Assign an ASF scaler to each element 
     # TODO: move scaler to the ASF descriptor
@@ -146,16 +152,16 @@ class NeuralNetworkPotential(Potential):
     Fit scalers of descriptor for each element based on provided structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
-    logger.info("Fitting atomic symmetry function scalers...")
+    logger.info("Fitting symmetry function scalers...")
     index = 0
     for data in structure_loader.get_data():
       index += 1
       structure = Structure(data)
       for element in self.descriptor.keys():
         aids = structure.select(element).numpy()
-        for aids_batch in create_batch(aids, 20):
-          print(f"Structure={index}, element={element}, batch={aids_batch}")
-          descriptor = self.descriptor[element](structure, aid=aids_batch) 
+        for batch in create_batch(aids, 5):
+          print(f"Structure={index}, element={element}, batch={batch}")
+          descriptor = self.descriptor[element](structure, aid=batch) 
           self.scaler[element].fit(descriptor)
           # self.scaler[element].transform(descriptor)
           break
