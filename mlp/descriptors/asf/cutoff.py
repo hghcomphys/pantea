@@ -30,7 +30,7 @@ class CutoffFunction:
     return torch.where( r < self.r_cutoff, self.fn(r), torch.zeros_like(r))
 
   def _hard(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.zeros_like(r)
+    return torch.ones_like(r)
 
   def _tanhu(self, r: torch.Tensor) -> torch.Tensor:
     return torch.tanh(1.0 - r/self.r_cutoff).pow(3)
