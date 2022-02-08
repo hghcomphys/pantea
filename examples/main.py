@@ -17,12 +17,13 @@ torch.manual_seed(2022)
 logger.info(f"CUDA availability: {CFG['is_cuda']}")
 logger.info(f"Default device: '{CFG['device']}'")
 
-torch.set_num_threads(2)
-CFG.set("device", "cpu")
+# torch.set_num_threads(2)
+# CFG.set("device", "cpu")
 # print(CFG["device"])
 
 # Read structure
-loader = StructureLoader("input.data") # /home/hossein/Desktop/n2p2_conf_3816/
+path = '/home/hossein/n2p2/examples/nnp-scaling/H2O_RPBE-D3/{}' #"/home/hossein/Desktop/n2p2_conf_3816/{}"
+loader = StructureLoader(path.format("input.data")) 
 # structures = read_structures(loader, between=(1, 5)) # TODO: structure index 0 or 1?
 # str0 = structures[0] 
 # print(str0.lattice)
@@ -56,7 +57,7 @@ loader = StructureLoader("input.data") # /home/hossein/Desktop/n2p2_conf_3816/
 # print(gradient(val[0], str0.position)[:10]) 
 
 # Potential
-pot = NeuralNetworkPotential("input.nn")
+pot = NeuralNetworkPotential(path.format("input.nn"))
 pot.fit_scaler(loader)
 # pot.read_scaler("scaling.data")
 

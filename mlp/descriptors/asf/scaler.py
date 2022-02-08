@@ -63,7 +63,6 @@ class AtomicSymmetryFunctionScaler:
       self.min = torch.minimum(self.min, new_min)
       self.sample += n
 
-   
   def transform(self, descriptor_values: Dict[str, torch.Tensor]):
     """
     Transform the input descriptor values base on the selected scaler type.

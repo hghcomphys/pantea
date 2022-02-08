@@ -123,6 +123,7 @@ class AtomicSymmetryFunction(Descriptor):
         # Broadcasting computation
         self.result[index, sf_i] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)  
 
+
   @property
   def n_radial(self) -> int:
     return len(self._radial)

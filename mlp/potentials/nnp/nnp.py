@@ -158,15 +158,15 @@ class NeuralNetworkPotential(Potential):
       index += 1
       structure = Structure(data)
       for element in self.descriptor.keys():
-        aids = structure.select(element).numpy()
+        aids = structure.select(element).cpu().numpy()
         for batch in create_batch(aids, 5):
           print(f"Structure={index}, element={element}, batch={batch}")
           descriptor = self.descriptor[element](structure, aid=batch) 
           self.scaler[element].fit(descriptor)
           # self.scaler[element].transform(descriptor)
-          break
-      if index >= 2:
-        break
+          # break
+      # if index >= 2:
+      #   break
 
   def read_scaler(self, filename: str):
     """
