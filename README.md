@@ -11,14 +11,17 @@ The current focus is on the implementation of high-dimensional neural network po
 
 
 ### TODOs
-- [ ] handle internal err message from a defined MLP exceptions
+- [ ] improve logging message when reading configuration, input structure, descriptor, etc.
+- [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
 - [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
 - [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
-- [ ] Complete ASF including reading input.nn 
 - [ ] validating ASF values and gradients
-- [ ] vectorize descriptor calculation for array of atom ids
-- [ ] torch multi-thread
+- [ ] utilize torch multi-thread or distributed torch
+- [ ] optimize code performance regarding python dynamic types
+- [ ] parallelize descriptor calculations using vectorization or thread pool
+- [x] descriptor calculation for array of atom ids
+- [x] reading ASF from input.nn 
 - [x] ASF scalers
 - [x] add angular ASF
 - [x] optimize loader to read thousands of structures from input file
