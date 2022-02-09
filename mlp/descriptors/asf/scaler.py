@@ -10,6 +10,7 @@ class AtomicSymmetryFunctionScaler:
   """
   Scale descriptor values.
   TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
+  TODO: add warnings for out-of-distribution samples
   """
   def __init__(self, **kwargs):
     # Statistical parameters
@@ -51,14 +52,15 @@ class AtomicSymmetryFunctionScaler:
 
       # New data (batch)
       new_mean = torch.mean(data, dim=0)
-      new_sigma  = torch.std(data, dim=0)
+      new_sigma = torch.std(data, dim=0)
       new_min = torch.min(data, dim=0)[0]
       new_max = torch.max(data, dim=0)[0]
       m, n = float(self.sample), data.shape[0]
-      mean = self.mean
+
       # Calculate quantities for entire data
-      self.mean = m/(m+n)*mean + n/(m+n)*new_mean
-      self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 )
+      mean = self.mean 
+      self.mean = m/(m+n)*mean + n/(m+n)*new_mean  # self.mean is now a new array
+      self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 ) # TODO: unbiased std?
       self.max = torch.maximum(self.max, new_max)
       self.min = torch.minimum(self.min, new_min)
       self.sample += n
