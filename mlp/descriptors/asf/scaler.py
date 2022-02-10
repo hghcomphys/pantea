@@ -2,8 +2,15 @@
 from ...logger import logger
 from typing import Dict
 from collections import defaultdict
-import numpy as np
 import torch
+
+
+def std_(data: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
+  """
+  A utility function which is defined because of the difference observed when using torch.std function.
+  This occurs for torch (numpy version is fine).
+  """
+  return torch.sqrt(torch.mean((data - mean)**2, dim=0))
 
 
 class AtomicSymmetryFunctionScaler:
@@ -33,14 +40,14 @@ class AtomicSymmetryFunctionScaler:
     This method can also extract the required quantities even batch-wise.
     """
     data = descriptor_values.detach()  # no gradient history is required
-    data = torch.atleast_2d(data) #torch.unsqueeze(data, dim=0) if data.ndim <2 else data
+    data = torch.atleast_2d(data)
 
     # First time initialization
     if self.sample == 0:
       self.sample = data.shape[0]
       self.dimension = data.shape[1]
       self.mean = torch.mean(data, dim=0)
-      self.sigma = torch.std(data, dim=0)
+      self.sigma = std_(data, self.mean) #torch.std(data, dim=0)
       self.max = torch.max(data, dim=0)[0]
       self.min = torch.min(data, dim=0)[0]
     else:
@@ -52,15 +59,15 @@ class AtomicSymmetryFunctionScaler:
 
       # New data (batch)
       new_mean = torch.mean(data, dim=0)
-      new_sigma = torch.std(data, dim=0)
+      new_sigma = std_(data, new_mean) #torch.std(data, dim=0)
       new_min = torch.min(data, dim=0)[0]
       new_max = torch.max(data, dim=0)[0]
       m, n = float(self.sample), data.shape[0]
 
       # Calculate quantities for entire data
       mean = self.mean 
-      self.mean = m/(m+n)*mean + n/(m+n)*new_mean  # self.mean is now a new array
-      self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 ) # TODO: unbiased std?
+      self.mean = m/(m+n)*mean + n/(m+n)*new_mean  # self.mean is now a new array and different from the above mean variable
+      self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 ) 
       self.max = torch.maximum(self.max, new_max)
       self.min = torch.minimum(self.min, new_min)
       self.sample += n
@@ -86,4 +93,5 @@ class AtomicSymmetryFunctionScaler:
     return self.smin + (self.smax - self.smin) * (G - self.mean) / self.sigma
 
 
+# Define ASF scaler alias
 AsfScaler = AtomicSymmetryFunctionScaler
