@@ -40,12 +40,12 @@ class NeuralNetworkPotential(Potential):
       return
     # Define conversion dictionary
     _to_cutoff_type = {  # TODO: poly 3 & 4
-      '1': 'HARD',
-      '2': 'TANHU',
-      '3': 'TANH',
-      '4': 'EXP',
-      '5': 'POLY1',
-      '6': 'POLY2',
+      '1': 'hard',
+      '2': 'tanhu',
+      '3': 'tanh',
+      '4': 'exp',
+      '5': 'poly1',
+      '6': 'poly2',
       }  
     _to_scaler_type = {   # TODO: center & scaler
       'scale_symmetry_functions': 'scale_center',
@@ -159,7 +159,7 @@ class NeuralNetworkPotential(Potential):
       structure = Structure(data)
       for element in self.descriptor.keys():
         aids = structure.select(element).cpu().numpy()
-        for batch in create_batch(aids, 5):
+        for batch in create_batch(aids, 10):
           print(f"Structure={index}, element={element}, batch={batch}")
           descriptor = self.descriptor[element](structure, aid=batch) 
           self.scaler[element].fit(descriptor)
