@@ -90,25 +90,25 @@ class AtomicSymmetryFunction(Descriptor):
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
     
     # Loop over the radial terms
-    for sf_i, sf in enumerate(self._radial):
+    for radial_i, radial in enumerate(self._radial):
       # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
-      ni_rc__ = ( dis_ < sf[0].r_cutoff ).detach() # a logical array
-      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(sf[2]) ), as_tuple=True)[0]
+      ni_rc__ = ( dis_ < radial[0].r_cutoff ).detach() # a logical array
+      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(radial[2]) ), as_tuple=True)[0]
       # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
-      self.result[index, sf_i] = torch.sum( sf[0].kernel(dis_[ni_rc_at_] ), dim=0)
+      self.result[index, radial_i] = torch.sum( radial[0].kernel(dis_[ni_rc_at_] ), dim=0)
 
     # Loop over the angular terms
-    for sf_i, sf in enumerate(self._angular, start=self.n_radial):
+    for angular_i, angular in enumerate(self._angular, start=self.n_radial):
       # Find neighboring atom indices that match the given ASF cutoff radius
-      ni_rc__ = (dis_ < sf[0].r_cutoff ).detach() # a logical array
+      ni_rc__ = (dis_ < angular[0].r_cutoff ).detach() # a logical array
       # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
-      ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(sf[2])), as_tuple=True)[0]  # local index
-      ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(sf[3])), as_tuple=True)[0]  # local index
+      ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(angular[2])), as_tuple=True)[0]  # local index
+      ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(angular[3])), as_tuple=True)[0]  # local index
       # Apply angular ASF term kernels and sum over the neighboring atoms
       # loop over neighbor element 1 (j)
       for j in ni_rc_at_j_:                                                            
         ni_j_ = ni_[j]                                                     # neighbor atom index for j (a scaler)
-        ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                   # apply k > j (k,j != i already applied in the neighbor list)
+        ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                   # apply k > j (k,j != i is already applied in the neighbor list)
         ni_k_  = ni_[ni_k__]                                               # neighbor atom index for k (an array)
         # ---
         Rij = x[aid] - x[ni_j_]                                            # shape=(3)
@@ -119,10 +119,33 @@ class AtomicSymmetryFunction(Descriptor):
         # ---
         rij = dis_[j]                                                      # shape=(1), LOCAL index (j)
         rik = dis_[ni_k__]                                                 # shape=(*), LOCAL index (k) - an array 
-        rjk = structure.calculate_distance(j, neighbors=ni_k_)             # shape=(*)
-        # Broadcasting computation
-        self.result[index, sf_i] += torch.sum( sf[0].kernel(rij, rik, rjk, cost), dim=0)  
+        rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)         # shape=(*)
 
+        # Broadcasting computation
+        self.result[index, angular_i] += torch.sum( angular[0].kernel(rij, rik, rjk, cost), dim=0)  
+
+        # --------------------------------------------
+        # ni_j_ = ni_[j] # atom index i
+        # rij = dis_[j]  
+        # Rij = x[aid] - x[ni_j_]
+        # for k in ni_rc_at_k_:
+        #   ni_k_ = ni_[k]  # atom index j
+
+        #   if ni_k_ <= ni_j_:
+        #     continue
+
+        #   rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_) 
+        #   if rjk > angular[0].r_cutoff:
+        #     continue
+
+        #   rik = dis_[k]          
+        #   Rik = x[aid] - x[ni_k_]
+
+        #   cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))   
+
+        #   # print(sf[0].kernel(rij, rik, rjk, cost).detach().numpy())
+        #   self.result[index, angular_i] += angular[0].kernel(rij, rik, None, cost)[0]
+        # --------------------------------------------
 
   @property
   def n_radial(self) -> int:
