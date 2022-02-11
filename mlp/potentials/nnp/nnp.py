@@ -40,7 +40,8 @@ class NeuralNetworkPotential(Potential):
       return
     # Define conversion dictionary
     _to_cutoff_type = {  # TODO: poly 3 & 4
-      '1': 'hard',
+      '0': 'hard',
+      '1': 'cos',
       '2': 'tanhu',
       '3': 'tanh',
       '4': 'exp',
