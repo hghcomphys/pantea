@@ -18,7 +18,7 @@ class AtomicSymmetryFunction(Descriptor):
     self.element = element    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
-    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6) # instantiate 
+    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
     self.result = None
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
@@ -104,47 +104,53 @@ class AtomicSymmetryFunction(Descriptor):
       # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
       ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(angular[2])), as_tuple=True)[0]  # local index
       ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(angular[3])), as_tuple=True)[0]  # local index
+
       # Apply angular ASF term kernels and sum over the neighboring atoms
       # loop over neighbor element 1 (j)
-      for j in ni_rc_at_j_:                                                            
-        ni_j_ = ni_[j]                                                     # neighbor atom index for j (a scaler)
-        ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                   # apply k > j (k,j != i is already applied in the neighbor list)
-        ni_k_  = ni_[ni_k__]                                               # neighbor atom index for k (an array)
-        # ---
-        Rij = x[aid] - x[ni_j_]                                            # shape=(3)
-        Rik = x[aid] - x[ni_k_]                                            # shape=(*, 3)
-        #Rjk = x[ni_j_] - x[ni_k_]                                         # shape=(*, 3)
-        # TODO: move cosine calculation to structure
-        cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)        # shape=(*)
-        # ---
-        rij = dis_[j]                                                      # shape=(1), LOCAL index (j)
-        rik = dis_[ni_k__]                                                 # shape=(*), LOCAL index (k) - an array 
-        rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)         # shape=(*)
+      for j in ni_rc_at_j_:     
 
-        # Broadcasting computation
-        self.result[index, angular_i] += torch.sum( angular[0].kernel(rij, rik, rjk, cost), dim=0)  
+        # ni_j_ = ni_[j]                                                     # neighbor atom index for j (a scaler)
+        # ni_k__ = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                   # apply k > j (k,j != i is already applied in the neighbor list)
+        # ni_k_  = ni_[ni_k__]                                               # neighbor atom index for k (an array)
+        # # ---
+        # Rij = x[aid] - x[ni_j_]                                            # shape=(3)
+        # Rik = x[aid] - x[ni_k_]                                            # shape=(*, 3)
+        # #Rjk = x[ni_j_] - x[ni_k_]                                         # shape=(*, 3)
+        # # TODO: move cosine calculation to structure
+        # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)        # shape=(*)
+        # # ---
+        # rij = dis_[j]                                                      # shape=(1), LOCAL index (j)
+        # rik = dis_[ni_k__]                                                 # shape=(*), LOCAL index (k) - an array 
+        # rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)         # shape=(*)
+
+        # # Broadcasting computation
+        # self.result[index, angular_i] += torch.sum( angular[0].kernel(rij, rik, rjk, cost), dim=0)  
 
         # --------------------------------------------
-        # ni_j_ = ni_[j] # atom index i
-        # rij = dis_[j]  
-        # Rij = x[aid] - x[ni_j_]
-        # for k in ni_rc_at_k_:
-        #   ni_k_ = ni_[k]  # atom index j
+        ni_j_ = ni_[j] # atom index i
+        rij = dis_[j]  
+        Rij = structure.apply_pbc(x[aid] - x[ni_j_])
+        for k in ni_rc_at_k_:
+          ni_k_ = ni_[k]  # atom index j
+            
+          if ni_k_ <= ni_j_:
+            continue
 
-        #   if ni_k_ <= ni_j_:
-        #     continue
+          rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)[0]
+          # if rjk > angular[0].r_cutoff: # TODO
+          #   continue
 
-        #   rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_) 
-        #   if rjk > angular[0].r_cutoff:
-        #     continue
+          rik = dis_[k]          
+          Rik = structure.apply_pbc(x[aid] - x[ni_k_])
 
-        #   rik = dis_[k]          
-        #   Rik = x[aid] - x[ni_k_]
+          cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))[0] 
+          # kernel = angular[0].kernel(rij, rik, rjk, cost)
+          self.result[index, angular_i] += angular[0].kernel(rij, rik, rjk, cost) #kernel
 
-        #   cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))   
-
-        #   # print(sf[0].kernel(rij, rik, rjk, cost).detach().numpy())
-        #   self.result[index, angular_i] += angular[0].kernel(rij, rik, None, cost)[0]
+          # print(f"i={aid}({emap[int(at[aid])]}), j={ni_j_.numpy()}({emap[int(at[ni_j_.numpy()])]}), k={ni_k_.numpy()}({emap[int(at[ni_k_.numpy()])]})"\
+          #   f", rij={rij.detach().numpy()}, rik={rik.detach().numpy()}, rjk={rjk.detach().numpy()}, cost={cost.detach().numpy()}"\
+          #     # f", local_j={j}, local_k={k}"\
+          #     f", kernel[{index}, {angular_i}]={kernel}")        
         # --------------------------------------------
 
   @property
