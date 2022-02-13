@@ -84,26 +84,41 @@ class Structure:
     """
     self.neighbor.update(self)
 
+  @staticmethod
+  def _apply_pbc(dx: torch.Tensor, l: float) -> torch.Tensor:
+    """
+    An utility and static method to apply PBC along a specific direction. 
+    """   
+    dx = torch.where(dx >  0.5*l, dx - l, dx)
+    dx = torch.where(dx < -0.5*l, dx + l, dx)
+    return dx
+
+  def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor:
+    """
+    This method applies PBC on the input array (assuming position difference).
+    """
+    # Apply PBC along x,y,and z directions
+    dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
+    dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
+    dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
+    return dx
+
   def calculate_distance(self, aid: int, detach=False, neighbors=None) -> torch.Tensor:
     """
     This method calculates an array of distances of all atoms existing in the structure from an input atom. 
     TODO: input pbc flag, using default pbc from global configuration
     TODO: also see torch.cdist
     """
-    def _apply_pbc(dx, l):   
-      dx = torch.where(dx >  0.5*l, dx - l, dx)
-      dx = torch.where(dx < -0.5*l, dx + l, dx)
-      return dx
-
     x = self.position.detach() if detach else self.position
     x = x[neighbors] if neighbors is not None else x 
     x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # for when neighbors index is only a number
     dx = self.position[aid] - x
 
-    # Apply PBC along x,y,and z directions
-    dx[..., 0] = _apply_pbc(dx[..., 0], self.box.lx)
-    dx[..., 1] = _apply_pbc(dx[..., 1], self.box.ly)
-    dx[..., 2] = _apply_pbc(dx[..., 2], self.box.lz)
+    # Apply PBC along x,y,and z directions  # TODO: replacing by self.apply_pbc
+    # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
+    # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
+    # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
+    dx = self.apply_pbc(dx)
 
     # Calculate distance from dx tensor
     distance = torch.norm(dx, dim=1)
