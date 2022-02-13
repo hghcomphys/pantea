@@ -93,17 +93,17 @@ class Structure:
     dx = torch.where(dx < -0.5*l, dx + l, dx)
     return dx
 
-  def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor:
+  def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor: 
     """
     This method applies PBC on the input array (assuming position difference).
     """
     # Apply PBC along x,y,and z directions
-    dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
-    dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
-    dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
+    dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx) # x
+    dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly) # y
+    dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz) # z
     return dx
 
-  def calculate_distance(self, aid: int, detach=False, neighbors=None) -> torch.Tensor:
+  def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> torch.Tensor: # TODO: also tuple?
     """
     This method calculates an array of distances of all atoms existing in the structure from an input atom. 
     TODO: input pbc flag, using default pbc from global configuration
@@ -123,7 +123,7 @@ class Structure:
     # Calculate distance from dx tensor
     distance = torch.norm(dx, dim=1)
 
-    return distance
+    return distance if not difference else (distance, dx)
 
   def select(self, element: str) -> torch.Tensor:
     """
