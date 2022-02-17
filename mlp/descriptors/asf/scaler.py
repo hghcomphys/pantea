@@ -72,7 +72,7 @@ class AtomicSymmetryFunctionScaler:
       self.min = torch.minimum(self.min, new_min)
       self.sample += n
 
-  def transform(self, descriptor_values: Dict[str, torch.Tensor]):
+  def __call__(self, descriptor_values: Dict[str, torch.Tensor]):
     """
     Transform the input descriptor values base on the selected scaler type.
     This merhod has to be called when fit method is called batch-wise over all descriptor values, 

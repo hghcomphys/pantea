@@ -121,57 +121,57 @@ class AtomicSymmetryFunction(Descriptor):
            k = ni_rc_at_k_[ ni_[ni_rc_at_k_] != ni_j_ ]
         ni_k_  = ni_[k]                                               # neighbor atom index for k (an array)
         # ---
-        rij = dis_[j]                                                 # shape=(1), LOCAL index (j)
-        rik = dis_[k]                                                 # shape=(*), LOCAL index (k) - an array 
+        rij = dis_[j]                                                 # shape=(1), LOCAL index j
+        rik = dis_[k]                                                 # shape=(*), LOCAL index k (an array) 
         Rij = diff_[j] #x[aid] - x[ni_j_]                             # shape=(3)
         Rik = diff_[k] #x[aid] - x[ni_k_]                             # shape=(*, 3)
         # ---
         rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)    # shape=(*)
         #Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])               # shape=(*, 3)
         # ---
+        # Cosine of angle between k--<i>--j atoms
         # TODO: move cosine calculation to structure
-        cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
-        # cost = torch.inner(Rij, Rik)/(rij*rik)
+        # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
+        cost = torch.inner(Rij, Rik)/(rij*rik)
         # ---
         # Broadcasting computation
         self.result[index, angular_i] += torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
 
         # Debugging --------------------------------------------
-      #   ni_j_ = ni_[j] # atom index i
-      #   rij = dis_[j]  
-      #   Rij = structure.apply_pbc(x[aid] - x[ni_j_])
-      #   for k in ni_rc_at_k_:
-      #     ni_k_ = ni_[k]  # atom index j
+        # ni_j_ = ni_[j] # atom index i
+        # rij = dis_[j]  
+        # Rij = structure.apply_pbc(x[aid] - x[ni_j_])
+        # for k in ni_rc_at_k_:
+        #   ni_k_ = ni_[k]  # atom index j
             
-      #     # if (ni_k_ <= ni_j_):
-      #     #   continue
-      #     if at_j == at_k: 
-      #       if ni_k_ <= ni_j_:
-      #         continue
-      #     else:
-      #       if ni_k_ == ni_j_:
-      #         continue
-      #       pass
+        #   # if (ni_k_ <= ni_j_):
+        #   #   continue
+        #   if at_j == at_k: 
+        #     if ni_k_ <= ni_j_:
+        #       continue
+        #   else:
+        #     if ni_k_ == ni_j_:
+        #       continue
+        #     pass
 
-      #     rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)[0]
-      #     # if rjk > angular[0].r_cutoff: 
-      #     #   continue
+        #   rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)[0]
+        #   # if rjk > angular[0].r_cutoff: 
+        #   #   continue
 
-      #     rik = dis_[k]          
-      #     Rik = structure.apply_pbc(x[aid] - x[ni_k_])
+        #   rik = dis_[k]          
+        #   Rik = structure.apply_pbc(x[aid] - x[ni_k_])
 
-      #     cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))[0] 
-      #     # cost = torch.inner(Rij, Rik)/(rij*rik)
-      #     kernel = angular[0].kernel(rij, rik, rjk, cost)
-      #     self.result[index, angular_i] += kernel
+        #   cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))[0] 
+        #   # cost = torch.inner(Rij, Rik)/(rij*rik)
+        #   kernel = angular[0].kernel(rij, rik, rjk, cost)
+        #   self.result[index, angular_i] += kernel
 
-      #     if index == 0 and angular_i == 2:
-      #       print(f"i={aid}({emap[int(at[aid])]}), j={ni_j_.numpy()}({emap[int(at[ni_j_.numpy()])]}), k={ni_k_.numpy()}({emap[int(at[ni_k_.numpy()])]})"\
-      #         f", rij={rij.detach().numpy()}, rik={rik.detach().numpy()}, rjk={rjk.detach().numpy()}, cost={cost.detach().numpy()}"\
-      #           # f", local_j={j}, local_k={k}"\
-      #           f", kernel[{index}, {angular_i}]={kernel}")        
-          
-      #   # --------------------------------------------
+        #   if index == 0 and angular_i == 2:
+        #     print(f"i={aid}({emap[int(at[aid])]}), j={ni_j_.numpy()}({emap[int(at[ni_j_.numpy()])]}), k={ni_k_.numpy()}({emap[int(at[ni_k_.numpy()])]})"\
+        #       f", rij={rij.detach().numpy()}, rik={rik.detach().numpy()}, rjk={rjk.detach().numpy()}, cost={cost.detach().numpy()}"\
+        #         # f", local_j={j}, local_k={k}"\
+        #         f", kernel[{index}, {angular_i}]={kernel}")        
+        # --------------------------------------------
       # print(f"result[{index}, {angular_i}]={self.result[index, angular_i].detach().numpy()}")
 
   @property
