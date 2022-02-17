@@ -10,7 +10,61 @@ _MLP framework_ is NOT a molecular dynamics (MD) simulation package but a framew
 The current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401))
 
 
-### TODOs
+## Designed API
+### High-level API
+```python
+# Atomic data
+loader = RunnerStructureLoader("input.data")
+
+# potential
+nnp = NeuralNetworkPotential("input.nn")
+
+# Scaler
+nnp.fit_scaler(loader)
+nnp.read_scaler("scaling.data")
+
+# Model
+nnp.fit_model(loader)
+nnp.read_model()
+
+# Train
+nnp.fit(loader)
+
+# Inference
+energy = nnp.predict(loader)
+force = nnp.compute_force(loader)
+```
+
+### Low-level API
+```python
+# Atomic data
+loader = RunnerStructureLoader("input.data")
+structures = read_structures(loader, between=(1, 5))
+
+# Descriptor
+asf = AtomicSymmetryFunction(element="H")
+asf.add( G2(r_cutoff=12.0, cutoff_type="tanh", r_shift=0.0, eta=0.5), "H" )
+asf.add( G3(r_cutoff=12.0, cutoff_type="tanh", eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
+val = asf(structures[0], aid=0)
+
+# Scaler
+scaler = AtomicSymmetryFunctionScaler(scaler_type="scale_center")
+scaler.fit(val)
+val_scaled = scaler(val)
+
+# Potential
+potential = NeuralNetworkModel(**kwargs)
+
+# Train
+trainer = NeuralNetworkTrainer(model=potential, **kwargs)
+trainer.train(val_scaler)
+
+# Inference
+energy = potential(val_scaled)
+force = -gradient(energy, structures[0].position)
+```
+
+#### Implementation TODOs
 - [ ] improve logging message when reading configuration, input structure, descriptor, etc.
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
