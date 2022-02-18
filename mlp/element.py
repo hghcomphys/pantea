@@ -68,6 +68,10 @@ class ElementMap:
   def __call__(self, item: Union[str, int]) -> Union[int, str]:
     return self[item]
 
+  @staticmethod
+  def get_atomic_number(element: str) -> int:
+    return _KNOWN_ELEMENTS_DICT[element]
+
   def __str__(self):
     pass
 
