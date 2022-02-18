@@ -7,8 +7,14 @@ from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
+from ...element import ElementMap
+from ...config import CFG
 from ..base import Potential
-from collections import defaultdict
+from collections import defaultdict, Counter
+from pathlib import Path
+import torch
+import numpy as np
+
 
 
 class NeuralNetworkPotential(Potential):
@@ -19,22 +25,23 @@ class NeuralNetworkPotential(Potential):
   TODO: implement structure dumper/writer
   """
   
-  def __init__(self, filename: str) -> None:
-    self.filename = filename
-    self._config = None      # A dictionary representation of the NNP configuration file including descriptor and model
+  def __init__(self, filename: Path) -> None:
+    self.filename = Path(filename)
+    self._config = None      # A dictionary representation of the NNP configuration (file) including descriptor, scaler, and model
     self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
     self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model} # TODO: short and long models
 
     self._read_config()
     self._construct_descriptor()
+    self._construct_scaler()
+    self._construct_model()
 
   def _read_config(self) -> None:
     """
-    This method read all NNP configurations from the input file including elements, cutoff type, 
+    This method reads all NNP configurations from the input file including elements, cutoff type, 
     symmetry functions, neural network, traning parameters, etc. 
-    # TODO: read all NNP configuration file.
-    # See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
+    See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
     if self._config is not None:
       return
@@ -53,9 +60,9 @@ class NeuralNetworkPotential(Potential):
       'scale_symmetry_functions_sigma': 'scale_sigma',
     }
     # Read configs from file
-    logger.info(f"Reading NNP configuration: file='{self.filename}'")
+    logger.info(f"Reading NNP configuration file='{self.filename}'")
     self._config = defaultdict(list)
-    with open(self.filename, 'r') as file:
+    with open(str(self.filename), 'r') as file:
       while True:
         # Read the next line
         line = file.readline()
@@ -68,7 +75,7 @@ class NeuralNetworkPotential(Potential):
         if keyword == "number_of_elements":
           self._config[keyword] = int(tokens[0])
         elif keyword == "elements":
-          self._config[keyword] = tuple(set([t for t in tokens]))
+          self._config[keyword] = sorted(set([t for t in tokens]), key=ElementMap.get_atomic_number)
         elif keyword == "cutoff_type":
           self._config[keyword] = _to_cutoff_type[tokens[0]]
         elif keyword == "symfunction_short":
@@ -87,7 +94,6 @@ class NeuralNetworkPotential(Potential):
         elif keyword == "scale_max_short":
           self._config[keyword] = float(tokens[0])
         # Read neural network parameters
-    logger.info(f"Finished reading NNP configuration")
 
   def _construct_descriptor(self) -> None:
     """
@@ -107,7 +113,7 @@ class NeuralNetworkPotential(Potential):
       self.descriptor[element] = ASF(element)
 
     # Add symmetry functions
-    logger.info(f"Adding symmetry functions: radial and angular") # TODO: move logging inside .add() method
+    logger.info(f"Adding symmetry functions (radial and angular)") # TODO: move logging inside .add() method
     for cfg in self._config["symfunction_short"]:
       if cfg[1] == 1:
         # TODO: use **kwargs as input argument?
@@ -131,13 +137,16 @@ class NeuralNetworkPotential(Potential):
               zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
             neighbor_element1 = cfg[2],
             neighbor_element2 = cfg[3]) 
-    logger.info("Finished adding symmetry functions")
 
+  def _construct_scaler(self) -> None:
+    """
+    Construct a descriptor for each element.
+    """
     # Assign an ASF scaler to each element 
     # TODO: move scaler to the ASF descriptor
     for element in self._config["elements"]:
       logger.info(f"Creating a descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
-      self.scaler[element] = AsfScaler()
+      self.scaler[element] = AsfScaler(**self._config) # TODO: improve, irrelevant info leak! 
 
   def _construct_model(self) -> None:
     """
@@ -148,34 +157,56 @@ class NeuralNetworkPotential(Potential):
       return
     self.model = {}
 
-  def fit_scaler(self, structure_loader: StructureLoader):
+  def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None):
     """
     Fit scalers of descriptor for each element based on provided structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
     logger.info("Fitting symmetry function scalers...")
-    index = 0
-    for data in structure_loader.get_data():
+    for index, data in enumerate(structure_loader.get_data(), start=1):
       index += 1
       structure = Structure(data)
-      for element in self.descriptor.keys():
+      for element, scaler in self.scaler.items():
         aids = structure.select(element).cpu().numpy()
         for batch in create_batch(aids, 10):
           print(f"Structure={index}, element={element}, batch={batch}")
           descriptor = self.descriptor[element](structure, aid=batch) 
-          self.scaler[element].fit(descriptor)
-          # self.scaler[element].transform(descriptor)
-          # break
-      # if index >= 2:
-      #   break
+          scaler.fit(descriptor)
 
-  def read_scaler(self, filename: str):
+    # Save scaler data into file  
+    if filename is not None:
+      logger.info(f"Saving scaler data into '{filename}'")
+      with open(str(Path(filename)), "w") as file:
+        file.write(f"# Symmetry function scaling data\n")
+        file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
+        for element, scaler in self.scaler.items():     
+          for i in range(scaler.dimension):
+            file.write(f"  {element:<10s} ")
+            file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
+
+
+  def read_scaler(self, filename: Path):
     """
     Read scaler parameters.
     No need to fit the scalers in this case. 
     """
-    pass
-     
+    logger.info(f"Reading scaler data from '{filename}'")
+    element_count = Counter(np.loadtxt(filename, usecols=(0), comments='#', dtype=str))
+    data = np.loadtxt(filename, usecols=(1, 2, 3, 4), comments='#')
+    index = 0
+    for element, count in element_count.items():
+      scaler= self.scaler[element]
+      data_ = data[index:index+count, :]
+      scaler.sample = 1
+      scaler.dimension = data.shape[1]
+      scaler.min   = torch.tensor(data_[:, 0], device=CFG["device"]) # TODO: dtype?
+      scaler.max   = torch.tensor(data_[:, 1], device=CFG["device"])
+      scaler.mean  = torch.tensor(data_[:, 2], device=CFG["device"])
+      scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
+      print(scaler.__dict__)
+      index += count
+
+
   def fit(self, structure_loader: StructureLoader):
     """
     Fit the model using the input structure loader.
