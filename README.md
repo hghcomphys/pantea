@@ -1,7 +1,7 @@
 # MLP Framework
 
 ## What is it?
-_Machine Learning Potential Framework_ is a generic and GPU-accelerated package written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials which are used for performing large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
+_Machine Learning Potential Framework_ is a generic and GPU-accelerated package written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. Such potentials are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
  
 <!--  -->
 _MLP framework_ is NOT a molecular dynamics (MD) simulation package but a framework to construct ML-based force fields employed for the MD simulations.
