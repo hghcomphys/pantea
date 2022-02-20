@@ -14,18 +14,16 @@ class CutoffFunction:
   """
   _TANH_PRE = math.pow((math.e + 1 / math.e) / (math.e - 1 / math.e), 3)
 
-  def __init__(self, r_cutoff: float, fn_type: str = "tanh"):
+  def __init__(self, r_cutoff: float, cutoff_type: str = "tanh"):
     self.r_cutoff = r_cutoff
-    self.fn_type = fn_type.lower()
-    # Set cutoff function
+    self.cutoff_type = cutoff_type.lower()
+    # Set cutoff type function
     try:
-      self.fn = getattr(self, f"_{self.fn_type}")
+      self.fn = getattr(self, f"_{self.cutoff_type}")
     except AttributeError:
-      msg = f"'{self.__class__.__name__}' has no implemented cutoff function '{self.fn_type}'"
+      msg = f"'{self.__class__.__name__}' has no implemented cutoff function '{self.cutoff_type}'"
       logger.error(msg)
       raise NotImplementedError(msg)
-
-    # logger.info(f"Initialize {self.__class__.__name__} with r_cutoff({self.r_cutoff}) and function({self.fn_type})")
 
   def __call__(self, r: torch.Tensor) -> torch.Tensor:
     return torch.where( r < self.r_cutoff, self.fn(r), torch.zeros_like(r))
@@ -50,3 +48,6 @@ class CutoffFunction:
 
   def _poly2(self, r: torch.Tensor) -> torch.Tensor:
     return ((15.0 - 6.0*r) * r - 10) * r**3 + 1.0
+
+  def __repr__(self) -> str:
+      return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff}, cutoff_type='{self.cutoff_type}')"
