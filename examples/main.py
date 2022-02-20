@@ -17,6 +17,9 @@ torch.manual_seed(2022)
 logger.info(f"CUDA availability: {CFG['is_cuda']}")
 logger.info(f"Default device: '{CFG['device']}'")
 
+# from mlp.logger import CustomErrorException
+# raise CustomErrorException(f"This is a test {1}")
+
 # torch.set_num_threads(2)
 # CFG.set("device", "cpu")
 # print(CFG["device"])
@@ -58,16 +61,20 @@ loader = StructureLoader(path.format("input.data"))
 
 # Potential
 pot = NeuralNetworkPotential(path.format("input.nn"))
-pot.fit_scaler(loader)
-# pot.read_scaler("scaling.data")
+pot.fit_scaler(loader, filename=path.format("scaler.data"))
+# pot.read_scaler(path.format("scaler.data"))
 
 str0 = read_structures(loader, between=(1, 1))[0]
-for element in pot.descriptor.keys():
+for element in pot.elements:
   print("Element:", element)
-  print(pot.scaler[element].__dict__)
+  print("sample", pot.scaler[element].sample)
+  for d in ["min", "max", "mean", "sigma"]:
+    print(d, pot.scaler[element].__dict__[d].numpy())
   val = pot.descriptor[element](str0, str0.select(element)[:1])
-  print(val)
-  print(gradient(val, str0.position)[:10])
+  print("values", val.detach().numpy())
+  val = pot.scaler[element](val)
+  print("scaled", val.detach().numpy())
+  # print(gradient(val, str0.position)[:10])
 
 
 

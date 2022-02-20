@@ -1,9 +1,11 @@
-import numpy as np
+import math
+import torch
 
-def create_batch(array: np.ndarray, batch_size: int) -> np.ndarray:
+
+def create_batch(array: torch.Tensor , batch_size: int) -> torch.Tensor:
   """
   Return the input array in form of batches (generator)
   """
-  nb = int(np.ceil(len(array)/batch_size))
+  nb = int(math.ceil(len(array)/batch_size))
   for i in range(nb):
     yield array[i*batch_size:(i+1)*batch_size, ...]
