@@ -11,6 +11,7 @@ from ...element import ElementMap
 from ...config import CFG
 from ..base import Potential
 from collections import defaultdict, Counter
+from typing import Dict
 from pathlib import Path
 import torch
 import numpy as np
@@ -24,18 +25,18 @@ class NeuralNetworkPotential(Potential):
   TODO: split structures from the potential model
   TODO: implement structure dumper/writer
   """
-  
-  def __init__(self, filename: Path) -> None:
+  def __init__(self, filename: Path = "input.nn") -> None:
     self.filename = Path(filename)
-    self._config = None      # A dictionary representation of the NNP configuration (file) including descriptor, scaler, and model
+    self._config = None      # A dictionary representation of the NNP configuration including descriptor, scaler, and model parameters
     self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
     self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model} # TODO: short and long models
 
-    self._read_config()
-    self._construct_descriptor()
-    self._construct_scaler()
-    self._construct_model()
+    if filename is not None:
+      self._read_config()
+      self._construct_descriptor()
+      self._construct_scaler()
+      self._construct_model()
 
   def _read_config(self) -> None:
     """
@@ -43,22 +44,21 @@ class NeuralNetworkPotential(Potential):
     symmetry functions, neural network, traning parameters, etc. 
     See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
-    if self._config is not None:
-      return
-    # Define conversion dictionary
+    # Map cutoff type
     _to_cutoff_type = {  # TODO: poly 3 & 4
-      '0': 'hard',
-      '1': 'cos',
-      '2': 'tanhu',
-      '3': 'tanh',
-      '4': 'exp',
-      '5': 'poly1',
-      '6': 'poly2',
-      }  
+        '0': 'hard',
+        '1': 'cos',
+        '2': 'tanhu',
+        '3': 'tanh',
+        '4': 'exp',
+        '5': 'poly1',
+        '6': 'poly2',
+        }  
+    # Map scaler type
     _to_scaler_type = {   # TODO: center & scaler
-      'scale_symmetry_functions': 'scale_center',
-      'scale_symmetry_functions_sigma': 'scale_sigma',
-    }
+        'scale_symmetry_functions': 'scale_center',
+        'scale_symmetry_functions_sigma': 'scale_sigma',
+      }
     # Read configs from file
     logger.info(f"Reading NNP configuration file='{self.filename}'")
     self._config = defaultdict(list)
@@ -98,13 +98,10 @@ class NeuralNetworkPotential(Potential):
   def _construct_descriptor(self) -> None:
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
-    functions from the potential configuration. 
+    functions from the potential configuration using the dictionary of NNP configuration.
     TODO: add logging
     """
-    if self.descriptor is not None:
-      return
     self.descriptor = {}
-    self.scaler = {}
 
     # Instantiate ASF for each element 
     logger.info(f"Elements={self._config['elements']}")
@@ -140,22 +137,30 @@ class NeuralNetworkPotential(Potential):
 
   def _construct_scaler(self) -> None:
     """
-    Construct a descriptor for each element.
+    Construct a descriptor for each element using the dictionary of NNP configuration.
     """
-    # Assign an ASF scaler to each element 
-    # TODO: move scaler to the ASF descriptor
+    self.scaler = {}
+
+    # Prepare scaler input argument if exist in config
+    kwargs = { first: self._config[second] \
+      for first, second in { \
+          'scaler_type': 'scaler_type', 
+          'scaler_min': 'scaler_min_short',
+          'scaler_max': 'scaler_max_short'
+        }.items() if first in self._config
+    }
+    
+    # Assign an ASF scaler to each element
     for element in self._config["elements"]:
       logger.info(f"Creating a descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
-      self.scaler[element] = AsfScaler(**self._config) # TODO: improve, irrelevant info leak! 
+      self.scaler[element] = AsfScaler(**kwargs) 
 
   def _construct_model(self) -> None:
     """
-    Construct a neural network for each element.
-    TODO: complete
+    Construct a neural network for each element using the dictionary of NNP configuration.
     """
-    if self.model is not None:
-      return
     self.model = {}
+    # TODO: complete
 
   def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None):
     """
@@ -175,7 +180,7 @@ class NeuralNetworkPotential(Potential):
 
     # Save scaler data into file  
     if filename is not None:
-      logger.info(f"Saving scaler data into '{filename}'")
+      logger.info(f"Saving scaler data file='{filename}'")
       with open(str(Path(filename)), "w") as file:
         file.write(f"# Symmetry function scaling data\n")
         file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
@@ -190,9 +195,9 @@ class NeuralNetworkPotential(Potential):
     Read scaler parameters.
     No need to fit the scalers in this case. 
     """
-    logger.info(f"Reading scaler data from '{filename}'")
-    element_count = Counter(np.loadtxt(filename, usecols=(0), comments='#', dtype=str))
-    data = np.loadtxt(filename, usecols=(1, 2, 3, 4), comments='#')
+    logger.info(f"Reading scaler data file='{filename}'")
+    data = np.loadtxt(filename, usecols=(1, 2, 3, 4))
+    element_count = Counter(np.loadtxt(filename, usecols=(0), dtype=str))
     index = 0
     for element, count in element_count.items():
       scaler= self.scaler[element]
@@ -206,8 +211,7 @@ class NeuralNetworkPotential(Potential):
       print(scaler.__dict__)
       index += count
 
-
-  def fit(self, structure_loader: StructureLoader):
+  def fit_model(self, structure_loader: StructureLoader):
     """
     Fit the model using the input structure loader.
     """
@@ -215,6 +219,12 @@ class NeuralNetworkPotential(Potential):
     # TODO: descriptor element should be the same atom type as the aid
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
+    pass
+
+  def fit(self):
+    """
+    Fit descriptor and model if needed. 
+    """
     pass
 
 
