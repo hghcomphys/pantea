@@ -19,18 +19,27 @@ class AtomicSymmetryFunctionScaler:
   TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
   TODO: add warnings for out-of-distribution samples
   """
-  def __init__(self, **kwargs):
-    # Statistical parameters
-    self.sample = kwargs.get("sample", 0)       # number of samples
-    self.dimension = kwargs.get("dimension")    # dimension of each sample
-    self.mean = kwargs.get("mean")              # mean array of all fitted descriptor values
-    self.sigma = kwargs.get("sigma")            # standard deviation
-    self.min =  kwargs.get("min")               # minimum
-    self.max =  kwargs.get("max")               # maximum
+  def __init__(self, 
+      scaler_type: str = 'scale_center', 
+      scaler_min: float = 0.0,
+      scaler_max: float = 1.0,
+      ) -> None:
+    """
+    Initialize scaler including scaler type and min/max values.
+    """
     # Set min/max range for scaler
-    self.smin = kwargs.get("scale_min_short", 0.0)                 
-    self.smax = kwargs.get("scale_max_short", 1.0)     
-    self.scaler_type =  kwargs.get('scaler_type', 'scale_center')    
+    self.scaler_type =  scaler_type
+    self.scaler_min = scaler_min
+    self.scaler_max = scaler_max
+
+    # Statistical parameters
+    self.sample = None      # number of samples
+    self.dimension = None   # dimension of each sample
+    self.mean = None        # mean array of all fitted descriptor values
+    self.sigma = None       # standard deviation
+    self.min =  None        # minimum
+    self.max =  None        # maximum
+
     # Set scaler type function     
     self._scaler_function = getattr(self, f'_{self.scaler_type}')         
 
@@ -84,13 +93,13 @@ class AtomicSymmetryFunctionScaler:
     return G - self.mean
 
   def _scale(self, G: torch.Tensor) -> torch.Tensor:
-    return self.smin + (self.smax - self.smin) * (G - self.min) / (self.max - self.min)
+    return self.scaler_min + (self.scaler_max - self.scaler_min) * (G - self.min) / (self.max - self.min)
 
   def _scale_center(self, G: torch.Tensor) -> torch.Tensor:
-    return self.smin + (self.smax - self.smin) * (G - self.mean) / (self.max- self.min)
+    return self.scaler_min + (self.scaler_max - self.scaler_min) * (G - self.mean) / (self.max- self.min)
   
   def _scale_sigma(self, G: torch.Tensor) -> torch.Tensor:
-    return self.smin + (self.smax - self.smin) * (G - self.mean) / self.sigma
+    return self.scaler_min + (self.scaler_max - self.scaler_min) * (G - self.mean) / self.sigma
 
 
 # Define ASF scaler alias
