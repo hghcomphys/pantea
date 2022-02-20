@@ -43,8 +43,9 @@ structures = read_structures(loader, between=(1, 5))
 
 # Descriptor
 asf = AtomicSymmetryFunction(element="H")
-asf.add( G2(r_cutoff=12.0, cutoff_type="tanh", r_shift=0.0, eta=0.5), "H" )
-asf.add( G3(r_cutoff=12.0, cutoff_type="tanh", eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
+cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
+asf.add( G2(cutoff_function=cfn, eta=0.5, r_shift=0.0), "H" )
+asf.add( G3(cutoff_function=cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
 val = asf(structures[0], aid=0)
 
 # Scaler
