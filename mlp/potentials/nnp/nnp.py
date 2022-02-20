@@ -120,7 +120,7 @@ class NeuralNetworkPotential(Potential):
       elif cfg[1] == 2:
         self.descriptor[cfg[0]].add(
           symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"]), 
-            r_shift=cfg[4], eta=cfg[3]), 
+            eta=cfg[3], r_shift=cfg[4]), 
           neighbor_element1 = cfg[2]
         )
       elif cfg[1] == 3:
@@ -146,10 +146,10 @@ class NeuralNetworkPotential(Potential):
 
     # Prepare scaler input argument if exist in config
     kwargs = { first: self._config[second] \
-      for first, second in { \
+      for first, second in { 
           'scale_type': 'scale_type', 
           'scale_min': 'scale_min_short',
-          'scale_max': 'scale_max_short'
+          'scale_max': 'scale_max_short',
         }.items() if second in self._config
     }
     logger.debug(f"Preparing ASF scaler kwargs={kwargs}")
