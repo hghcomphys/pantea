@@ -89,8 +89,8 @@ class Structure:
     """
     An utility and static method to apply PBC along a specific direction. 
     """   
-    dx = torch.where(dx >  0.5*l, dx - l, dx)
-    dx = torch.where(dx < -0.5*l, dx + l, dx)
+    dx = torch.where(dx >  0.5E0*l, dx - l, dx)
+    dx = torch.where(dx < -0.5E0*l, dx + l, dx)
     return dx
 
   def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor: 
@@ -121,7 +121,7 @@ class Structure:
     dx = self.apply_pbc(dx)
 
     # Calculate distance from dx tensor
-    distance = torch.norm(dx, dim=1)
+    distance = torch.linalg.vector_norm(dx, dim=1)
 
     return distance if not difference else (distance, dx)
 
