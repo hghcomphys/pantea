@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../')
-
+import torch
+import mlp
 from mlp.config import CFG
 from mlp.logger import logger
 from mlp.loaders import RunnerStructureLoader as StructureLoader
@@ -8,25 +9,24 @@ from mlp.loaders import read_structures
 from mlp.descriptors import ASF, CutoffFunction, G1, G2, G3
 from mlp.potentials import NeuralNetworkPotential
 from mlp.utils import gradient
-# from mlap.models import NeuralNetwork
+from pathlib import Path
 
-import torch
+# MLP
+print(f"MLP framework version: {mlp.__version__}")
+CFG.set("device", "cpu")
+
+# Torch
+# print(f"Torch version: {torch.__version__}")
 torch.manual_seed(2022)
+# torch.set_num_threads(2)
 
-# TODO: move to root mlap import
-logger.info(f"CUDA availability: {CFG['is_cuda']}")
-logger.info(f"Default device: '{CFG['device']}'")
-
+# Custom exceptions
 # from mlp.logger import CustomErrorException
 # raise CustomErrorException(f"This is a test {1}")
 
-# torch.set_num_threads(2)
-# CFG.set("device", "cpu")
-# print(CFG["device"])
-
 # Read structure
-path = '/home/hossein/n2p2/examples/nnp-scaling/H2O_RPBE-D3/{}' #"/home/hossein/Desktop/n2p2_conf_3816/{}"
-loader = StructureLoader(path.format("input.data")) 
+base_dir = Path('/home/hossein/n2p2/examples/nnp-scaling/H2O_RPBE-D3') #"/home/hossein/Desktop/n2p2_conf_3816/{}"
+loader = StructureLoader(Path(base_dir, "input.data")) 
 # structures = read_structures(loader, between=(1, 5)) # TODO: structure index 0 or 1?
 # str0 = structures[0] 
 # print(str0.lattice)
@@ -60,9 +60,9 @@ loader = StructureLoader(path.format("input.data"))
 # print(gradient(val[0], str0.position)[:10]) 
 
 # Potential
-pot = NeuralNetworkPotential(path.format("input.nn"))
-pot.fit_scaler(loader, filename=path.format("scaler.data"))
-# pot.read_scaler(path.format("scaler.data"))
+pot = NeuralNetworkPotential(Path(base_dir, "input.nn"))
+pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
+#pot.read_scaler(path.format("scaler.data"))
 
 str0 = read_structures(loader, between=(1, 1))[0]
 for element in pot.elements:
@@ -70,10 +70,10 @@ for element in pot.elements:
   print("sample", pot.scaler[element].sample)
   for d in ["min", "max", "mean", "sigma"]:
     print(d, pot.scaler[element].__dict__[d].numpy())
-  val = pot.descriptor[element](str0, str0.select(element)[:1])
-  print("values", val.detach().numpy())
-  val = pot.scaler[element](val)
-  print("scaled", val.detach().numpy())
+  # val = pot.descriptor[element](str0, str0.select(element)[:1])
+  # print("values", val.detach().numpy())
+  # val = pot.scaler[element](val)
+  #print("scaled", val.detach().numpy())
   # print(gradient(val, str0.position)[:10])
 
 

@@ -58,13 +58,14 @@ potential = NeuralNetworkModel(**kwargs)
 
 # Train
 trainer = NeuralNetworkTrainer(model=potential, **kwargs)
-trainer.train(val_scaler)
+trainer.train(val_scaled)
 
 # Inference
 energy = potential(val_scaled)
 force = -gradient(energy, structures[0].position)
 ```
 
+<!-- 
 #### Implementation TODOs
 - [ ] improve logging message when reading configuration, input structure, descriptor, etc.
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
@@ -85,4 +86,8 @@ force = -gradient(energy, structures[0].position)
 - [x] remove intermediate _data from loader and structure classes
 
 
+#### Optimization approach
+- torch.jit.script
+- torch.jit.Future
+-->
 
