@@ -20,6 +20,7 @@ class AtomicSymmetryFunction(Descriptor):
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     self.result = None        # descriptor values after call method
     self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
+    logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')") # TODO: define __repr__
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 

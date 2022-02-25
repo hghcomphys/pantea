@@ -25,43 +25,44 @@ class NeuralNetworkPotential(Potential):
   TODO: split structures from the potential model
   TODO: implement structure dumper/writer
   """
-  def __init__(self, filename: Path) -> None: # TODO: config as input argument?
+  def __init__(self, filename: Path) -> None:
     self.filename = Path(filename)
-    self._config = None      # A dictionary representation of the NNP configuration including descriptor, scaler, and model parameters
-    self.descriptor = None   # A dictionary of {element: Descriptor} # TODO: short and long descriptors
-    self.scaler = None       # A dictionary of {element: Scaler} # TODO: short and long scalers
-    self.model = None        # A dictionary of {element: Model} # TODO: short and long models
+    self._settings = None    # A dictionary representation of the NNP settgins including descriptor, scaler, and model
+    self.descriptor = None   # A dictionary of {element: Descriptor}   # TODO: short and long descriptors
+    self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
+    self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
+    logger.info(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
 
-    if self._config is None:
-      self._read_config()
+    if self._settings is None:
+      self._read_settings_file()
       self._construct_descriptor()
       self._construct_scaler()
       self._construct_model()
 
-  def _read_config(self) -> None:
+  def _read_settings_file(self) -> None:
     """
-    This method reads all NNP configurations from the input file including elements, cutoff type, 
+    This method reads all NNP settings from the file including elements, cutoff type, 
     symmetry functions, neural network, traning parameters, etc. 
     See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
     # Map cutoff type
     _to_cutoff_type = {  # TODO: poly 3 & 4
-        '0': 'hard',
-        '1': 'cos',
-        '2': 'tanhu',
-        '3': 'tanh',
-        '4': 'exp',
-        '5': 'poly1',
-        '6': 'poly2',
-        }  
+      '0': 'hard',
+      '1': 'cos',
+      '2': 'tanhu',
+      '3': 'tanh',
+      '4': 'exp',
+      '5': 'poly1',
+      '6': 'poly2',
+    }  
     # Map scaler type
     _to_scaler_type = {   # TODO: center & scaler
-        'scale_symmetry_functions': 'scale_center',
-        'scale_symmetry_functions_sigma': 'scale_sigma',
-      }
-    # Read configs from file
-    logger.info(f"Reading NNP configuration file='{self.filename}'")
-    self._config = defaultdict(list)
+      'scale_symmetry_functions': 'scale_center',
+      'scale_symmetry_functions_sigma': 'scale_sigma',
+    }
+    # Read setting file
+    logger.info(f"Reading NNP settings file:'{self.filename}'")
+    self._settings = defaultdict(list)
     with open(str(self.filename), 'r') as file:
       while True:
         # Read the next line
@@ -71,68 +72,72 @@ class NeuralNetworkPotential(Potential):
         # Read descriptor parameters
         keyword, tokens = tokenize(line, comment='#')
         if keyword is not None:
-          logger.debug(f"keyword='{keyword}', values={tokens}")
+          logger.debug(f"keyword:'{keyword}', values:{tokens}")
         if keyword == "number_of_elements":
-          self._config[keyword] = int(tokens[0])
+          self._settings[keyword] = int(tokens[0])
         elif keyword == "elements":
-          self._config[keyword] = sorted(set([t for t in tokens]), key=ElementMap.get_atomic_number)
+          self._settings[keyword] = sorted(set([t for t in tokens]), key=ElementMap.get_atomic_number)
         elif keyword == "cutoff_type":
-          self._config[keyword] = _to_cutoff_type[tokens[0]]
+          self._settings[keyword] = _to_cutoff_type[tokens[0]]
         elif keyword == "symfunction_short":
           try:
             asf_ = (tokens[0], int(tokens[1]), tokens[2]) + tuple([float(t) for t in tokens[3:]])
           except ValueError:
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
-          self._config[keyword].append(asf_) 
+          self._settings[keyword].append(asf_) 
         # Read symmetry function scaler parameters
         elif keyword == "scale_symmetry_functions":
-          self._config["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_symmetry_functions_sigma":
-          self._config["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_min_short":
-          self._config[keyword] = float(tokens[0])
+          self._settings[keyword] = float(tokens[0])
         elif keyword == "scale_max_short":
-          self._config[keyword] = float(tokens[0])
+          self._settings[keyword] = float(tokens[0])
         # Read neural network parameters
 
   def _construct_descriptor(self) -> None:
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
-    functions from the potential configuration using the dictionary of NNP configuration.
+    functions from the a dictionary representation of potential settings.
     TODO: add logging
     """
     self.descriptor = {}
 
+    # Elements
+    logger.info(f"Number of elements: {len(self._settings['elements'])}")
+    for element in self._settings["elements"]:
+      logger.info(f"Element '{element}' ({ElementMap.get_atomic_number(element):<3})") 
+
     # Instantiate ASF for each element 
-    logger.info(f"Elements={self._config['elements']}")
-    for element in self._config["elements"]:
-      logger.info(f"Creating an ASF descriptor for element '{element}'") # TODO: move logging inside ASF method
+    logger.info(f"Creating ASF descriptors")
+    for element in self._settings["elements"]:
       self.descriptor[element] = ASF(element)
 
     # Add symmetry functions
-    logger.info(f"Adding symmetry functions (radial and angular)") # TODO: move logging inside .add() method
-    for cfg in self._config["symfunction_short"]:
+    logger.info(f"Adding symmetry functions: radial and angular") # TODO: move logging inside .add() method
+    for cfg in self._settings["symfunction_short"]:
       if cfg[1] == 1:
         self.descriptor[cfg[0]].add(
-          symmetry_function = G1(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"])), 
+          symmetry_function = G1(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"])), 
           neighbor_element1 = cfg[2]
         ) 
       elif cfg[1] == 2:
         self.descriptor[cfg[0]].add(
-          symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._config["cutoff_type"]), 
+          symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[3], r_shift=cfg[4]), 
           neighbor_element1 = cfg[2]
         )
       elif cfg[1] == 3:
         self.descriptor[cfg[0]].add(
-          symmetry_function = G3(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"]), 
+          symmetry_function = G3(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6],  lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],
           neighbor_element2 = cfg[3]
         ) 
       elif cfg[1] == 9:
         self.descriptor[cfg[0]].add(
-          symmetry_function = G9(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._config["cutoff_type"]), 
+          symmetry_function = G9(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],
           neighbor_element2 = cfg[3]
@@ -140,35 +145,35 @@ class NeuralNetworkPotential(Potential):
 
   def _construct_scaler(self) -> None:
     """
-    Construct a descriptor for each element using the dictionary of NNP configuration.
+    Construct a descriptor for each element using a dictionary representation of NNP settings.
     """
     self.scaler = {}
 
-    # Prepare scaler input argument if exist in config
-    kwargs = { first: self._config[second] \
+    # Prepare scaler input argument if exist in settings
+    kwargs = { first: self._settings[second] \
       for first, second in { 
           'scale_type': 'scale_type', 
           'scale_min': 'scale_min_short',
           'scale_max': 'scale_max_short',
-        }.items() if second in self._config
+        }.items() if second in self._settings
     }
     logger.debug(f"Preparing ASF scaler kwargs={kwargs}")
 
     # Assign an ASF scaler to each element
-    for element in self._config["elements"]:
-      logger.info(f"Creating a descriptor scaler for element '{element}'") # TODO: move logging inside scaler class
+    logger.info(f"Creating ASF descriptor scalers")
+    for element in self._settings["elements"]:
       self.scaler[element] = AsfScaler(**kwargs) 
 
   def _construct_model(self) -> None:
     """
-    Construct a neural network for each element using the dictionary of NNP configuration.
+    Construct a neural network for each element using a dictionary representation of NNP settings.
     """
     self.model = {}
     # TODO: complete
 
   def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None):
     """
-    Fit scalers of descriptor for each element based on provided structure loader.
+    Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
     logger.info("Fitting symmetry function scalers...")
@@ -177,7 +182,7 @@ class NeuralNetworkPotential(Potential):
       for element, scaler in self.scaler.items():
         aids = structure.select(element).detach()
         for batch in create_batch(aids, 10):
-          print(f"Structure={index}, element={element}, batch={batch}")
+          logger.debug(f"Structure={index}, element={element}, batch={batch}")
           descriptor = self.descriptor[element](structure, aid=batch) 
           scaler.fit(descriptor)
 
@@ -231,7 +236,7 @@ class NeuralNetworkPotential(Potential):
 
   @property
   def elements(self):
-    return self._config['elements']
+    return self._settings['elements']
 
 
     

@@ -17,13 +17,14 @@ class RunnerStructureLoader(StructureLoader):
     self.filename = Path(filename)
     self._data = None
     self._ignore_next = False
-    logger.info(f"Initializing {self.__class__.__name__} file='{self.filename}'")
+    logger.debug(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
 
   def get_data(self) -> Dict[str, List]:
     """
     A generator method which returns a each snapshot of atomic data structure as a dictionary.
-    The output data can be used to instantiate, for example, Structure class. 
+    The output dictionary can be used to create an object from Structure class. 
     """
+    logger.info(f"Reading structure file:'{self.filename}'")
     with open(str(self.filename), "r") as file:
       try:
         while ( self.read(file) if not self._ignore_next else self.ignore(file) ):
