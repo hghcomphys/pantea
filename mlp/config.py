@@ -6,7 +6,7 @@ import torch
 
 class CFG:
   """
-  A global configuration class of default values for variables.
+  A global configuration class of default values for variables whithin the framework.
   # TODO: circular import error between CFG & logger
   """
   __conf = {

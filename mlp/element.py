@@ -13,7 +13,7 @@ _KNOWN_ELEMENTS_LIST = [
   "U" , "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md",
 ]
 
-_KNOWN_ELEMENTS_DICT = {element:atomic_number \
+_KNOWN_ELEMENTS_DICT = { element:atomic_number \
   for atomic_number, element in enumerate(_KNOWN_ELEMENTS_LIST, start=1) 
 }
 
@@ -21,8 +21,8 @@ _KNOWN_ELEMENTS_DICT = {element:atomic_number \
 class ElementMap:
   """
   This class maps elements to atomic number end vice versa. 
-  Also assign an atomic type to each element which allows efficient tensor processing based on 
-  numbers (atom types) rather than strings. 
+  It also assigns an atomic type to each element which allows efficient tensor processing (e.g. applying conditions) using 
+  the integer numbers (atom types) instead of strings. 
   """
   def __init__(self, elements: List[str] = None) -> None:
     self.clear_maps()
@@ -71,9 +71,6 @@ class ElementMap:
   @staticmethod
   def get_atomic_number(element: str) -> int:
     return _KNOWN_ELEMENTS_DICT[element]
-
-  def __str__(self):
-    pass
 
 
 

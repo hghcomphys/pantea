@@ -1,45 +1,43 @@
 from .logger import logger
+from .config import CFG
+from typing import Tuple
 import torch
 
-dtype = torch.double
-device = torch.device("cpu")
 
 class Box:
   """
-  A class which contains lattice info.
+  Box class extract Box info from the lattice matrix.
   Currently, it only works for orthogonal lattice.
   TODO: box variables as numpy or pytorch?
   TODO: triclinic lattice
   """
   def __init__(self, lattice: torch.Tensor) -> None:
-    """
-    Initialize box.
-    """
+    
     # Check lattice matrix shape
     if lattice.shape != (3, 3):
       msg = f"Unexpected lattice dimension {lattice.shape}"
       logger.error(msg)
       raise ValueError(msg)
 
-    self.xlo = torch.tensor(0.0, dtype=dtype, device=device)
-    self.ylo = torch.tensor(0.0, dtype=dtype, device=device)
-    self.zlo = torch.tensor(0.0, dtype=dtype, device=device)
+    self.xlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
+    self.ylo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
+    self.zlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
     self.xhi = lattice[0, 0]
     self.yhi = lattice[1, 1]
     self.zhi = lattice[2, 2]
 
   @property
-  def lx(self):
+  def lx(self) -> torch.Tensor:
     return self.xhi - self.xlo
 
   @property
-  def ly(self):
+  def ly(self) -> torch.Tensor:
     return self.yhi - self.ylo
 
   @property
-  def lz(self):
+  def lz(self) -> torch.Tensor:
     return self.zhi - self.zlo
 
   @property
-  def length(self):
+  def length(self) -> Tuple[torch.Tensor]:
     return self.lx, self.ly, self.lz

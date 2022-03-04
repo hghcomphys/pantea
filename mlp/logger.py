@@ -18,12 +18,3 @@ console_handler.setLevel(logging.DEBUG)
 # logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 #logging.getLogger('matplotlib').setLevel(logging.ERROR)  # you don't want the matplotlib debug logs
-
-
-class CustomErrorException(Exception):
-  """
-  A customized exception that logs the error message.
-  """
-  def __init__(self, message="Somthing wrong"):
-    logger.error(message)
-    super().__init__(message)
