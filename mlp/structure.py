@@ -11,28 +11,32 @@ import torch
 
 class Structure:
   """
-  This class contains a collection of atoms in a box including position, forces, energy, cell, etc.   
-  Structure is unit atomic data which are used to calculate atomic descreptors.
-  For the computational efficiency, vectors (more precisely tensors) of atomic data were considered 
-  instead of each atom as a unit of data. 
-  The most critical par of this class is calculating neighbor list and it can be done by inputing 
-  an instance of Structure to the Neighbor class.
-  For the MPI implementation, this class can be considerend as one domain in domain decomposition method.
-  An C++ implementation might be required for MD simulation but not necessarily developing ML potential.     
-  """
-  def __init__(self, data: Dict[str, List], **param) -> None:
-    """
-    Initializations including tensors, neighbor atoms, and box.
-    """ 
-    self.device = param.get("device", CFG["device"])
-    self.dtype = param.get("dtype", CFG["dtype"])
+  This class contains arrays of atomic information (i.e. position, forces, energy, cell, and  more) for a collection of atoms.   
+  An instance of the Structure class is an unit of atomic data which being used to calculate the (atomic) descreptors.
+  For computational reasons, vectors (more precisely tensors) of atomic data are used instead of defining 
+  individual atoms as a unit of our atomic data. 
 
-    self._tensors = defaultdict(None)
-    self.element_map = None   # map element to atom type and vice versa.    
+  The most computationally expensive section of this class is when calculating the neighbor list. 
+  This task is done by giving an instance of Structure to the Neighbor class which is responsible for updating the neighbor lists.
+  TODO: mesh gird methid can be used to seed up of creating/updating the neighbot list.
+
+  For the MPI implementation, this class can be considerend as one domain in domain decomposition method (see miniMD code).
+  An C++ implementation might be required for MD simulation but not necessarily developing ML potential.   
+  """
+  def __init__(self, data: Dict[str, List], **kwargs) -> None:
+    """
+    Initialization of tensors, neighbor atoms, and box.
+    """ 
+    self.device = kwargs.get("device", CFG["device"])
+    self.dtype = kwargs.get("dtype", CFG["dtype"])
+
+    self._tensors = defaultdict(None)   # an default dictionary of torch tensors
+    self.element_map = None             # map an element to corrresponsing atom type and vice versa.    
 
     # Neighboring atoms
     self.is_neighbor = False
-    self.neighbor = Neighbor(r_cutoff=12.0) # TODO: cutoff value from descriptor
+    self.r_cutoff = kwargs.get("r_cutoff", 12.0)  # TODO: default value?
+    self.neighbor = Neighbor(r_cutoff=self.r_cutoff) 
     # self.update_neighbor()     
 
     # Prepare tensors from input structure data
@@ -129,6 +133,6 @@ class Structure:
     """
     Return all atom ids with atom type same as the input element. 
     """
-    return torch.nonzero( self.atype == self.element_map[element], as_tuple=True)[0]
+    return torch.nonzero(self.atype == self.element_map[element], as_tuple=True)[0]
 
 
