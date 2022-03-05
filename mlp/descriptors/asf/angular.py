@@ -1,29 +1,18 @@
 
 from ...logger import logger
 from .cutoff import CutoffFunction
+from .symmetry import SymmetryFunction
 import math
 import torch
 
 
-class AngularSymmetryFunction:
+class AngularSymmetryFunction(SymmetryFunction):
   """
   Three body symmetry function.
-  TODO: add other variant of angular symmetry functions.
+  TODO: add other variant of angular symmetry functions (see N2P2 documentation).
   """
-  def __init__(self, cutoff_function: CutoffFunction):
-    self.cutoff_function = cutoff_function
-    logger.debug(repr(self))
-
-  def kernel(self, rij: torch.tensor) -> torch.tensor:
+  def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
     raise NotImplementedError
-
-  def __repr__(self) -> str:
-    return f"{self.__class__.__name__}(" + \
-      ', '.join(['{}={!r}'.format(k, v) for k, v in self.__dict__.items() if "_"]) + ")"
-
-  @property
-  def r_cutoff(self) -> float:
-    return self.cutoff_function.r_cutoff
 
 
 class G3(AngularSymmetryFunction):
@@ -38,7 +27,7 @@ class G3(AngularSymmetryFunction):
     self._scale_factor = math.pow(2.0, 1.0-self.zeta)
     super().__init__(cutoff_function)
     
-  def kernel(self, rij: torch.tensor, rik: torch.tensor, rjk: torch.tensor, cost: torch.tensor) -> torch.tensor:
+  def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
     res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )  # TODO: r_shift
     return res * self.cutoff_function(rij) * self.cutoff_function(rik) * self.cutoff_function(rjk)
 
@@ -56,6 +45,6 @@ class G9(AngularSymmetryFunction):
     self._scale_factor = math.pow(2.0, 1.0-self.zeta)
     super().__init__(cutoff_function)
     
-  def kernel(self, rij: torch.tensor, rik: torch.tensor, rjk: torch.tensor, cost: torch.tensor) -> torch.tensor:
+  def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
     res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2) ) # TODO: r_shift
     return res * self.cutoff_function(rij) * self.cutoff_function(rik)
