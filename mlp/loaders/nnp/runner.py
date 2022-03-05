@@ -8,7 +8,7 @@ from pathlib import Path
 
 class RunnerStructureLoader(StructureLoader):
   """
-  A derived class of structure loader for the NNP (RuNNer) file format.
+  A derived class of structure loader that reads RuNNer (NNP) structure file format.
   TODO: logging
   TODO: define a derived structure loader class specific to NNP and leave the base class here 
   """
@@ -21,8 +21,8 @@ class RunnerStructureLoader(StructureLoader):
 
   def get_data(self) -> Dict[str, List]:
     """
-    A generator method which returns a each snapshot of atomic data structure as a dictionary.
-    The output dictionary can be used to create an object from Structure class. 
+    A generator method which returns each snapshot of atomic data structure as a data dictionary.
+    The output dictionary can be used to create a Structure instance. 
     """
     logger.info(f"Reading structure file:'{self.filename}'")
     with open(str(self.filename), "r") as file:

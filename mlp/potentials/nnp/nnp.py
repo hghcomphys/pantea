@@ -12,7 +12,7 @@ from ...element import ElementMap
 from ...config import CFG
 from ..base import Potential
 from collections import defaultdict, Counter
-from typing import Dict
+from typing import Dict, List
 from pathlib import Path
 import torch
 import numpy as np
@@ -24,6 +24,7 @@ class NeuralNetworkPotential(Potential):
   including structures, descriptors, and neural networks. 
   TODO: split structures from the potential model
   TODO: implement structure dumper/writer
+  TODO: split structure from the potential model (in design)
   """
   def __init__(self, filename: Path) -> None:
     self.filename = Path(filename)
@@ -171,7 +172,7 @@ class NeuralNetworkPotential(Potential):
     self.model = {}
     # TODO: complete
 
-  def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None):
+  def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
@@ -198,7 +199,7 @@ class NeuralNetworkPotential(Potential):
             file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
 
-  def read_scaler(self, filename: Path):
+  def read_scaler(self, filename: Path) -> None:
     """
     Read scaler parameters.
     No need to fit the scalers in this case. 
@@ -218,7 +219,7 @@ class NeuralNetworkPotential(Potential):
       scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
       index += count
 
-  def fit_model(self, structure_loader: StructureLoader):
+  def fit_model(self, structure_loader: StructureLoader) -> None:
     """
     Fit the model using the input structure loader.
     """
@@ -228,14 +229,14 @@ class NeuralNetworkPotential(Potential):
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
     pass
 
-  def fit(self):
+  def fit(self)  -> None:
     """
-    Fit descriptor and model if needed. 
+    Fit descriptor and model (if needed). 
     """
     pass
 
   @property
-  def elements(self):
+  def elements(self) -> List[str]:
     return self._settings['elements']
 
 

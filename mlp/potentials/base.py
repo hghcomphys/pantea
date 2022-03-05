@@ -2,9 +2,9 @@
 
 class Potential:
   """
-  A base class which contains all required data and operations to train a ML-based potential 
+  A base class that contains all required data and operations to train a ML-based potential 
   including structures, descriptors, models, etc. 
-  TODO: split structure from the potential model (in design)
+  All potentials must derive from this base class.
   """
   pass
 
