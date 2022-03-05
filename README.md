@@ -1,7 +1,7 @@
-# MLP Framework
+# MLP-framework
 
 ## What is it?
-_Machine Learning Potential Framework_ is a generic and GPU-accelerated package written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. Such potentials are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
+_Machine Learning Potential framework_ is a generic and GPU-accelerated library written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. Such potentials are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
  
 <!--  -->
 _MLP framework_ is NOT a molecular dynamics (MD) simulation package but a framework to construct ML-based force fields employed for the MD simulations.
@@ -31,7 +31,7 @@ nnp.read_model()
 nnp.fit(loader)
 
 # Inference
-energy = nnp.predict(loader)
+energy = nnp.compute(loader)
 force = nnp.compute_force(loader)
 ```
 
@@ -67,26 +67,16 @@ force = -gradient(energy, structures[0].position)
 
 <!-- 
 #### Implementation TODOs
-- [ ] improve logging message when reading configuration, input structure, descriptor, etc.
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
 - [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
 - [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
-- [ ] validating ASF values and gradients
 - [ ] utilize torch multi-thread or distributed torch
-- [ ] optimize code performance regarding python dynamic types
+- [ ] optimize code performance regarding python dynamic types (torch script, cython)
 - [ ] parallelize descriptor calculations using vectorization or thread pool
-- [x] descriptor calculation for array of atom ids
-- [x] reading ASF from input.nn 
-- [x] ASF scalers
-- [x] add angular ASF
-- [x] optimize loader to read thousands of structures from input file
-- [x] quickly ignore unwanted structure  
-- [x] add dtype_index to CFG
-- [x] remove intermediate _data from loader and structure classes
-
 
 #### Optimization approach
+- torch.jit.trace
 - torch.jit.script
 - torch.jit.Future
 -->
