@@ -23,6 +23,8 @@ class Structure:
   For the MPI implementation, this class can be considerend as one domain in domain decomposition method (see miniMD code).
   An C++ implementation might be required for MD simulation but not necessarily developing ML potential.   
   """
+  _default_r_cutoff = 12.0 # TODO: move to CFG?
+
   def __init__(self, data: Dict[str, List], **kwargs) -> None:
     """
     Initialization of tensors, neighbor atoms, and box.
@@ -35,7 +37,8 @@ class Structure:
 
     # Neighboring atoms
     self.is_neighbor = False
-    self.r_cutoff = kwargs.get("r_cutoff", 12.0)  # TODO: default value?
+    self.r_cutoff = kwargs.get("r_cutoff", self._default_r_cutoff) 
+
     self.neighbor = Neighbor(r_cutoff=self.r_cutoff) 
     # self.update_neighbor()     
 
