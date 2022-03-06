@@ -15,6 +15,7 @@ class Neighbor:
   def __init__(self, r_cutoff: float): 
     self.r_cutoff = r_cutoff
     self._tensors = defaultdict(None)
+    logger.debug(self)
 
   def update(self, structure) -> None:
     """
@@ -47,7 +48,8 @@ class Neighbor:
     else:
       logger.warning("Skiping to update neighboring atoms in the structure")
 
-
+  def __repr__(self) -> str:
+      return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
 
 
 
