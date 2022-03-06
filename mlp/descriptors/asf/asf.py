@@ -4,6 +4,7 @@ from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from typing import Union, List
+import itertools
 import torch
 
 
@@ -190,6 +191,14 @@ class AtomicSymmetryFunction(Descriptor):
   def n_descriptor(self) -> int:
     return self.n_radial + self.n_angular
 
+  @property
+  def r_cutoff(self) -> float:
+    """
+    Return the maximum cutoff radius.
+    """
+    return max([ \
+      cfn[0].r_cutoff for cfn in itertools.chain(*[self._radial, self._angular])
+    ])
 
 # Define ASF alias
 ASF = AtomicSymmetryFunction

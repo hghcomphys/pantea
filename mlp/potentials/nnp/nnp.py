@@ -179,11 +179,11 @@ class NeuralNetworkPotential(Potential):
     """
     logger.info("Fitting symmetry function scalers...")
     for index, data in enumerate(structure_loader.get_data(), start=1):
-      structure = Structure(data)
+      structure = Structure(data, r_cutoff=self.r_cutoff)
       for element, scaler in self.scaler.items():
         aids = structure.select(element).detach()
         for batch in create_batch(aids, 10):
-          logger.debug(f"Structure={index}, element={element}, batch={batch}")
+          logger.debug(f"Structure={index}, element='{element}', batch={batch}")
           descriptor = self.descriptor[element](structure, aid=batch) 
           scaler.fit(descriptor)
 
@@ -238,6 +238,13 @@ class NeuralNetworkPotential(Potential):
   @property
   def elements(self) -> List[str]:
     return self._settings['elements']
+
+  @property
+  def r_cutoff(self) -> float:
+    """
+    Return the maximum cutoff radius of all elemental descriptors.
+    """
+    return max([dsc.r_cutoff for dsc in self.descriptor.values()])
 
 
     
