@@ -179,7 +179,9 @@ class NeuralNetworkPotential(Potential):
     """
     logger.info("Fitting symmetry function scalers...")
     for index, data in enumerate(structure_loader.get_data(), start=1):
-      structure = Structure(data, r_cutoff=self.r_cutoff)
+      structure = Structure(data, 
+                            r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
+                            requires_grad=False)     # No need to track graph history (gradient) 
       for element, scaler in self.scaler.items():
         aids = structure.select(element).detach()
         for batch in create_batch(aids, 10):
