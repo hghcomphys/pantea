@@ -86,7 +86,7 @@ class AtomicSymmetryFunction(Descriptor):
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    
     # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
-    dis_, diff_ = structure.calculate_distance(aid, detach=False, neighbors=ni_, difference=True) # self-count excluded, PBC applied
+    dis_, diff_ = structure.calculate_distance(aid, neighbors=ni_, difference=True) # self-count excluded, PBC applied
     # Get the corresponding neighboring atom types and position
     at_ = at[ni_]   # at_ refers to the array atom type of only neighbors
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
