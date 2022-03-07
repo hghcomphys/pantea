@@ -29,8 +29,12 @@ class Structure:
     """
     Initialization of tensors, neighbor atoms, and box.
     """ 
+    # Set dtype and device
     self.device = kwargs.get("device", CFG["device"])
     self.dtype = kwargs.get("dtype", CFG["dtype"])
+
+    # Whether keep the history of gradients (e.g. position tensor) due to computational efficiency
+    self.requires_grad = kwargs.get("requires_grad", True)
 
     self._tensors = defaultdict(None)   # an default dictionary of torch tensors
     self.element_map = None             # map an element to corrresponsing atom type and vice versa.    
@@ -57,7 +61,7 @@ class Structure:
     TODO: take care of some missing items.
     """
     # Direct casting
-    self._tensors["position"] = torch.tensor(data["position"], dtype=self.dtype, device=self.device, requires_grad=True)
+    self._tensors["position"] = torch.tensor(data["position"], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
     self._tensors["force"] = torch.tensor(data["force"], dtype=self.dtype, device=self.device)
     self._tensors["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device)
     self._tensors["energy"] = torch.tensor(data["energy"], dtype=self.dtype, device=self.device)
