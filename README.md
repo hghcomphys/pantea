@@ -66,7 +66,7 @@ force = -gradient(energy, structures[0].position)
 ```
 
 ### Optimization
-- serial vs. multi-thread/process vs. GPU
+- Serial vs. multi-thread/process vs. GPU
 - TorchScript JIT: torch.jit.trace, torch.jit.script, torch.jit.Future (GIL limitation?)
 - C++ Extension https://pytorch.org/tutorials/advanced/cpp_extension.html
 - C++ Frontend API https://pytorch.org/tutorials/advanced/cpp_frontend.html

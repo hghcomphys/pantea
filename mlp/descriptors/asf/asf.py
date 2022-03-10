@@ -96,7 +96,7 @@ class AtomicSymmetryFunction(Descriptor):
     for radial_i, radial in enumerate(self._radial):
       # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
       ni_rc__ = ( dis_ <= radial[0].r_cutoff ).detach() # a logical array
-      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(radial[2]) ), as_tuple=True)[0]
+      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(radial[2]) ), as_tuple=True )[0]
       # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
       # print(aid.numpy(), radial[1], radial[2],
       #   radial[0].kernel(dis_[ni_rc_at_]).detach().numpy(),
@@ -109,8 +109,8 @@ class AtomicSymmetryFunction(Descriptor):
       ni_rc__ = (dis_ <= angular[0].r_cutoff ).detach() # a logical array
       # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
       at_j, at_k = emap(angular[2]), emap(angular[3])
-      ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_j), as_tuple=True)[0]  # local index
-      ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_k), as_tuple=True)[0]  # local index
+      ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_j), as_tuple=True )[0]  # local index
+      ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_k), as_tuple=True )[0]  # local index
       # print("j", ni_[ni_rc_at_j_].detach().numpy())
       # print("k", ni_[ni_rc_at_k_].detach().numpy())
 
