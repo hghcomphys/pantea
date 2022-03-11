@@ -74,6 +74,7 @@ TorchScript JIT (GIL limitation?)
 C++ Extension 
 - https://pytorch.org/tutorials/advanced/cpp_extension.html
 - Example files https://github.com/pytorch/extension-cpp
+- Multi-threading https://jedyang.com/post/multithreading-in-python-pytorch-using-c++-extension/
 
 C++ Frontend API
 - https://pytorch.org/tutorials/advanced/cpp_frontend.html
