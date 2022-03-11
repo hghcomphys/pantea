@@ -42,6 +42,3 @@ class LLTM(nn.Module):
 
     def forward(self, input, state):
         return LLTMFunction.apply(input, self.weights, self.bias, *state)
-
-
-print(lltm_cpp.sigmoid(torch.rand(2, 10)))
