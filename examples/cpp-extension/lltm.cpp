@@ -2,6 +2,10 @@
 
 #include <vector>
 
+#include <thread>
+using namespace std;
+
+
 // s'(z) = (1 - s(z)) * s(z)
 torch::Tensor d_sigmoid(torch::Tensor z) {
   auto s = torch::sigmoid(z);
@@ -84,8 +88,29 @@ std::vector<torch::Tensor> lltm_backward(
   return {d_old_h, d_input, d_weights, d_bias, d_old_cell};
 }
 
+
+// s'(z) = (1 - s(z)) * s(z)
+torch::Tensor kernel(torch::Tensor z) {
+  auto tot = torch::sigmoid(z);
+  for (int i = 0; i < 500000; i++) {
+    tot += torch::sigmoid(z*i);
+  }
+  return tot;
+}
+
+void pkernel() {
+  thread th1(kernel, torch::rand({2, 10}));
+  thread th2(kernel, torch::rand({2, 10}));
+  thread th3(kernel, torch::rand({2, 10}));
+  th1.join();
+  th2.join();
+  th3.join();
+}
+
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("forward", &lltm_forward, "LLTM forward");
   m.def("backward", &lltm_backward, "LLTM backward");
-  m.def("sigmoid", &d_sigmoid, "CPP sigmoid");
+  m.def("kernel", &kernel, "CPP kernel");
+  m.def("pkernel", &pkernel, "CPP parallel kernel");
 }
