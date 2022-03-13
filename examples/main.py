@@ -9,6 +9,7 @@ from mlp.loaders import read_structures
 from mlp.descriptors import ASF, CutoffFunction, G1, G2, G3
 from mlp.potentials import NeuralNetworkPotential
 from mlp.utils import gradient
+from mlp.utils import Profiler, Timer, timer
 from pathlib import Path
 
 # MLP
@@ -61,23 +62,24 @@ loader = StructureLoader(Path(base_dir, "input.data"))
 
 # Potential
 pot = NeuralNetworkPotential(Path(base_dir, "input.nn"))
-pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
-# pot.read_scaler(filename=Path(base_dir, "scaler.data"))
+with Profiler("ASF scaling profiler") as profiler:
+  pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
+  pot.read_scaler(filename=Path(base_dir, "scaler.data"))
 
 str0 = read_structures(loader, between=(1, 1))[0]
 print("r_cutoff:", pot.r_cutoff)
-for element in pot.elements:
-  print("Element:", element)
-  print("sample", pot.scaler[element].sample)
-  for d in ["min", "max", "mean", "sigma"]:
-    print(d, pot.scaler[element].__dict__[d].numpy())
-  # val = pot.descriptor[element](str0, str0.select(element)[:1])
-  # print("values", val.detach().numpy())
-  # val = pot.scaler[element](val)
+
+with Timer("Print scalers"):
+  for element in pot.elements:
+    print("Element:", element)
+    print("sample", pot.scaler[element].sample)
+    for d in ["min", "max", "mean", "sigma"]:
+      print(d, pot.scaler[element].__dict__[d].numpy())
+    # val = pot.descriptor[element](str0, str0.select(element)[:1])
+    # print("values", val.detach().numpy())
+    # val = pot.scaler[element](val)
   # print("scaled", val.detach().numpy())
   # print(gradient(val, str0.position)[:10])
-
-
 
  
 

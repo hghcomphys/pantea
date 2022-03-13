@@ -8,6 +8,7 @@ from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
+from ...utils.profiler import Profiler
 from ...element import ElementMap
 from ...config import CFG
 from ..base import Potential
@@ -172,12 +173,13 @@ class NeuralNetworkPotential(Potential):
     self.model = {}
     # TODO: complete
 
+  @Profiler.profile
   def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
-    logger.info("Fitting symmetry function scalers...")
+    logger.info("Fitting symmetry function scalers")
     for index, data in enumerate(structure_loader.get_data(), start=1):
       structure = Structure(data, 
                             r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
@@ -200,7 +202,7 @@ class NeuralNetworkPotential(Potential):
             file.write(f"  {element:<10s} ")
             file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
-
+  @Profiler.profile
   def read_scaler(self, filename: Path) -> None:
     """
     Read scaler parameters.
