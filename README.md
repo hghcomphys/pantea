@@ -64,35 +64,3 @@ trainer.train(val_scaled)
 energy = potential(val_scaled)
 force = -gradient(energy, structures[0].position)
 ```
-
-### Optimization
-
-TorchScript JIT (GIL limitation?)
-- https://pytorch.org/docs/stable/jit.html 
-- torch.jit.Future
-
-C++ Extension 
-- https://pytorch.org/tutorials/advanced/cpp_extension.html
-- Example files https://github.com/pytorch/extension-cpp
-- Multi-threading https://jedyang.com/post/multithreading-in-python-pytorch-using-c++-extension/
-
-C++ Frontend API
-- https://pytorch.org/tutorials/advanced/cpp_frontend.html
-
-
-<!-- 
-### How big is the code?
-```bash
-$ pygount --format=summary ./
-```
-
-#### TODOs
-- [ ] define a customized exception class that handles internal error messages and also python exceptions
-- [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
-- [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
-- [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
-- [ ] utilize torch multi-thread or distributed torch
-- [ ] optimize code performance regarding python dynamic types (torch script, cython)
-- [ ] parallelize descriptor calculations using vectorization or thread pool
- -->
-
