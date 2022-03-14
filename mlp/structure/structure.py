@@ -1,12 +1,13 @@
-from .logger import logger
-from .config import CFG
-from .element import ElementMap
-from .neighbor import Neighbor
-from .box import Box
-from .utils.attribute import set_tensors_as_attr
+from ..logger import logger
+from ..config import CFG
+from ..element import ElementMap
+from ..neighbor import Neighbor
+from ..box import Box
+from ..utils.attribute import set_tensors_as_attr
 from typing import List, Dict
 from collections import defaultdict
 import torch
+import structure_cpp
 
 
 class Structure:
@@ -100,19 +101,25 @@ class Structure:
     """
     An utility and static method to apply PBC along a specific direction. 
     """   
-    dx = torch.where(dx >  0.5E0*l, dx - l, dx)
-    dx = torch.where(dx < -0.5E0*l, dx + l, dx)
-    return dx
+    # dx = torch.where(dx >  0.5E0*l, dx - l, dx)
+    # dx = torch.where(dx < -0.5E0*l, dx + l, dx)
+    # return dx
+    return structure_cpp._apply_pbc(dx, l)
 
   def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor: 
     """
     This method applies PBC on the input array (assuming position difference).
     """
     # Apply PBC along x,y,and z directions
-    dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx) # x
-    dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly) # y
-    dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz) # z
-    return dx
+    # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx) # x
+    # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly) # y
+    # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz) # z
+    # dx[..., 0] = structure_cpp._apply_pbc(dx[..., 0], self.box.lx) # x
+    # dx[..., 1] = structure_cpp._apply_pbc(dx[..., 1], self.box.ly) # y
+    # dx[..., 2] = structure_cpp._apply_pbc(dx[..., 2], self.box.lz) # z
+    # return dx
+    # TODO: does _apply_pbc really works because of broadcasting?
+    return structure_cpp._apply_pbc(dx, torch.diagonal(self.box.lattice)) 
 
   def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> torch.Tensor: # TODO: also tuple?
     """
