@@ -19,6 +19,7 @@ class Box:
       logger.error(msg)
       raise ValueError(msg)
 
+    self.lattice = lattice
     self.xlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
     self.ylo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
     self.zlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])

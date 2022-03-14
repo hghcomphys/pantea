@@ -34,6 +34,8 @@ GIL issue is still there when trying parallel version either from python call or
 ### C++ Frontend API
 - https://pytorch.org/tutorials/advanced/cpp_frontend.html
 
+### Dask
+Dask client could be an option for parallel pytorch if the GIL would be still a limitation.
 
 
 

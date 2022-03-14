@@ -30,6 +30,8 @@ def run_kernel():
       return tot
   # Run kernel
   t0 = time.perf_counter()
+  #kernel_ = torch.jit.script(kernel)
+  #print(kernel_.code)
   for i in range(3):
     ans = kernel(torch.rand(2, 10, device=device))
   print("Python kernel:", time.perf_counter() - t0)
@@ -77,5 +79,5 @@ def run_kernel_parallel():
 if __name__ == "__main__":
   run_kernel()
   run_cpp_kernel()
-  run_cpp_pkernel()
-  run_kernel_parallel()  # still GIL problem here!
+  # run_cpp_pkernel()
+  # run_kernel_parallel()  # still GIL problem here!
