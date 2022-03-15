@@ -119,7 +119,7 @@ class Structure:
     # dx[..., 2] = structure_cpp._apply_pbc(dx[..., 2], self.box.lz) # z
     # return dx
     # TODO: does _apply_pbc really works because of broadcasting?
-    return structure_cpp._apply_pbc(dx, torch.diagonal(self.box.lattice)) 
+    return structure_cpp.apply_pbc(dx, torch.diagonal(self.box.lattice)) 
 
   def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> torch.Tensor: # TODO: also tuple?
     """
