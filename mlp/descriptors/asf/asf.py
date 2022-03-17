@@ -139,8 +139,8 @@ class AtomicSymmetryFunction(Descriptor):
         # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
         cost = torch.inner(Rij, Rik)/(rij*rik)
         # ---
-        # Broadcasting computation
-        self.result[index, angular_i] += torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
+        # Broadcasting computation (avoiding to use the in-place add() because of autograd)
+        self.result[index, angular_i] = self.result[index, angular_i] + torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
 
         # Debugging --------------------------------------------
         # ni_j_ = ni_[j] # atom index i
