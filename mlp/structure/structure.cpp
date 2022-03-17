@@ -13,6 +13,7 @@ torch::Tensor _apply_pbc(torch::Tensor dx, torch::Tensor l) {
 
 torch::Tensor apply_pbc(torch::Tensor dx, torch::Tensor box) {
   // TODO: in-place dx?
+  // TODO: non-orthogonal box
   // for (int dim=0; dim<3; dim++)
   //   dx.index_put_({"...", dim}, apply_pbc(dx, box.index({0})) );
   // return dx;
