@@ -1,6 +1,7 @@
 from ...logger import logger
 import math
 import torch
+import cutoff_cpp
 
 
 class CutoffFunction:
@@ -23,21 +24,24 @@ class CutoffFunction:
     try:
       self.fn = getattr(self, f"_{self.cutoff_type}")
     except AttributeError:
-      msg = f"'{self.__class__.__name__}' has no implemented cutoff function '{self.cutoff_type}'"
+      msg = f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'"
       logger.error(msg)
       raise NotImplementedError(msg)
 
   def __call__(self, r: torch.Tensor) -> torch.Tensor:
     return torch.where( r < self.r_cutoff, self.fn(r), torch.zeros_like(r))
+    # return cutoff_cpp._call(r, self.r_cutoff, self.inv_r_cutoff)
 
   def _hard(self, r: torch.Tensor) -> torch.Tensor:
     return torch.ones_like(r)
 
   def _tanhu(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
+    # return torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
+    return cutoff_cpp._tanhu(r, self.inv_r_cutoff)
   
   def _tanh(self, r: torch.Tensor) -> torch.Tensor:
-    return self._TANH_PRE * torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
+    # return self._TANH_PRE * torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
+    return cutoff_cpp._tanh(r, self.inv_r_cutoff)
 
   def _cos(self, r: torch.Tensor) -> torch.Tensor:
     return 0.5 * (torch.cos(math.pi * r * self.inv_r_cutoff) + 1.0)
