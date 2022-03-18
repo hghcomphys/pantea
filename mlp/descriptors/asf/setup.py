@@ -2,9 +2,10 @@ from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 setup(
-    name='cutoff_cpp',
+    name='extension_cpp',
     ext_modules=[
-        CppExtension('cutoff_cpp', ['cutoff.cpp']),
+      CppExtension(name = 'cutoff_cpp', sources = ['cutoff.cpp']),
+      CppExtension(name = 'angular_cpp', sources = ['angular.cpp']),
     ],
     cmdclass={
         'build_ext': BuildExtension
