@@ -1,6 +1,6 @@
 # Technical notes
 
-### TODOs
+## TODOs
 - Optimization
   - [ ] adding c++ core
   - [ ] GPU computing 
@@ -18,14 +18,18 @@
 - [ ] parallelize descriptor calculations using vectorization or thread pool 
 -->
 
-
+## Utils
 ### How big is the code?
 ```bash
 $ pygount --format=summary ./
 ```
 
-## Optimizations
+### Class dependency graph
+```bash
+$ pydeps  ../mlp/potentials/nnp/nnp.py -o pydepsgraph.svg
+```
 
+## Optimizations
 ### TorchScript JIT 
 - https://pytorch.org/docs/stable/jit.html 
 - torch.jit.Future
@@ -56,8 +60,14 @@ Dask client could be an option for parallel pytorch if the GIL would be still a 
 It's just similar to numpy and can be parallelized using dask. 
 
 
+## References
+### Tutorials
+- https://www.pytorchlightning.ai/
+
 ### Similar codes
 - https://github.com/aiqm/torchani
+- https://github.com/torchmd/torchmd
+- https://github.com/torchmd/mdgrad
 
 
 
