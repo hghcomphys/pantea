@@ -1,4 +1,5 @@
 from ...logger import logger
+from functools import partial
 import math
 import torch
 import cutoff_cpp
@@ -22,18 +23,19 @@ class CutoffFunction:
     self.inv_r_cutoff = 1.0 / self.r_cutoff
     # Set cutoff type function
     try:
-      self.fn = getattr(self, f"{self.cutoff_type}")
+      self.cutoff_function = getattr(self, f"{self.cutoff_type}")
     except AttributeError:
       msg = f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'"
       logger.error(msg)
       raise NotImplementedError(msg)
 
   def __call__(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.where( r < self.r_cutoff, self.fn(r), torch.zeros_like(r))
-    # return cutoff_cpp._call(r, self.r_cutoff, self.inv_r_cutoff)
+    # TODO: add C++ kernel
+    return torch.where( r < self.r_cutoff, self.cutoff_function(r), torch.zeros_like(r))
 
   def hard(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.ones_like(r)
+    # return torch.ones_like(r)
+    return cutoff_cpp._hard(r)
 
   def tanhu(self, r: torch.Tensor) -> torch.Tensor:
     # return torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
@@ -44,16 +46,20 @@ class CutoffFunction:
     return cutoff_cpp._tanh(r, self.inv_r_cutoff)
 
   def cos(self, r: torch.Tensor) -> torch.Tensor:
-    return 0.5 * (torch.cos(math.pi * r * self.inv_r_cutoff) + 1.0)
+    # return 0.5 * (torch.cos(math.pi * r * self.inv_r_cutoff) + 1.0)
+    return cutoff_cpp._cos(r, self.inv_r_cutoff)
 
   def exp(self, r: torch.Tensor) -> torch.Tensor:
-    return torch.exp(1.0 - 1.0 / (1.0 - (r * self.inv_r_cutoff)**2) )
+    # return torch.exp(1.0 - 1.0 / (1.0 - (r * self.inv_r_cutoff)**2) )
+    return cutoff_cpp._exp(r, self.inv_r_cutoff)
 
   def poly1(self, r: torch.Tensor) -> torch.Tensor:
-    return (2.0*r - 3.0) * r**2 + 1.0
+    # return (2.0*r - 3.0) * r**2 + 1.0
+    return cutoff_cpp._poly1(r)
 
   def poly2(self, r: torch.Tensor) -> torch.Tensor:
-    return ((15.0 - 6.0*r) * r - 10) * r**3 + 1.0
+    # return ((15.0 - 6.0*r) * r - 10) * r**3 + 1.0
+    return cutoff_cpp._poly2(r)
 
   def __repr__(self) -> str:
       return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff}, cutoff_type='{self.cutoff_type}')"
