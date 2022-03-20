@@ -18,7 +18,7 @@ torch::Tensor _tanh(torch::Tensor r, double inv_r_cutoff) {
 
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("_tanhu", &_tanhu, "CPP _tanhu kernel");
-  m.def("_tanh", &_tanh, "CPP _tanh kernel");
+  m.def("_tanhu", &_tanhu, "CPP tanhu kernel");
+  m.def("_tanh", &_tanh, "CPP tanh kernel");
   // m.def("_call", &_call, "CPP _call kernel");
 }

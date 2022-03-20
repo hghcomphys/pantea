@@ -22,7 +22,7 @@ class CutoffFunction:
     self.inv_r_cutoff = 1.0 / self.r_cutoff
     # Set cutoff type function
     try:
-      self.fn = getattr(self, f"_{self.cutoff_type}")
+      self.fn = getattr(self, f"{self.cutoff_type}")
     except AttributeError:
       msg = f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'"
       logger.error(msg)
@@ -32,27 +32,27 @@ class CutoffFunction:
     return torch.where( r < self.r_cutoff, self.fn(r), torch.zeros_like(r))
     # return cutoff_cpp._call(r, self.r_cutoff, self.inv_r_cutoff)
 
-  def _hard(self, r: torch.Tensor) -> torch.Tensor:
+  def hard(self, r: torch.Tensor) -> torch.Tensor:
     return torch.ones_like(r)
 
-  def _tanhu(self, r: torch.Tensor) -> torch.Tensor:
+  def tanhu(self, r: torch.Tensor) -> torch.Tensor:
     # return torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
     return cutoff_cpp._tanhu(r, self.inv_r_cutoff)
   
-  def _tanh(self, r: torch.Tensor) -> torch.Tensor:
+  def tanh(self, r: torch.Tensor) -> torch.Tensor:
     # return self._TANH_PRE * torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
     return cutoff_cpp._tanh(r, self.inv_r_cutoff)
 
-  def _cos(self, r: torch.Tensor) -> torch.Tensor:
+  def cos(self, r: torch.Tensor) -> torch.Tensor:
     return 0.5 * (torch.cos(math.pi * r * self.inv_r_cutoff) + 1.0)
 
-  def _exp(self, r: torch.Tensor) -> torch.Tensor:
+  def exp(self, r: torch.Tensor) -> torch.Tensor:
     return torch.exp(1.0 - 1.0 / (1.0 - (r * self.inv_r_cutoff)**2) )
 
-  def _poly1(self, r: torch.Tensor) -> torch.Tensor:
+  def poly1(self, r: torch.Tensor) -> torch.Tensor:
     return (2.0*r - 3.0) * r**2 + 1.0
 
-  def _poly2(self, r: torch.Tensor) -> torch.Tensor:
+  def poly2(self, r: torch.Tensor) -> torch.Tensor:
     return ((15.0 - 6.0*r) * r - 10) * r**3 + 1.0
 
   def __repr__(self) -> str:
