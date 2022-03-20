@@ -1,16 +1,25 @@
 # Technical notes
 
-<!-- #### TODOs
+### TODOs
+- Optimization
+  - [ ] adding c++ core
+  - [ ] GPU computing 
+- Validation
+  - [ ] descriptor values
+  - [ ] scaler
+  - [ ] gradient
+<!-- 
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
 - [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
 - [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
 - [ ] utilize torch multi-thread or distributed torch
 - [ ] optimize code performance regarding python dynamic types (torch script, cython)
-- [ ] parallelize descriptor calculations using vectorization or thread pool -->
+- [ ] parallelize descriptor calculations using vectorization or thread pool 
+-->
 
 
-### How big it the code?
+### How big is the code?
 ```bash
 $ pygount --format=summary ./
 ```
@@ -47,6 +56,8 @@ Dask client could be an option for parallel pytorch if the GIL would be still a 
 It's just similar to numpy and can be parallelized using dask. 
 
 
+### Similar codes
+- https://github.com/aiqm/torchani
 
 
 
