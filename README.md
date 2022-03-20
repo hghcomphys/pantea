@@ -1,16 +1,17 @@
-# MLP-framework
+# TorchIP
+A Machine Learning Framework for Interatomic Potential Development
 
 ## What is it?
-_Machine Learning Potential framework_ is a generic and GPU-accelerated library written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. Such potentials are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
+_TorchIP_ is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning (ML) interatomic potentials. Such potentials are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. 
  
 <!--  -->
-_MLP framework_ is NOT a molecular dynamics (MD) simulation package but a framework to construct ML-based force fields employed for the MD simulations.
+_TorchIP_ is NOT a molecular dynamics (MD) simulation package but a framework to construct ML-based force fields employed for the MD simulations.
 
 <!--  -->
-The current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401))
+_TorchIP_ is under heavy development and the current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401))
 
 
-## Designed API
+## Expected API
 ### High-level API
 ```python
 # Atomic data

@@ -1,19 +1,19 @@
 import sys
 sys.path.append('../')
 import torch
-import mlp
-from mlp.config import CFG
-from mlp.logger import logger
-from mlp.loaders import RunnerStructureLoader as StructureLoader
-from mlp.loaders import read_structures
-from mlp.descriptors import ASF, CutoffFunction, G1, G2, G3
-from mlp.potentials import NeuralNetworkPotential
-from mlp.utils import gradient
-from mlp.utils import Profiler, Timer, timer
+import torchip
+from torchip.config import CFG
+from torchip.logger import logger
+from torchip.loaders import RunnerStructureLoader as StructureLoader
+from torchip.loaders import read_structures
+from torchip.descriptors import ASF, CutoffFunction, G1, G2, G3
+from torchip.potentials import NeuralNetworkPotential
+from torchip.utils import gradient
+from torchip.utils import Profiler, Timer, timer
 from pathlib import Path
 
 # MLP
-print(f"MLP framework version: {mlp.__version__}")
+print(f"MLP framework version: {torchip.__version__}")
 CFG.set("device", "cpu")
 
 # Torch
@@ -22,7 +22,7 @@ torch.manual_seed(2022)
 # torch.set_num_threads(2)
 
 # Custom exceptions
-# from mlp.logger import CustomErrorException
+# from torchip.logger import CustomErrorException
 # raise CustomErrorException(f"This is a test {1}")
 
 # Read structure
