@@ -5,6 +5,7 @@ setup(
     name='extension_cpp',
     ext_modules=[
       CppExtension(name = 'cutoff_cpp', sources = ['cutoff.cpp']),
+      CppExtension(name = 'radial_cpp', sources = ['radial.cpp']),
       CppExtension(name = 'angular_cpp', sources = ['angular.cpp']),
     ],
     cmdclass={
