@@ -74,9 +74,10 @@ with Timer("Print scalers"):
     print("Element:", element)
     print("sample", pot.scaler[element].sample)
     for d in ["min", "max", "mean", "sigma"]:
-      print(d, pot.scaler[element].__dict__[d].numpy())
-    # val = pot.descriptor[element](str0, str0.select(element)[:1])
-    # print("values", val.detach().numpy())
+      print(d, pot.scaler[element].__dict__[d].cpu().numpy())
+    val = pot.descriptor[element](str0, str0.select(element)[:1])
+    print("values\n", val.detach().cpu().numpy())
+    print("gradient\n", gradient(val[0], str0.position).detach().cpu().numpy()[:5])
     # val = pot.scaler[element](val)
   # print("scaled", val.detach().numpy())
   # print(gradient(val, str0.position)[:10])
