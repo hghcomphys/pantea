@@ -1,12 +1,12 @@
-# Technical notes
+# (Technical) Notes
 
 ## TODOs
 - Optimization
-  - [ ] adding c++ core
+  - [ ] adding C++ core
   - [ ] GPU computing 
 - Validation
   - [ ] descriptor values
-  - [ ] scaler
+  - [ ] scaler statistics
   - [ ] gradient
 <!-- 
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
@@ -42,10 +42,10 @@ Torch script works only for functions and `nn.Module`. A generic python class th
 - Example files https://github.com/pytorch/extension-cpp
 - Multi-threading https://jedyang.com/post/multithreading-in-python-pytorch-using-c++-extension/
 
-CPP kernel is faster (40%) specially when reducing number of kernel calls.
-GIL issue is still there when trying parallel version either from python call or even within the cpp code using `#include <thread>`.
+A C++ kernel is faster (40%) specially when reducing number of kernel calls.
+GIL issue is still there when trying a parallel version either from python call or even within the C++ code using `#include <thread>`.
 
-C++ extension can be used to define routines (and not classes) in C++. It limit us to load c++ kernels only in form of function from python. Still don't know how to use complete c++ class containing torch.tensors in python, so the current approach is routine-based and adjusting python classes to work with those c++ functions. 
+C++ extension can be used to define routines (and not classes) in C++. It limit us to load C++ kernels only in form of function from python. Still don't know how to use complete C++ class containing torch.tensors in python, so the current approach is routine-based and adjusting python classes to work with those C++ functions. 
 
 ### C++ Frontend API
 - https://pytorch.org/tutorials/advanced/cpp_frontend.html
@@ -57,8 +57,11 @@ More tests require regarding the GPU-computing.
 
 ### Dask + Torch
 Dask client could be an option for parallel pytorch if the GIL would be still a limitation.
-It's just similar to numpy and can be parallelized using dask. 
+It's just similar to numpy and can be parallelized using Dask. 
 
+
+### Algorithm
+Defining groups of symmetry functions and caching the repeated terms seems to be a more efficient approach (not tested yet).
 
 ## References
 ### Tutorials
