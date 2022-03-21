@@ -9,7 +9,7 @@ from ...descriptors.asf.angular import G3, G9
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
 from ...utils.profiler import Profiler
-from ...element import ElementMap
+from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
 from collections import defaultdict, Counter

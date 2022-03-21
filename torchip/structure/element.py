@@ -1,4 +1,4 @@
-from asyncio.log import logger
+from ..logger import logger
 from typing import Union, List
 
 

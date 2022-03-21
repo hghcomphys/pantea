@@ -1,5 +1,5 @@
-from .logger import logger
-from .config import CFG
+from ..logger import logger
+from ..config import CFG
 from typing import Tuple
 import torch
 

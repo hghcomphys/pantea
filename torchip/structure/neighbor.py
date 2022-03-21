@@ -1,6 +1,6 @@
-from .logger import logger
-from .config import CFG
-from .utils.attribute import set_tensors_as_attr
+from ..logger import logger
+from ..config import CFG
+from ..utils.attribute import set_tensors_as_attr
 from collections import defaultdict
 # from .structure import Structure  # TODO: circular import error
 import torch

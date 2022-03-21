@@ -1,8 +1,8 @@
 from ..logger import logger
 from ..config import CFG
-from ..element import ElementMap
-from ..neighbor import Neighbor
-from ..box import Box
+from .element import ElementMap
+from .neighbor import Neighbor
+from .box import Box
 from ..utils.attribute import set_tensors_as_attr
 from typing import List, Dict
 from collections import defaultdict
