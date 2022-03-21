@@ -6,7 +6,7 @@ logger = logging.getLogger('MLP-Framework')
 logger.setLevel(logging.DEBUG)
 
 # File handler is also useful for multi-process logging.
-file_handler = RotatingFileHandler("log.out", 'a', 1e6, 3)
+file_handler = RotatingFileHandler("torchip.log", 'a', 1e6, 3)
 file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')) # [%(processName)-10s] %(name)s 
 file_handler.setLevel(logging.DEBUG)
 
