@@ -6,8 +6,8 @@ from .radial import RadialSymmetryFunction
 from typing import Union, List
 import itertools
 import torch
-# from dask.distributed import Client, fire_and_forget
-
+from ...config import TaskClient
+   
 
 class AtomicSymmetryFunction(Descriptor):
   """
@@ -22,7 +22,6 @@ class AtomicSymmetryFunction(Descriptor):
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
     logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')") # TODO: define __repr__
-    # self.client = Client(processes=False, dashboard_address=':8791') #memory_limit='5GB', processes=False, n_workers=1, thread_per_worker=4, address=':8789')
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
@@ -54,16 +53,21 @@ class AtomicSymmetryFunction(Descriptor):
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
     aids_ = [aid] if isinstance(aid, int) else aid
-    results = [self._compute(structure, aid_) for aid_ in aids_]
+    results = [self.compute(structure, aid_) for aid_ in aids_]
     # TODO:  raise ValueError("Unknown atom id type")
+    
+    # if __name__ == '__main__':
+      # structure_ = client.scatter(structure, broadcast=True)
+      # futures = [TaskClient.client.submit(self.compute, structure, aid_) for aid_ in aids_]
+      # results = TaskClient.client.gather(futures)
 
     # Return descriptor values
     return torch.squeeze(torch.stack(results, dim=0))
-        
+      
    
-  def _compute(self, structure:Structure, aid: int) -> None:
+  def compute(self, structure:Structure, aid: int) -> torch.Tensor:
     """
-    Comute descriptor vector for an input atom id. 
+    Comute descriptor values of an input atom id for the given structure. 
     """
     x = structure.position            # tensor
     at = structure.atype              # tensor
@@ -71,7 +75,7 @@ class AtomicSymmetryFunction(Descriptor):
     ni = structure.neighbor.index     # tensor
     emap= structure.element_map       # element map instance
 
-    # Descriptor values
+    # A tensor for final descriptor values of a single atom
     result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type match the central element
