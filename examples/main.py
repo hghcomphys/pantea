@@ -12,9 +12,15 @@ from torchip.utils import gradient
 from torchip.utils import Profiler, Timer, timer
 from pathlib import Path
 
+
 # MLP
 print(f"MLP framework version: {torchip.__version__}")
 CFG.set("device", "cpu")
+
+# if __name__ == "__main__":
+# from dask.distributed import Client
+# from torchip.config import TaskClient
+# TaskClient.client = Client(processes=True, threads_per_worker=4, dashboard_address=':8791') #memory_limit='5GB', processes=False, n_workers=1, thread_per_worker=4, address=':8789')
 
 # Torch
 # print(f"Torch version: {torch.__version__}")

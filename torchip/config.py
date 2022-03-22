@@ -36,3 +36,6 @@ class CFG:
   def __class_getitem__(cls, name) -> Any:
      return cls.get(name)
 
+
+class TaskClient:
+  client = None

@@ -6,7 +6,8 @@ from .radial import RadialSymmetryFunction
 from typing import Union, List
 import itertools
 import torch
-
+from ...config import TaskClient
+   
 
 class AtomicSymmetryFunction(Descriptor):
   """
@@ -19,8 +20,7 @@ class AtomicSymmetryFunction(Descriptor):
     self.element = element    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
-    self.result = None        # descriptor values after call method
-    self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
+    # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
     logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')") # TODO: define __repr__
 
   def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
@@ -52,30 +52,31 @@ class AtomicSymmetryFunction(Descriptor):
     if self.n_descriptor == 0:
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
-    if isinstance(aid, int):
-      self.result = torch.zeros((1, self.n_descriptor), dtype=structure.dtype, device=structure.device)
-      self._compute(structure, aid)
-    else:
-      # TODO: optimization, process pool?
-      self.result = torch.zeros((len(aid), self.n_descriptor), dtype=structure.dtype, device=structure.device)
-      for index, aid_ in enumerate(aid):
-        self._compute(structure, aid_, index)
-    # else:
-    #   raise ValueError("Unknown atom id type")
-    self.result = torch.squeeze(self.result)
+    aids_ = [aid] if isinstance(aid, int) else aid
+    results = [self.compute(structure, aid_) for aid_ in aids_]
+    # TODO:  raise ValueError("Unknown atom id type")
     
-    return self.result
-        
+    # if __name__ == '__main__':
+      # structure_ = client.scatter(structure, broadcast=True)
+      # futures = [TaskClient.client.submit(self.compute, structure, aid_) for aid_ in aids_]
+      # results = TaskClient.client.gather(futures)
+
+    # Return descriptor values
+    return torch.squeeze(torch.stack(results, dim=0))
+      
    
-  def _compute(self, structure:Structure, aid: int, index=0) -> None:
+  def compute(self, structure:Structure, aid: int) -> torch.Tensor:
     """
-    Comute descriptor vector for an input atom id. 
+    Comute descriptor values of an input atom id for the given structure. 
     """
     x = structure.position            # tensor
     at = structure.atype              # tensor
     nn  = structure.neighbor.number   # tensor
     ni = structure.neighbor.index     # tensor
     emap= structure.element_map       # element map instance
+
+    # A tensor for final descriptor values of a single atom
+    result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
@@ -101,7 +102,7 @@ class AtomicSymmetryFunction(Descriptor):
       # print(aid.numpy(), radial[1], radial[2],
       #   radial[0].kernel(dis_[ni_rc_at_]).detach().numpy(),
       #   torch.sum( radial[0].kernel(dis_[ni_rc_at_] ), dim=0).detach().numpy())
-      self.result[index, radial_i] = torch.sum( radial[0].kernel(dis_[ni_rc_at_] ), dim=0)
+      result[radial_i] = torch.sum( radial[0].kernel(dis_[ni_rc_at_] ), dim=0)
 
     # Loop over the angular terms
     for angular_i, angular in enumerate(self._angular, start=self.n_radial):
@@ -140,7 +141,7 @@ class AtomicSymmetryFunction(Descriptor):
         cost = torch.inner(Rij, Rik)/(rij*rik)
         # ---
         # Broadcasting computation (avoiding to use the in-place add() because of autograd)
-        self.result[index, angular_i] = self.result[index, angular_i] + torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
+        result[angular_i] = result[angular_i] + torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
 
         # Debugging --------------------------------------------
         # ni_j_ = ni_[j] # atom index i
@@ -169,7 +170,7 @@ class AtomicSymmetryFunction(Descriptor):
         #   cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))[0] 
         #   # cost = torch.inner(Rij, Rik)/(rij*rik)
         #   kernel = angular[0].kernel(rij, rik, rjk, cost)
-        #   self.result[index, angular_i] += kernel
+        #   result[angular_i] += kernel
 
         #   if index == 0 and angular_i == 2:
         #     print(f"i={aid}({emap[int(at[aid])]}), j={ni_j_.numpy()}({emap[int(at[ni_j_.numpy()])]}), k={ni_k_.numpy()}({emap[int(at[ni_k_.numpy()])]})"\
@@ -177,7 +178,9 @@ class AtomicSymmetryFunction(Descriptor):
         #         # f", local_j={j}, local_k={k}"\
         #         f", kernel[{index}, {angular_i}]={kernel}")        
         # --------------------------------------------
-      # print(f"result[{index}, {angular_i}]={self.result[index, angular_i].detach().numpy()}")
+      # print(f"result[{angular_i}]={result[angular_i].detach().numpy()}")
+
+    return result
 
   @property
   def n_radial(self) -> int:
