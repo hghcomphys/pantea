@@ -20,7 +20,9 @@ CFG.set("device", "cpu")
 # if __name__ == "__main__":
 # from dask.distributed import Client
 # from torchip.config import TaskClient
-# TaskClient.client = Client(processes=True, threads_per_worker=4, dashboard_address=':8791') #memory_limit='5GB', processes=False, n_workers=1, thread_per_worker=4, address=':8789')
+# TaskClient.client = Client(processes=False, n_workers=4, dashboard_address=':8792') #memory_limit='5GB', processes=False, n_workers=1, thread_per_worker=4)
+# import time
+# time.sleep(5)
 
 # Torch
 # print(f"Torch version: {torch.__version__}")
@@ -68,7 +70,7 @@ loader = StructureLoader(Path(base_dir, "input.data"))
 
 # Potential
 pot = NeuralNetworkPotential(Path(base_dir, "input.nn"))
-with Profiler("ASF scaling profiler") as profiler:
+with Profiler("ASF scaling profiler"):
   pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
   pot.read_scaler(filename=Path(base_dir, "scaler.data"))
 
