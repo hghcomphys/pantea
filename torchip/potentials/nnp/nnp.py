@@ -117,28 +117,28 @@ class NeuralNetworkPotential(Potential):
       self.descriptor[element] = ASF(element)
 
     # Add symmetry functions
-    logger.info(f"Adding symmetry functions: radial and angular") # TODO: move logging inside .add() method
+    logger.info(f"Registering symmetry functions (radial and angular)") # TODO: move logging inside .add() method
     for cfg in self._settings["symfunction_short"]:
       if cfg[1] == 1:
-        self.descriptor[cfg[0]].add(
+        self.descriptor[cfg[0]].register(
           symmetry_function = G1(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"])), 
           neighbor_element1 = cfg[2]
         ) 
       elif cfg[1] == 2:
-        self.descriptor[cfg[0]].add(
+        self.descriptor[cfg[0]].register(
           symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[3], r_shift=cfg[4]), 
           neighbor_element1 = cfg[2]
         )
       elif cfg[1] == 3:
-        self.descriptor[cfg[0]].add(
+        self.descriptor[cfg[0]].register(
           symmetry_function = G3(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6],  lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],
           neighbor_element2 = cfg[3]
         ) 
       elif cfg[1] == 9:
-        self.descriptor[cfg[0]].add(
+        self.descriptor[cfg[0]].register(
           symmetry_function = G9(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],

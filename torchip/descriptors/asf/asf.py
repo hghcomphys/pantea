@@ -23,11 +23,12 @@ class AtomicSymmetryFunction(Descriptor):
     # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
     logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')") # TODO: define __repr__
 
-  def add(self, symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
+  def register(self, 
+                symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
                 neighbor_element2: str = None) -> None:
     """
-    This method adds an input radial symmetry function to the list of ASFs.
+    This method adds an input symmetry function to the list of ASFs and assign it to the given neighbor element(s).
     # TODO: tuple of dict? (tuple is fine if it's used internally)
     # TODO: solve the confusion for aid, starting from 0 or 1?!
     """
