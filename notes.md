@@ -1,4 +1,5 @@
-# (Technical) Notes
+# Notes
+Technical notes regarding implementation, validation, references, etc.
 
 ## TODOs
 - Optimization
@@ -8,6 +9,12 @@
   - [ ] descriptor values
   - [ ] scaler statistics
   - [ ] gradient
+- Model
+  - [ ] neural network
+  - [ ] trainer
+- Examples
+  - [ ] helium gas (LJ force field)
+  - [ ] notebooks: descriptor, model, potential
 <!-- 
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
@@ -71,6 +78,7 @@ Defining groups of symmetry functions and caching the repeated terms seems to be
 - https://github.com/aiqm/torchani
 - https://github.com/torchmd/torchmd
 - https://github.com/torchmd/mdgrad
+- https://github.com/deepmodeling/deepmd-kit
 
 
 
