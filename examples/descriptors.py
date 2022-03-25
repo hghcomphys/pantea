@@ -58,11 +58,11 @@ loader = StructureLoader(Path(base_dir, "input.data"))
 # Define descriptor
 # dsr = ASF(element="H")
 # r_cutoff, cutoff_type = 12.0, "tanh"
-# dsr.add(G1(r_cutoff, cutoff_type), "H")
-# dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "H")
-# dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "O")
-# dsr.add(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.5), "H")
-# dsr.add( G3(r_cutoff, cutoff_type, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "H")
+# dsr.register(G1(r_cutoff, cutoff_type), "H")
+# dsr.register(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "H")
+# dsr.register(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.3), "O")
+# dsr.register(G2(r_cutoff, cutoff_type, r_shift=0.0, eta=0.5), "H")
+# dsr.register( G3(r_cutoff, cutoff_type, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "H")
 # # Calculate values
 # val = dsr(str0, aid=range(100))
 # print(val)
