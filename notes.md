@@ -10,7 +10,7 @@ Technical notes regarding implementation, validation, references, etc.
   - [ ] scaler statistics
   - [ ] gradient
 - Model
-  - [ ] neural network
+  - [x] neural network
   - [ ] trainer
 - Examples
   - [ ] helium gas (LJ force field)
@@ -33,7 +33,7 @@ $ pygount --format=summary ./
 
 ### Class dependency graph
 ```bash
-$ pydeps  ../mlp/potentials/nnp/nnp.py -o pydepsgraph.svg
+$ pydeps  torchip/potentials/nnp/nnp.py -o pydepsgraph.svg
 ```
 
 ## Optimizations
