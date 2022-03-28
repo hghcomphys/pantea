@@ -6,6 +6,7 @@ from ...descriptors.asf.cutoff import CutoffFunction
 from ...descriptors.asf.scaler import AsfScaler
 from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
+from ...models.nn.nn import NeuralNetworkModel
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
 from ...utils.profiler import Profiler
@@ -171,7 +172,13 @@ class NeuralNetworkPotential(Potential):
     Construct a neural network for each element using a dictionary representation of NNP settings.
     """
     self.model = {}
-    # TODO: complete
+    # Instantiate neural network model for each element 
+    logger.info(f"Creating neural network models")
+    for element in self._settings["elements"]:
+      input_size = self.descriptor[element].n_descriptor
+      self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((10, 't'), (10, 't')), output_layer=(1, 'l')) 
+      # TODO: add element argument
+      # TODO: read layers from the settings
 
   @Profiler.profile
   def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None) -> None:
@@ -183,7 +190,7 @@ class NeuralNetworkPotential(Potential):
     for index, data in enumerate(structure_loader.get_data(), start=1):
       structure = Structure(data, 
                             r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
-                            requires_grad=False)     # No need to track graph history (gradient) 
+                            requires_grad=False)     # NO NEED to keep the graph history (gradients) 
       for element, scaler in self.scaler.items():
         aids = structure.select(element).detach()
         for batch in create_batch(aids, 10):
@@ -231,7 +238,15 @@ class NeuralNetworkPotential(Potential):
     # TODO: descriptor element should be the same atom type as the aid
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
-    pass
+    logger.info("Fitting neural network model")
+    for index, data in enumerate(structure_loader.get_data(), start=1):
+      structure = Structure(data, r_cutoff=self.r_cutoff, requires_grad=True)
+      for element, scaler in self.scaler.items():
+        aids = structure.select(element).detach(); #print(aids)
+        x = self.descriptor[element](structure, aid=aids); #print(x)
+        x = self.scaler[element](x); #print(x)
+        x = self.model[element](x.float()); print(x)  
+        # TODO: float type neural network
 
   def fit(self)  -> None:
     """
