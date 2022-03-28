@@ -79,6 +79,7 @@ Defining groups of symmetry functions and caching the repeated terms seems to be
 - https://github.com/torchmd/torchmd
 - https://github.com/torchmd/mdgrad
 - https://github.com/deepmodeling/deepmd-kit
+- https://github.com/SINGROUP/dscribe
 
 
 
