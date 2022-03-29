@@ -67,6 +67,8 @@ class Structure:
     self._tensors["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device)
     self._tensors["energy"] = torch.tensor(data["energy"], dtype=self.dtype, device=self.device)
     self._tensors["lattice"] = torch.tensor(data["lattice"], dtype=self.dtype, device=self.device)
+    self._tensors["total_energy"] = torch.tensor(data["total_energy"], dtype=self.dtype, device=self.device)
+    self._tensors["total_charge"] = torch.tensor(data["total_charge"], dtype=self.dtype, device=self.device)
 
     # Set atom types using element mapping
     self.element_map = ElementMap(data["element"])
