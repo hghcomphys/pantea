@@ -10,6 +10,7 @@ from ...models.nn.nn import NeuralNetworkModel
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
 from ...utils.profiler import Profiler
+from ...utils.gradient import gradient
 from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
@@ -176,7 +177,7 @@ class NeuralNetworkPotential(Potential):
     logger.info(f"Creating neural network models")
     for element in self._settings["elements"]:
       input_size = self.descriptor[element].n_descriptor
-      self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((10, 't'), (10, 't')), output_layer=(1, 'l')) 
+      self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((3, 't'), (3, 't')), output_layer=(1, 'l'))
       # TODO: add element argument
       # TODO: read layers from the settings
 
@@ -238,15 +239,48 @@ class NeuralNetworkPotential(Potential):
     # TODO: descriptor element should be the same atom type as the aid
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
+
+    from torch import nn
+    optimizer = {
+      element: torch.optim.Adam(self.model[element].parameters(), lr=0.01) 
+      for element in self.model.keys()
+    }
+    criterion = nn.MSELoss()
+
     logger.info("Fitting neural network model")
-    for index, data in enumerate(structure_loader.get_data(), start=1):
-      structure = Structure(data, r_cutoff=self.r_cutoff, requires_grad=True)
-      for element, scaler in self.scaler.items():
-        aids = structure.select(element).detach(); #print(aids)
-        x = self.descriptor[element](structure, aid=aids); #print(x)
-        x = self.scaler[element](x); #print(x)
-        x = self.model[element](x.float()); print(x)  
-        # TODO: float type neural network
+
+    epochs = 1000
+    for epoch in range(epochs):
+
+      # Loop over structures
+      for index, data in enumerate(structure_loader.get_data(), start=1):
+        structure = Structure(data, r_cutoff=self.r_cutoff, requires_grad=True)
+        # Initialize energy and optimizer
+        energy = None
+        [optimizer[element].zero_grad() for element in self.model.keys()]
+        # Loop over elements
+        for element in self.model.keys():
+          aids = structure.select(element).detach()
+          x = self.descriptor[element](structure, aid=aids)
+          x = self.scaler[element](x)
+          x = self.model[element](x.float())
+          # TODO: float type neural network
+          energy = torch.sum(x) if energy is None else energy + torch.sum(x)
+        force = gradient(energy, structure.position)
+        # print(energy)
+        # print(force)
+
+        # Energy and force losses
+        eng_loss = (energy-structure.total_energy.float()[0])**2; 
+        frc_loss = criterion(force.float(), structure.force.float()); 
+        loss = eng_loss #+ frc_loss
+        # Update weights
+        loss.backward(retain_graph=True)
+        [optimizer[element].step() for element in self.model.keys()]
+        # Logging
+        if epoch==0 or (epoch+1) % 100 == 0:
+          print(energy, structure.total_energy.float()); 
+          print(f"Epoch: [{epoch+1:4}/{epochs:4}] Training Loss:{loss.data.item()} <force({frc_loss.data.item():.8f}), energy({eng_loss.data.item():.8f})>")
 
   def fit(self)  -> None:
     """
