@@ -14,6 +14,10 @@ Figure 1 - High-dimensional
 neural network potential.
 </p>
 
+### Descriptor
+An atomic descriptor is a effective representation of chemical environment of each individual atom.
 
-### References
-[1] 
+<img src="./docs/images/cutoff.png" alt="NNP" width="300"/>
+<p align = "left">
+Figure 2 - Neighbor atoms within the cutoff radius.
+</p>
