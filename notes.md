@@ -81,5 +81,5 @@ Defining groups of symmetry functions and caching the repeated terms seems to be
 - https://github.com/deepmodeling/deepmd-kit
 - https://github.com/SINGROUP/dscribe
 
-
-
+### YouTube
+- https://youtu.be/1xfwB6cNeMA
