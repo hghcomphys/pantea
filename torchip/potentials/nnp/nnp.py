@@ -234,22 +234,25 @@ class NeuralNetworkPotential(Potential):
   def fit_model(self, structure_loader: StructureLoader) -> None:
     """
     Fit the model using the input structure loader.
-    """
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
+    # TODO: define optimizer
+    # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
+    # TODO: add validation output (MSE separate for force and energy)
+    """
     # structures = read_structures(structure_loader, between=(1, 10))
     # return self.descriptor["H"](structures[0], aid=0), structures[0].position
 
     from torch import nn
     optimizer = {
-      element: torch.optim.Adam(self.model[element].parameters(), lr=0.01) 
+      element: torch.optim.Adam(self.model[element].parameters(), lr=0.001) 
       for element in self.model.keys()
     }
     criterion = nn.MSELoss()
 
     logger.info("Fitting neural network model")
 
-    epochs = 1000
+    epochs = 200
     for epoch in range(epochs):
 
       # Loop over structures
@@ -264,22 +267,20 @@ class NeuralNetworkPotential(Potential):
           x = self.descriptor[element](structure, aid=aids)
           x = self.scaler[element](x)
           x = self.model[element](x.float())
+          x = torch.sum(x, dim=0)
           # TODO: float type neural network
-          energy = torch.sum(x) if energy is None else energy + torch.sum(x)
+          energy = x if energy is None else energy + x
         force = gradient(energy, structure.position)
-        # print(energy)
-        # print(force)
 
         # Energy and force losses
-        eng_loss = (energy-structure.total_energy.float()[0])**2; 
+        eng_loss = criterion(energy.float(), structure.total_energy.float()); 
         frc_loss = criterion(force.float(), structure.force.float()); 
-        loss = eng_loss #+ frc_loss
+        loss = eng_loss + frc_loss
         # Update weights
         loss.backward(retain_graph=True)
         [optimizer[element].step() for element in self.model.keys()]
         # Logging
-        if epoch==0 or (epoch+1) % 100 == 0:
-          print(energy, structure.total_energy.float()); 
+        if epoch==0 or (epoch+1) % 10 == 0:
           print(f"Epoch: [{epoch+1:4}/{epochs:4}] Training Loss:{loss.data.item()} <force({frc_loss.data.item():.8f}), energy({eng_loss.data.item():.8f})>")
 
   def fit(self)  -> None:
