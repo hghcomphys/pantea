@@ -74,24 +74,24 @@ with Profiler("ASF scaling profiler"):
   pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
   pot.read_scaler(filename=Path(base_dir, "scaler.data"))
 
-str0 = read_structures(loader, between=(1, 1))[0]
-print("r_cutoff:", pot.r_cutoff)
+# str0 = read_structures(loader, between=(1, 1))[0]
+# print("r_cutoff:", pot.r_cutoff)
+# with Timer("Print scalers"):
+#   for element in pot.elements:
+#     print("Element:", element)
+#     print("sample", pot.scaler[element].sample)
+#     for d in ["min", "max", "mean", "sigma"]:
+#       print(d, pot.scaler[element].__dict__[d].cpu().numpy())
+#     val = pot.descriptor[element](str0, str0.select(element)[:1])
+#     print("values\n", val.detach().cpu().numpy())
+#     print("gradient\n", gradient(val[0], str0.position).detach().cpu().numpy()[:3])
+#     # val = pot.scaler[element](val)
+#   # print("scaled", val.detach().numpy())
+#   # print(gradient(val, str0.position)[:10])
 
-with Timer("Print scalers"):
-  for element in pot.elements:
-    print("Element:", element)
-    print("sample", pot.scaler[element].sample)
-    for d in ["min", "max", "mean", "sigma"]:
-      print(d, pot.scaler[element].__dict__[d].cpu().numpy())
-    val = pot.descriptor[element](str0, str0.select(element)[:1])
-    print("values\n", val.detach().cpu().numpy())
-    print("gradient\n", gradient(val[0], str0.position).detach().cpu().numpy()[:3])
-    # val = pot.scaler[element](val)
-  # print("scaled", val.detach().numpy())
-  # print(gradient(val, str0.position)[:10])
-
- 
-
+with Profiler("Neural network profiler"):
+  pot.fit_model(loader)
+  #pot.read_model()
 
 
 
