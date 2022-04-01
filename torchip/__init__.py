@@ -11,7 +11,7 @@ __version__ = "0.0.1"
 
 # Version
 logger.info(f"{__doc__}")
-logger.info(f"MLP framework version: {__version__}")
+logger.info(f"TorchIP version: {__version__}")
 
 # CUDA availability
 logger.info(f"CUDA availability: {CFG['is_cuda']}")

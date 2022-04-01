@@ -231,6 +231,7 @@ class NeuralNetworkPotential(Potential):
       scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
       index += count
 
+  @Profiler.profile
   def fit_model(self, structure_loader: StructureLoader) -> None:
     """
     Fit the model using the input structure loader.
