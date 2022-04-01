@@ -4,7 +4,7 @@ from .cutoff import CutoffFunction
 from .symmetry import SymmetryFunction
 import math
 import torch
-import angular_cpp
+# import angular_cpp
 
 class AngularSymmetryFunction(SymmetryFunction):
   """
@@ -29,8 +29,8 @@ class G3(AngularSymmetryFunction):
     super().__init__(cutoff_function)
     
   def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
-    # res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )  # TODO: r_shift
-    res = angular_cpp.g3_kernel(rij, rik, rjk, cost, self._params)
+    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )  # TODO: r_shift
+    #res = angular_cpp.g3_kernel(rij, rik, rjk, cost, self._params)
     return res * self.cutoff_function(rij) * self.cutoff_function(rik) * self.cutoff_function(rjk)
 
 
@@ -49,6 +49,6 @@ class G9(G3): # AngularSymmetryFunction
   #   super().__init__(cutoff_function)
     
   def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
-    #res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2) ) # TODO: r_shift
-    res = angular_cpp.g9_kernel(rij, rik, rjk, cost, self._params)
+    res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2) ) # TODO: r_shift
+    #res = angular_cpp.g9_kernel(rij, rik, rjk, cost, self._params)
     return res * self.cutoff_function(rij) * self.cutoff_function(rik)

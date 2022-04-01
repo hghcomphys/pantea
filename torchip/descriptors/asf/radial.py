@@ -2,7 +2,7 @@ from ...logger import logger
 from .symmetry import SymmetryFunction
 from .cutoff import CutoffFunction
 import torch
-import radial_cpp
+# import radial_cpp
 
 
 class RadialSymmetryFunction(SymmetryFunction):
@@ -41,5 +41,5 @@ class G2(RadialSymmetryFunction):
     super().__init__(cutoff_function)
 
   def kernel(self, rij: torch.Tensor) -> torch.Tensor:
-    # return torch.exp( -self.eta * (rij - self.r_shift)**2 ) * self.cutoff_function(rij)
-    return radial_cpp.g2_kernel(rij, self._params) * self.cutoff_function(rij)
+    return torch.exp( -self.eta * (rij - self.r_shift)**2 ) * self.cutoff_function(rij)
+    #return radial_cpp.g2_kernel(rij, self._params) * self.cutoff_function(rij)
