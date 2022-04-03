@@ -1,5 +1,6 @@
 import sys
 sys.path.append('../')
+import numpy
 import torch
 import torchip
 from torchip.config import CFG
@@ -14,7 +15,7 @@ from pathlib import Path
 
 
 # MLP
-print(f"MLP framework version: {torchip.__version__}")
+# print(f"TorchIP version: {torchip.__version__}")
 CFG.set("device", "cpu")
 
 # if __name__ == "__main__":
@@ -26,6 +27,7 @@ CFG.set("device", "cpu")
 
 # Torch
 # print(f"Torch version: {torch.__version__}")
+numpy.random.seed(2022)
 torch.manual_seed(2022)
 # torch.set_num_threads(2)
 
