@@ -52,7 +52,7 @@ class Structure:
     set_tensors_as_attr(self, self._tensors)
     
     # Create a box using the lattice matrix (useful for non-orthogonal lattice)
-    self.box = Box(self.lattice) 
+    self.box = Box(self.lattice) if len(self.lattice) != 0 else None 
     
   def _cast_data_to_tensors(self, data: Dict[str, List]) -> None:
     """
@@ -134,11 +134,12 @@ class Structure:
     x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # for when neighbors index is only a number
     dx = self.position[aid] - x
 
-    # Apply PBC along x,y,and z directions  # TODO: replacing by self.apply_pbc
-    # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
-    # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
-    # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
-    dx = self.apply_pbc(dx)
+    # Apply PBC along x,y,and z directions if lattice info is provided 
+    if self.box is not None:
+      # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
+      # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
+      # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
+      dx = self.apply_pbc(dx) # broadcasting instead
 
     # Calculate distance from dx tensor
     distance = torch.linalg.vector_norm(dx, dim=1)
@@ -150,5 +151,3 @@ class Structure:
     Return all atom ids with atom type same as the input element. 
     """
     return torch.nonzero(self.atype == self.element_map[element], as_tuple=True)[0]
-
-
