@@ -255,13 +255,19 @@ class NeuralNetworkPotential(Potential):
 
     epochs = 200
     for epoch in range(epochs):
+      print(f"Epoch {epoch+1:4}/{epochs:4}")
 
+      training_eng_loss = 0.0
+      training_frc_loss = 0.0
+      nbatch = 0
       # Loop over structures
-      for index, data in enumerate(structure_loader.get_data(), start=1):
+      for data in structure_loader.get_data():
         structure = Structure(data, r_cutoff=self.r_cutoff, requires_grad=True)
+
         # Initialize energy and optimizer
         energy = None
         [optimizer[element].zero_grad() for element in self.model.keys()]
+        
         # Loop over elements
         for element in self.model.keys():
           aids = structure.select(element).detach()
@@ -280,9 +286,20 @@ class NeuralNetworkPotential(Potential):
         # Update weights
         loss.backward(retain_graph=True)
         [optimizer[element].step() for element in self.model.keys()]
-        # Logging
-        if epoch==0 or (epoch+1) % 10 == 0:
-          print(f"Epoch: [{epoch+1:4}/{epochs:4}] Training Loss:{loss.data.item()} <force({frc_loss.data.item():.8f}), energy({eng_loss.data.item():.8f})>")
+
+        # Accumulate energy and force loss values for each structure
+        training_eng_loss += eng_loss.data.item()
+        training_frc_loss += frc_loss.data.item()
+        nbatch += 1
+
+      # Get mean training losses over all structures
+      training_eng_loss /= nbatch
+      training_frc_loss /= nbatch
+      training_loss = training_eng_loss + training_frc_loss
+
+      # Logging
+      print(f"Structure: [{nbatch:4}] Training Loss:{training_loss} <force({training_frc_loss:.8f}), energy({training_eng_loss:.8f})>", end="\r")
+      print("")
 
   def fit(self)  -> None:
     """
