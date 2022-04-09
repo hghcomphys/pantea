@@ -36,7 +36,7 @@ torch.manual_seed(2022)
 # raise CustomErrorException(f"This is a test {1}")
 
 # Read structure
-base_dir = Path('.') # '/home/hossein/n2p2/examples/nnp-scaling/H2O_RPBE-D3' # '/home/hossein/Desktop/n2p2_conf_3816/'
+base_dir = Path('/home/hossein/n2p2/examples/nnp-train/LJ')
 loader = StructureLoader(Path(base_dir, "input.data")) 
 # structures = read_structures(loader, between=(1, 5)) # TODO: structure index 0 or 1?
 # str0 = structures[0] 
