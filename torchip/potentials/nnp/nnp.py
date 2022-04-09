@@ -1,6 +1,6 @@
 from ...logger import logger
 from ...structure import Structure
-from ...loaders import StructureLoader, read_structures
+from ...loaders import StructureLoader
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.cutoff import CutoffFunction
 from ...descriptors.asf.scaler import AsfScaler
@@ -10,12 +10,12 @@ from ...models.nn.nn import NeuralNetworkModel
 from ...utils.tokenize import tokenize
 from ...utils.batch import create_batch
 from ...utils.profiler import Profiler
-from ...utils.gradient import gradient
 from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
+from .trainer import Trainer
 from collections import defaultdict, Counter
-from typing import Dict, List
+from typing import List
 from pathlib import Path
 import torch
 import numpy as np
@@ -241,65 +241,8 @@ class NeuralNetworkPotential(Potential):
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
     """
-    # structures = read_structures(structure_loader, between=(1, 10))
-    # return self.descriptor["H"](structures[0], aid=0), structures[0].position
-
-    from torch import nn
-    optimizer = {
-      element: torch.optim.Adam(self.model[element].parameters(), lr=0.001) 
-      for element in self.model.keys()
-    }
-    criterion = nn.MSELoss()
-
-    logger.info("Fitting neural network model")
-
-    epochs = 200
-    for epoch in range(epochs):
-      print(f"Epoch {epoch+1:4}/{epochs:4}")
-
-      training_eng_loss = 0.0
-      training_frc_loss = 0.0
-      nbatch = 0
-      # Loop over structures
-      for data in structure_loader.get_data():
-        structure = Structure(data, r_cutoff=self.r_cutoff, requires_grad=True)
-
-        # Initialize energy and optimizer
-        energy = None
-        [optimizer[element].zero_grad() for element in self.model.keys()]
-        
-        # Loop over elements
-        for element in self.model.keys():
-          aids = structure.select(element).detach()
-          x = self.descriptor[element](structure, aid=aids)
-          x = self.scaler[element](x)
-          x = self.model[element](x.float())
-          x = torch.sum(x, dim=0)
-          # TODO: float type neural network
-          energy = x if energy is None else energy + x
-        force = gradient(energy, structure.position)
-
-        # Energy and force losses
-        eng_loss = criterion(energy.float(), structure.total_energy.float()); 
-        frc_loss = criterion(force.float(), structure.force.float()); 
-        loss = eng_loss + frc_loss
-        # Update weights
-        loss.backward(retain_graph=True)
-        [optimizer[element].step() for element in self.model.keys()]
-
-        # Accumulate energy and force loss values for each structure
-        training_eng_loss += eng_loss.data.item()
-        training_frc_loss += frc_loss.data.item()
-        nbatch += 1
-
-      # Get mean training losses over all structures
-      training_eng_loss /= nbatch
-      training_frc_loss /= nbatch
-      training_loss = training_eng_loss + training_frc_loss
-
-      # Logging
-      print(f"Structure: [{nbatch:4}] Training Loss:{training_loss} <force({training_frc_loss:.8f}), energy({training_eng_loss:.8f})>", end="\r")
-      print("")
+    trainer = Trainer(potential=self)
+    trainer.fit(structure_loader, epochs=200)
 
   def fit(self)  -> None:
     """
