@@ -1,0 +1,82 @@
+from ...logger import logger
+from ...potentials.base import Potential
+from ...loaders.base import StructureLoader
+from ...structure import Structure
+from ...utils.gradient import gradient
+from typing import Dict
+from torch import nn
+import torch
+
+
+class Trainer:
+  """
+  Takes a potential and training it using energy and force components (gradients).
+  TODO: This class should be generic enough to work with any type on energy model (define BaseTrainer)
+  """
+  def __init__(self, potential: Potential, **kwargs) -> None:
+    """
+    Initialize trainer.
+    """
+    self.potential = potential
+    self.learning_rate = kwargs.get('learning_rate', 0.001)
+    self.optimizer_func = kwargs.get('optimizer_func', torch.optim.Adam)
+    self.criterion = kwargs.get('criterion', nn.MSELoss())
+    self.optimizer = {
+      element: self.optimizer_func(self.potential.model[element].parameters(), lr=self.learning_rate) \
+      for element in self.potential.elements
+    }
+
+  def fit(self, structure_loader: StructureLoader, epochs=1) -> None:
+    """
+    Fit models.
+    """
+    logger.info("Fitting energy models")
+    for epoch in range(epochs):
+      print(f"Epoch {epoch+1:4}/{epochs:4}")
+
+      training_eng_loss = 0.0
+      training_frc_loss = 0.0
+      nbatch = 0
+      # Loop over structures
+      for data in structure_loader.get_data():
+        structure = Structure(data, r_cutoff=self.potential.r_cutoff, requires_grad=True)
+
+        # Initialize energy and optimizer
+        energy = None
+        [self.optimizer[element].zero_grad() for element in self.potential.elements]
+        
+        # Loop over elements
+        for element in self.potential.elements:
+          aids = structure.select(element).detach()
+          x = self.potential.descriptor[element](structure, aid=aids)
+          x = self.potential.scaler[element](x)
+          x = self.potential.model[element](x.float())
+          x = torch.sum(x, dim=0)
+          # TODO: float type neural network
+          energy = x if energy is None else energy + x
+
+        #indices = torch.randperm(len(structure.position))[:10]
+        force = gradient(energy, structure.position)
+
+        # Energy and force losses
+        eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
+        frc_loss = self.criterion(force.float(), structure.force.float()); 
+        loss = eng_loss + frc_loss
+        # Update weights
+        loss.backward(retain_graph=True)
+        [self.optimizer[element].step() for element in self.potential.elements]
+
+        # Accumulate energy and force loss values for each structure
+        training_eng_loss += eng_loss.data.item()
+        training_frc_loss += frc_loss.data.item()
+        training_loss = training_eng_loss + training_frc_loss
+        nbatch += 1
+
+        print(f"Structure: [{nbatch:<4}] Training Loss: {training_loss/nbatch:<12.8E} "\
+          f"(Energy: {training_eng_loss/nbatch:<12.8E}, Force: {training_frc_loss/nbatch:<12.8E})", end="\r")
+
+      # Get mean training losses over all structures
+      training_eng_loss /= nbatch
+      training_frc_loss /= nbatch
+      training_loss = training_eng_loss + training_frc_loss
+      print()
