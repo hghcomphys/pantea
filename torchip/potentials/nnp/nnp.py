@@ -13,7 +13,7 @@ from ...utils.profiler import Profiler
 from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
-from .trainer import Trainer
+from .trainer import NeuralNetworkPotentialTrainer as Trainer
 from collections import defaultdict, Counter
 from typing import List
 from pathlib import Path
@@ -237,10 +237,10 @@ class NeuralNetworkPotential(Potential):
     Fit the model using the input structure loader.
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
-    # TODO: define optimizer
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
     """
+    # TODO: training must be done outside of the potential
     trainer = Trainer(potential=self)
     trainer.fit(structure_loader, epochs=200)
 

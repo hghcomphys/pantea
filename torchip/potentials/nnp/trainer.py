@@ -8,10 +8,15 @@ from torch import nn
 import torch
 
 
-class Trainer:
+class NeuralNetworkPotentialTrainer:
   """
-  Takes a potential and training it using energy and force components (gradients).
-  TODO: This class should be generic enough to work with any type on energy model (define BaseTrainer)
+  This derived trainer class trains the neural network potential using energy and force components (gradients).
+
+  TODO: 
+  A base trainer class for fitting a generic potential.
+  This class must be independent of the type of the potential.
+  A derived trainer class specific to each potential then utilizing the best algorithms to train the models inside the potential
+  using energy and force components. 
   """
   def __init__(self, potential: Potential, **kwargs) -> None:
     """
