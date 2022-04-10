@@ -1,6 +1,7 @@
 from ...logger import logger
-from ..base import StructureLoader
 from ...utils.tokenize import tokenize
+from ...structure.structure import Structure
+from ..base import StructureLoader
 from typing import Tuple, List, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
@@ -17,12 +18,16 @@ class RunnerStructureLoader(StructureLoader):
     self.filename = Path(filename)
     self._data = None
     self._ignore_next = False
-    logger.debug(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
+    logger.info(f"Initialed {self.__class__.__name__}")
+    logger.debug(self)
+
+  def __repr__(self) -> str:
+      return f"{self.__class__.__name__}(filename='{self.filename}')"
 
   def get_data(self) -> Dict[str, List]:
     """
     A generator method which returns each snapshot of atomic data structure as a data dictionary.
-    The output dictionary can be used to create a Structure instance. 
+    The output dictionary can be used to create a Structure objects. 
     """
     logger.info(f"Reading structure file:'{self.filename}'")
     with open(str(self.filename), "r") as file:
@@ -36,6 +41,13 @@ class RunnerStructureLoader(StructureLoader):
     # Clean up
     self._data = None
     self._ignore_next = False
+
+  def get_structure(self, **kwargs):
+    """
+    A generator which directly returns Structure object instead of the dictionary data, see get_data() method.
+    """
+    for data in self.get_data():
+      yield Structure(data, **kwargs)
 
   def read(self, file: TextIO) -> bool:
     """
