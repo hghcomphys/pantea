@@ -7,12 +7,13 @@ logger.setLevel(logging.DEBUG)
 
 # File handler is also useful for multi-process logging.
 file_handler = RotatingFileHandler("torchip.log", 'a', 1e6, 3)
-file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')) # [%(processName)-10s] %(name)s 
+file_handler.setFormatter(logging.Formatter('%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')) 
+# %(levelname)-8s [%(asctime)s]  [%(processName)-10s] %(name)s 
 file_handler.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-# console_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p'))
-console_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+console_handler.setFormatter(logging.Formatter('%(message)s'))
+# logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 console_handler.setLevel(logging.WARNING)
 
 logger.addHandler(file_handler)
