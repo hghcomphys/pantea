@@ -4,7 +4,7 @@ from .base import StructureLoader
 from typing import List, Tuple
 
 
-def read_structures(structure_loader: StructureLoader, between: Tuple[int, int]=None) -> List[Structure]:
+def read_structures(structure_loader: StructureLoader, between: Tuple[int, int]=None, **kwargs) -> List[Structure]:
   """
   Read the input structure loader and return a list of structures.
   """
@@ -21,9 +21,9 @@ def read_structures(structure_loader: StructureLoader, between: Tuple[int, int]=
       else:
         data = next(structure_generator)
         logger.debug(f"Reading structure #{index}")
-        structures.append( Structure(data) )   
+        structures.append( Structure(data, **kwargs) )   
     except StopIteration:
-      index -= 1 # correct over counting
+      index -= 1 # correct the over counting
       break
 
   logger.info(f"Read {len(structures)} of {index} structures: between={between if between is not None else 'all'}")
