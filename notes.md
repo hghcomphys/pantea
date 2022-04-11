@@ -83,3 +83,6 @@ Defining groups of symmetry functions and caching the repeated terms seems to be
 
 ### YouTube
 - https://youtu.be/1xfwB6cNeMA
+
+### Logo
+- https://fsymbols.com/text-art/

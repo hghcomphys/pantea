@@ -26,7 +26,7 @@ class CFG:
   @staticmethod
   def set(name, value) -> None:
     if name in CFG.__setters:
-      logger.info(f"Resetting default {name} as '{value}'")
+      logger.info(f"Resetting default {name}: '{value}'")
       CFG.__conf[name] = value
     else:
       msg = f"Name '{name}' not accepted in the global configuration"
