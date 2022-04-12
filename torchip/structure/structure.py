@@ -52,7 +52,11 @@ class Structure:
     set_tensors_as_attr(self, self._tensors)
     
     # Create a box using the lattice matrix (useful for non-orthogonal lattice)
-    self.box = Box(self.lattice) if len(self.lattice) != 0 else None 
+    if len(self.lattice) != 0:
+      self.box = Box(self.lattice)  
+    else:
+      self.box = None 
+      logger.debug("No lattice info were found in structure")
     
   def _cast_data_to_tensors(self, data: Dict[str, List]) -> None:
     """
@@ -78,7 +82,8 @@ class Structure:
     # Logging existing tensors
     for name, tensor in self._tensors.items():
       logger.debug(
-        f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
+        f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
+      )
       
   def _cast_tensors_to_data(self) -> Dict[str, List]:
     """
@@ -151,3 +156,14 @@ class Structure:
     Return all atom ids with atom type same as the input element. 
     """
     return torch.nonzero(self.atype == self.element_map[element], as_tuple=True)[0]
+
+  @property
+  def natoms(self) -> int:
+    return self.position.shape[0]
+
+  @property
+  def elements(self) -> List[str]:
+    return list({self.element_map[int(at)] for at in self.atype})
+
+  def __str__(self) -> str:
+    return f"Structure: natoms={self.natoms}, elements={self.elements}"
