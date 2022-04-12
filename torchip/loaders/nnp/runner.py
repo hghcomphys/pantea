@@ -2,7 +2,7 @@ from ...logger import logger
 from ...utils.tokenize import tokenize
 from ...structure.structure import Structure
 from ..base import StructureLoader
-from typing import Tuple, List, TextIO, Dict
+from typing import List, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
 
@@ -18,8 +18,8 @@ class RunnerStructureLoader(StructureLoader):
     self.filename = Path(filename)
     self._data = None
     self._ignore_next = False
-    logger.info(f"Initialed {self.__class__.__name__}")
-    logger.debug(self)
+    logger.info(f"Initializing {self.__class__.__name__}")
+    logger.debug(self)  
 
   def __repr__(self) -> str:
       return f"{self.__class__.__name__}(filename='{self.filename}')"
@@ -75,6 +75,8 @@ class RunnerStructureLoader(StructureLoader):
         self._data["total_energy"].append( float(tokens[0]) )
       elif keyword == "charge":
         self._data["total_charge"].append( float(tokens[0]) )
+      elif keyword == "comment":
+        self._data["comment"].append(' '.join(line.split()[1:]) )
       elif keyword == "end": 
         break
     return True
