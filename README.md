@@ -1,3 +1,4 @@
+# TorchIP - A Framework for Machine Learning Interatomic Potential Development
 <!-- # TorchIP - Torch Interatomic Potential -->
 
 ╭━━━━╮╱╱╱╱╱╱╭╮╱╭━━┳━━━╮ \
@@ -6,8 +7,6 @@
 ╱╱┃┃┃╭╮┃╭┫╭━┫╭╮┃┃┃┃╭━━╯ \
 ╱╱┃┃┃╰╯┃┃┃╰━┫┃┃┣┫┣┫┃    \
 ╱╱╰╯╰━━┻╯╰━━┻╯╰┻━━┻╯    
-
-<!-- A Framework for Machine Learning Interatomic Potential Development -->
 
 <!-- ## What is it? -->
 _TorchIP_ is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning (ML) interatomic potentials. 
