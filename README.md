@@ -9,7 +9,7 @@
 ╱╱┃┃┃╰╯┃┃┃╰━┫┃┃┣┫┣┫┃    \
 ╱╱╰╯╰━━┻╯╰━━┻╯╰┻━━┻╯    
  -->
-<img src="./docs/images/logo.png" alt="NNP" width="250"/>
+<img src="./docs/images/logo.png" alt="NNP" width="300"/>
 <!-- <p align = "left">
 A Framework for Machine Learning Interatomic Potential Development -->
 </p>
@@ -42,7 +42,7 @@ nnp = NeuralNetworkPotential("input.nn")
 
 # Scaler
 nnp.fit_scaler(loader)
-nnp.read_scaler("scaling.data")
+nnp.read_scaler("scaler.data")
 
 # Model
 nnp.fit_model(loader)
@@ -65,8 +65,8 @@ structures = read_structures(loader, between=(1, 5))
 # Descriptor
 asf = AtomicSymmetryFunction(element="H")
 cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
-asf.add( G2(cutoff_function=cfn, eta=0.5, r_shift=0.0), "H" )
-asf.add( G3(cutoff_function=cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
+asf.register( G2(cutoff_function=cfn, eta=0.5, r_shift=0.0), "H" )
+asf.register( G3(cutoff_function=cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
 val = asf(structures[0], aid=0)
 
 # Scaler
