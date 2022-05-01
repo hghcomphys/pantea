@@ -41,7 +41,7 @@ class AtomicSymmetryFunction(Descriptor):
       logger.error(msg)
       raise TypeError(msg)
 
-  def __call__(self, structure:Structure, aid: Union[List[int], int]) -> torch.Tensor: 
+  def __call__(self, structure:Structure, aid: Union[List[int], int] = None) -> torch.Tensor: 
     """
     Calculate descriptor values for the input given structure and atom id(s).
     """
@@ -54,6 +54,7 @@ class AtomicSymmetryFunction(Descriptor):
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
     aids_ = [aid] if isinstance(aid, int) else aid  # TODO:  raise ValueError("Unknown atom id type")
+    aids_ = (structure.atype == structure.element_map[self.element]).nonzero(as_tuple=True)[0] if aids_ is None else aids_ # TODO: optimize ifs here
 
     if TaskClient.client is None: 
       results = [self.compute(structure, aid_) for aid_ in aids_]
