@@ -18,13 +18,15 @@ A Framework for Machine Learning Interatomic Potential Development -->
 
 <!-- ## What is it? -->
 TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning (ML) interatomic potentials. 
-TorchIP helps us to reconstruct potentials that are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry. The core implementation of TorchIP is based on the [PyTorch](https://github.com/pytorch/pytorch) package and its C++ API which provides two high-level features including tensor computation with strong GPU acceleration and automatic differentiation.
+TorchIP is intended to help researchers to construct potentials that are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
+
+The core implementation of TorchIP is based on the [PyTorch](https://github.com/pytorch/pytorch) and its C++ API which provides two high-level features including _optimized tensor computation_ and _automatic differentiation_.
 
 <!--  -->
-TorchIP is NOT a molecular dynamics (MD) simulation package but a framework to train ML-based force fields employed for the MD simulations.
+TorchIP is NOT a molecular dynamics (MD) simulation package BUT a framework to develop ML-based potentials used for the large-scale MD simulators, such as [LAMMPS](https://github.com/lammps/lammps).
 
 <!--  -->
-TorchIP is under substantial development and the current focus is on the implementation of high-dimensional neural network potential (NNP) proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401))
+TorchIP is currently under heavy development and the focus is on the implementation of _high-dimensional neural network potential_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
 
 ## Installation
 ```bash
