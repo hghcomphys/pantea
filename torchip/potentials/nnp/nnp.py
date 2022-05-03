@@ -242,13 +242,29 @@ class NeuralNetworkPotential(Potential):
     """
     # TODO: training must be done outside of the potential
     trainer = Trainer(potential=self)
-    trainer.fit(structure_loader, epochs=200)
+    trainer.fit(structure_loader, epochs=50)
 
   def fit(self)  -> None:
     """
     Fit descriptor and model (if needed). 
     """
     pass
+
+  def __call__(self, structure: Structure) -> torch.Tensor:
+    """
+    Return the total energy of the given input structure.
+    """
+    # Loop over elements
+    energy = None
+    for element in self.elements:
+      aids = structure.select(element).detach()
+      x = self.descriptor[element](structure, aid=aids)
+      x = self.scaler[element](x)
+      x = self.model[element](x.float())
+      x = torch.sum(x, dim=0)
+      # TODO: float type neural network
+      energy = x if energy is None else energy + x
+    return energy
 
   @property
   def elements(self) -> List[str]:
