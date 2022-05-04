@@ -11,10 +11,10 @@ Technical notes regarding implementation, validation, references, etc.
   - [ ] gradient
 - Model
   - [x] neural network
-  - [ ] trainer
+  - [x] trainer
 - Examples
-  - [ ] helium gas (LJ force field)
-  - [ ] notebooks: descriptor, model, potential
+  - [ ] ideal gas (LJ potential)
+  - [x] notebooks: descriptor, model, potential
 <!-- 
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
