@@ -36,6 +36,7 @@ class NeuralNetworkPotential(Potential):
     self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     logger.info(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
+    self.model_save_format = "weights.{:03d}.zip"
 
     if self._settings is None:
       self._read_settings_file()
@@ -211,12 +212,12 @@ class NeuralNetworkPotential(Potential):
             file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
   @Profiler.profile
-  def read_scaler(self, filename: Path) -> None:
+  def load_scaler(self, filename: Path) -> None:
     """
-    Read scaler parameters.
+    load scaler parameters.
     No need to fit the scalers in this case. 
     """
-    logger.info(f"Reading scaler data file='{filename}'")
+    logger.info(f"Loading scaler data from file='{filename}'")
     data = np.loadtxt(filename, usecols=(1, 2, 3, 4))
     element_count = Counter(np.loadtxt(filename, usecols=(0), dtype=str))
     index = 0
@@ -232,7 +233,7 @@ class NeuralNetworkPotential(Potential):
       index += count
 
   @Profiler.profile
-  def fit_model(self, structure_loader: StructureLoader) -> None:
+  def fit_model(self, structure_loader: StructureLoader, save_best_model: bool = True) -> None:
     """
     Fit the model using the input structure loader.
     # TODO: avoid reading and calculating descriptor multiple times
@@ -242,7 +243,28 @@ class NeuralNetworkPotential(Potential):
     """
     # TODO: training must be done outside of the potential
     trainer = Trainer(potential=self)
-    trainer.fit(structure_loader, epochs=50)
+    trainer.fit(structure_loader, epochs=10)
+
+    # TODO: save the best model by default
+    if save_best_model:
+      for element in self.elements:
+        logger.info(f"Saving model weights for element: {element}")
+        model = self.model[element]
+        atomic_number = ElementMap.get_atomic_number(element)
+        model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
+        torch.save(model.state_dict(), str(model_fn))
+
+  def load_model(self, ):
+    """
+    This method load model weights for each element.
+    """
+    for element in self.elements:
+        logger.info(f"Loading model weights for element: {element}")
+        model = self.model[element]
+        atomic_number = ElementMap.get_atomic_number(element)
+        model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
+        model.load_state_dict(torch.load(str(model_fn)))
+        model.eval()
 
   def fit(self)  -> None:
     """
