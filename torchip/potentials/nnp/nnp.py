@@ -13,7 +13,7 @@ from ...utils.profiler import Profiler
 from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
-from .trainer import NeuralNetworkPotentialTrainer as Trainer
+from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict, Counter
 from typing import List
 from pathlib import Path
@@ -36,6 +36,8 @@ class NeuralNetworkPotential(Potential):
     self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     logger.info(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
+    # TODO: set formats as class variable or **kwargs
+    self.scaler_save_format = "scaler.data"
     self.model_save_format = "weights.{:03d}.zip"
 
     if self._settings is None:
@@ -183,7 +185,7 @@ class NeuralNetworkPotential(Potential):
       # TODO: read layers from the settings
 
   @Profiler.profile
-  def fit_scaler(self, structure_loader: StructureLoader, filename: Path = None) -> None:
+  def fit_scaler(self, structure_loader: StructureLoader, save_scaler: bool = True) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
@@ -201,25 +203,33 @@ class NeuralNetworkPotential(Potential):
           scaler.fit(descriptor)
 
     # Save scaler data into file  
-    if filename is not None:
-      logger.info(f"Saving scaler data file='{filename}'")
-      with open(str(Path(filename)), "w") as file:
-        file.write(f"# Symmetry function scaling data\n")
-        file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
-        for element, scaler in self.scaler.items():     
-          for i in range(scaler.dimension):
-            file.write(f"  {element:<10s} ")
-            file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
+    if save_scaler:
+      self.save_scaler()
+
+  def save_scaler(self):
+    """
+    Save scaler parameters for each element. 
+    """
+    scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    logger.info(f"Saving scaler parameters into '{scaler_fn}'")
+    with open(str(scaler_fn), "w") as file:
+      file.write(f"# Symmetry function scaling data\n")
+      file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
+      for element, scaler in self.scaler.items():     
+        for i in range(scaler.dimension):
+          file.write(f"  {element:<10s} ")
+          file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
   @Profiler.profile
-  def load_scaler(self, filename: Path) -> None:
+  def load_scaler(self) -> None:
     """
-    load scaler parameters.
+    load scaler parameters for each element.
     No need to fit the scalers in this case. 
     """
-    logger.info(f"Loading scaler data from file='{filename}'")
-    data = np.loadtxt(filename, usecols=(1, 2, 3, 4))
-    element_count = Counter(np.loadtxt(filename, usecols=(0), dtype=str))
+    scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    logger.info(f"Loading scaler parameters from '{scaler_fn}'")
+    data = np.loadtxt(scaler_fn, usecols=(1, 2, 3, 4))
+    element_count = Counter(np.loadtxt(scaler_fn, usecols=(0), dtype=str))
     index = 0
     for element, count in element_count.items():
       scaler= self.scaler[element]
@@ -242,21 +252,27 @@ class NeuralNetworkPotential(Potential):
     # TODO: add validation output (MSE separate for force and energy)
     """
     # TODO: training must be done outside of the potential
-    trainer = Trainer(potential=self)
+    trainer = NeuralNetworkPotentialTrainer(potential=self)
     trainer.fit(structure_loader, epochs=10)
 
     # TODO: save the best model by default
     if save_best_model:
-      for element in self.elements:
-        logger.info(f"Saving model weights for element: {element}")
-        model = self.model[element]
-        atomic_number = ElementMap.get_atomic_number(element)
-        model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
-        torch.save(model.state_dict(), str(model_fn))
+      self.save_model()
 
-  def load_model(self, ):
+  def save_model(self):
     """
-    This method load model weights for each element.
+    Save model weights separately for all element.
+    """
+    for element in self.elements:
+      logger.info(f"Saving model weights for element: {element}")
+      model = self.model[element]
+      atomic_number = ElementMap.get_atomic_number(element)
+      model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
+      torch.save(model.state_dict(), str(model_fn))
+
+  def load_model(self):
+    """
+    Load model weights separately for all element.
     """
     for element in self.elements:
         logger.info(f"Loading model weights for element: {element}")
