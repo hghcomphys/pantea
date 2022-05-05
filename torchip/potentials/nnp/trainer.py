@@ -37,7 +37,7 @@ class NeuralNetworkPotentialTrainer:
     """
     logger.info("Fitting energy models")
     for epoch in range(epochs):
-      print(f"Epoch {epoch+1:4}/{epochs:4}")
+      print(f"Epoch {epoch+1}/{epochs}")
 
       training_eng_loss = 0.0
       training_frc_loss = 0.0
