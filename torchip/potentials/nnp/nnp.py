@@ -37,7 +37,7 @@ class NeuralNetworkPotential(Potential):
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     logger.info(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
     # TODO: set formats as class variable or **kwargs
-    self.scaler_save_format = "scaler.data"
+    self.scaler_save_format = "scaling.{:03d}.data"
     self.model_save_format = "weights.{:03d}.zip"
 
     if self._settings is None:
@@ -210,15 +210,22 @@ class NeuralNetworkPotential(Potential):
     """
     Save scaler parameters for each element. 
     """
-    scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
-    logger.info(f"Saving scaler parameters into '{scaler_fn}'")
-    with open(str(scaler_fn), "w") as file:
-      file.write(f"# Symmetry function scaling data\n")
-      file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
-      for element, scaler in self.scaler.items():     
-        for i in range(scaler.dimension):
-          file.write(f"  {element:<10s} ")
-          file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
+    # Save scaler parameters for each element separately
+    for element in self.elements:
+      logger.info(f"Saving scaler parameters for element: {element}")
+      atomic_number = ElementMap.get_atomic_number(element)
+      scaler_fn = Path(self.filename.parent, self.scaler_save_format.format(atomic_number)) 
+      self.scaler[element].save(scaler_fn)
+    # # Save scaler parameters for all element into a single file
+    # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    # logger.info(f"Saving scaler parameters into '{scaler_fn}'")
+    # with open(str(scaler_fn), "w") as file:
+    #   file.write(f"# Symmetry function scaling data\n")
+    #   file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
+    #   for element, scaler in self.scaler.items():     
+    #     for i in range(scaler.dimension):
+    #       file.write(f"  {element:<10s} ")
+    #       file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
   @Profiler.profile
   def load_scaler(self) -> None:
@@ -226,21 +233,28 @@ class NeuralNetworkPotential(Potential):
     load scaler parameters for each element.
     No need to fit the scalers in this case. 
     """
-    scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
-    logger.info(f"Loading scaler parameters from '{scaler_fn}'")
-    data = np.loadtxt(scaler_fn, usecols=(1, 2, 3, 4))
-    element_count = Counter(np.loadtxt(scaler_fn, usecols=(0), dtype=str))
-    index = 0
-    for element, count in element_count.items():
-      scaler= self.scaler[element]
-      data_ = data[index:index+count, :]
-      scaler.sample = 1
-      scaler.dimension = data.shape[1]
-      scaler.min   = torch.tensor(data_[:, 0], device=CFG["device"]) # TODO: dtype?
-      scaler.max   = torch.tensor(data_[:, 1], device=CFG["device"])
-      scaler.mean  = torch.tensor(data_[:, 2], device=CFG["device"])
-      scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
-      index += count
+    # Load scaler parameters for each element separately
+    for element in self.elements:
+      logger.info(f"Loading scaler parameters for element: {element}")
+      atomic_number = ElementMap.get_atomic_number(element)
+      scaler_fn = Path(self.filename.parent, self.scaler_save_format.format(atomic_number)) 
+      self.scaler[element].load(scaler_fn)
+    # # Load scaler parameters for all element into a single file
+    # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    # logger.info(f"Loading scaler parameters from '{scaler_fn}'")
+    # data = np.loadtxt(scaler_fn, usecols=(1, 2, 3, 4))
+    # element_count = Counter(np.loadtxt(scaler_fn, usecols=(0), dtype=str))
+    # index = 0
+    # for element, count in element_count.items():
+    #   scaler= self.scaler[element]
+    #   data_ = data[index:index+count, :]
+    #   scaler.sample = 1
+    #   scaler.dimension = data.shape[1]
+    #   scaler.min   = torch.tensor(data_[:, 0], device=CFG["device"]) # TODO: dtype?
+    #   scaler.max   = torch.tensor(data_[:, 1], device=CFG["device"])
+    #   scaler.mean  = torch.tensor(data_[:, 2], device=CFG["device"])
+    #   scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
+    #   index += count
 
   @Profiler.profile
   def fit_model(self, structure_loader: StructureLoader, save_best_model: bool = True) -> None:
