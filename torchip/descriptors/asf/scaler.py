@@ -1,8 +1,10 @@
 
 from ...logger import logger
 from typing import Dict
-from collections import defaultdict
+from pathlib import Path
+from ...config import CFG
 import torch
+import numpy as np
 
 
 def std_(data: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
@@ -104,6 +106,27 @@ class AtomicSymmetryFunctionScaler:
   
   def _scale_sigma(self, G: torch.Tensor) -> torch.Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (G - self.mean) / self.sigma
+
+  def save(self, filename: Path) -> None:
+    """
+    Save scaler parameters into file.
+    """
+    with open(str(filename), "w") as file:
+      file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")   
+      for i in range(self.dimension):
+        file.write(f"{self.min[i]:<23.15E} {self.max[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n")
+
+  def load(self, filename: Path) -> None:
+    """
+    Load scaler parameters from file.
+    """
+    data = np.loadtxt(str(filename))
+    self.sample = 1
+    self.dimension = data.shape[1]
+    self.min   = torch.tensor(data[:, 0], device=CFG["device"]) # TODO: dtype?
+    self.max   = torch.tensor(data[:, 1], device=CFG["device"])
+    self.mean  = torch.tensor(data[:, 2], device=CFG["device"])
+    self.sigma = torch.tensor(data[:, 3], device=CFG["device"])
 
 
 # Define ASF scaler alias
