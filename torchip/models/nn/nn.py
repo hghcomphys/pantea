@@ -3,6 +3,8 @@ from ...logger import logger
 from ..base import BaseModel
 from torch import nn
 from typing import Tuple
+from pathlib import Path
+import torch
 
 
 class NeuralNetworkModel(BaseModel):
@@ -51,6 +53,19 @@ class NeuralNetworkModel(BaseModel):
 
   def forward(self, x):
     return self.linear_stack(x)
+
+  def save(self, filename: Path) -> None:
+    """
+    Save model weights. 
+    """
+    torch.save(self.state_dict(), str(filename))
+
+  def load(self, filename: Path) -> None:
+    """
+    Load model weights. 
+    """
+    self.load_state_dict(torch.load(str(filename)))
+    self.eval()
 
 
     
