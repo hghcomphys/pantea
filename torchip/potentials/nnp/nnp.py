@@ -264,11 +264,10 @@ class NeuralNetworkPotential(Potential):
     Save model weights separately for all element.
     """
     for element in self.elements:
-      logger.info(f"Saving model weights for element: {element}")
-      model = self.model[element]
+      logger.info(f"Saving model weights for element: {element}")   
       atomic_number = ElementMap.get_atomic_number(element)
       model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
-      torch.save(model.state_dict(), str(model_fn))
+      self.model[element].save(model_fn)
 
   def load_model(self):
     """
@@ -276,11 +275,9 @@ class NeuralNetworkPotential(Potential):
     """
     for element in self.elements:
         logger.info(f"Loading model weights for element: {element}")
-        model = self.model[element]
         atomic_number = ElementMap.get_atomic_number(element)
         model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
-        model.load_state_dict(torch.load(str(model_fn)))
-        model.eval()
+        self.model[element].load(model_fn)
 
   def fit(self)  -> None:
     """
