@@ -4,6 +4,9 @@ class Descriptor:
   A base descriptor class.
   All descriptors must derive from this class.
   """
+  def __init__(self, element: str) -> None:
+    self.element = element
+
   @property
   def r_cutoff(self) -> float:
     """
