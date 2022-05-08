@@ -36,7 +36,7 @@ class DescriptorScaler:
     logger.debug(repr(self))
 
     # Statistical parameters
-    self.sample = 0         # number of samples
+    self.nsamples = 0       # number of samples
     self.dimension = None   # dimension of each sample
     self.mean = None        # mean array of all fitted descriptor values
     self.sigma = None       # standard deviation
@@ -58,8 +58,8 @@ class DescriptorScaler:
     data = torch.atleast_2d(data)
 
     # First time initialization
-    if self.sample == 0:
-      self.sample = data.shape[0]
+    if self.nsamples == 0:
+      self.nsamples = data.shape[0]
       self.dimension = data.shape[1]
       self.mean = torch.mean(data, dim=0)
       self.sigma = std_(data, self.mean) #torch.std(data, dim=0)
@@ -77,7 +77,7 @@ class DescriptorScaler:
       new_sigma = std_(data, new_mean) #torch.std(data, dim=0)
       new_min = torch.min(data, dim=0)[0]
       new_max = torch.max(data, dim=0)[0]
-      m, n = float(self.sample), data.shape[0]
+      m, n = float(self.nsamples), data.shape[0]
 
       # Calculate quantities for entire data
       mean = self.mean 
@@ -85,7 +85,7 @@ class DescriptorScaler:
       self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 ) 
       self.max = torch.maximum(self.max, new_max)
       self.min = torch.minimum(self.min, new_min)
-      self.sample += n
+      self.nsamples += n
 
   def __call__(self, x: Dict[str, torch.Tensor]):
     """
@@ -121,7 +121,7 @@ class DescriptorScaler:
     Load scaler parameters from file.
     """
     data = np.loadtxt(str(filename))
-    self.sample = 1
+    self.nsamples = 1
     self.dimension = data.shape[1]
     self.min   = torch.tensor(data[:, 0], device=CFG["device"]) # TODO: dtype?
     self.max   = torch.tensor(data[:, 1], device=CFG["device"])
