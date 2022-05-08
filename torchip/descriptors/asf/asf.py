@@ -17,7 +17,7 @@ class AtomicSymmetryFunction(Descriptor):
   See N2P2 -> https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
   """
   def __init__(self, element: str) -> None:
-    self.element = element    # central element
+    super().__init__(element)    # central element
     self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
@@ -54,7 +54,7 @@ class AtomicSymmetryFunction(Descriptor):
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
     aids_ = [aid] if isinstance(aid, int) else aid  # TODO:  raise ValueError("Unknown atom id type")
-    aids_ = (structure.atype == structure.element_map[self.element]).nonzero(as_tuple=True)[0] if aids_ is None else aids_ # TODO: optimize ifs here
+    aids_ = structure.select(self.element) if aids_ is None else aids_ # TODO: optimize ifs here
 
     if TaskClient.client is None: 
       results = [self.compute(structure, aid_) for aid_ in aids_]
@@ -198,7 +198,7 @@ class AtomicSymmetryFunction(Descriptor):
   @property
   def r_cutoff(self) -> float:
     """
-    Return the maximum cutoff radius.
+    Return the maximum cutoff radius of all descriptor terms.
     """
     return max([ \
       cfn[0].r_cutoff for cfn in itertools.chain(*[self._radial, self._angular])
