@@ -1,10 +1,7 @@
 
-from ...logger import logger
-from ...config import CFG
-from ...structure import Structure
-from ...utils.batch import create_batch
-from ..base import Descriptor
-from typing import Dict, Union, List
+from ..logger import logger
+from ..config import CFG
+from typing import Dict
 from pathlib import Path
 import torch
 import numpy as np
@@ -12,20 +9,19 @@ import numpy as np
 
 def std_(data: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
   """
-  A utility function which is defined because of the difference observed when using torch.std function.
+  An utility function which is defined because of the difference observed when using torch.std function.
   This occurs for torch (numpy version is fine).
   """
   return torch.sqrt(torch.mean((data - mean)**2, dim=0))
 
 
-class AtomicSymmetryFunctionScaler:
+class DescriptorScaler:
   """
   Scale descriptor values.
   TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
   TODO: add warnings for out-of-distribution samples
   """
   def __init__(self, 
-      descriptor: Descriptor,
       scale_type: str = 'scale_center', 
       scale_min: float = 0.0,
       scale_max: float = 1.0,
@@ -33,7 +29,6 @@ class AtomicSymmetryFunctionScaler:
     """
     Initialize scaler including scaler type and min/max values.
     """
-    self.descriptor = descriptor
     # Set min/max range for scaler
     self.scale_type = scale_type
     self.scale_min = scale_min
@@ -54,20 +49,12 @@ class AtomicSymmetryFunctionScaler:
   def __repr__(self) -> str:
       return f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})"     
 
-  def fit(self, structure: Structure, aid: Union[List[int], int] = None):  
+  def fit(self, x: torch.Tensor) -> None:
     """
-    Fit scaler parameters of the descriptor based on the given input structure and atom ids. 
-    The input argument should be the same as descriptor's call method.
+    This method fits the scaler parameters based on the given input tensor.
+    It also works also in a batch-wise form.
     """
-    logger.info("Fitting descriptor scaler")
-    descriptor_values = self.descriptor(structure, aid)
-    self._fit(descriptor_values)
-
-  def _fit(self, descriptor_values: torch.Tensor) -> None:
-    """
-    This method extracts stattical quantities from the input tensor of descriptor values.
-    """
-    data = descriptor_values.detach()  # no gradient history is required
+    data = x.detach()  # no gradient history is required
     data = torch.atleast_2d(data)
 
     # First time initialization
@@ -100,25 +87,25 @@ class AtomicSymmetryFunctionScaler:
       self.min = torch.minimum(self.min, new_min)
       self.sample += n
 
-  def __call__(self, descriptor_values: Dict[str, torch.Tensor]):
+  def __call__(self, x: Dict[str, torch.Tensor]):
     """
     Transform the input descriptor values base on the selected scaler type.
     This merhod has to be called when fit method is called batch-wise over all descriptor values, 
     or statistical parameters are read from a saved file. 
     """
-    return self._transform(descriptor_values)
+    return self._transform(x)
 
-  def _center(self, G: torch.Tensor) -> torch.Tensor:
-    return G - self.mean
+  def _center(self, x: torch.Tensor) -> torch.Tensor:
+    return x - self.mean
 
-  def _scale(self, G: torch.Tensor) -> torch.Tensor:
-    return self.scale_min + (self.scale_max - self.scale_min) * (G - self.min) / (self.max - self.min)
+  def _scale(self, x: torch.Tensor) -> torch.Tensor:
+    return self.scale_min + (self.scale_max - self.scale_min) * (x - self.min) / (self.max - self.min)
 
-  def _scale_center(self, G: torch.Tensor) -> torch.Tensor:
-    return self.scale_min + (self.scale_max - self.scale_min) * (G - self.mean) / (self.max - self.min)
+  def _scale_center(self, x: torch.Tensor) -> torch.Tensor:
+    return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / (self.max - self.min)
   
-  def _scale_sigma(self, G: torch.Tensor) -> torch.Tensor:
-    return self.scale_min + (self.scale_max - self.scale_min) * (G - self.mean) / self.sigma
+  def _scale_sigma(self, x: torch.Tensor) -> torch.Tensor:
+    return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / self.sigma
 
   def save(self, filename: Path) -> None:
     """
@@ -140,7 +127,3 @@ class AtomicSymmetryFunctionScaler:
     self.max   = torch.tensor(data[:, 1], device=CFG["device"])
     self.mean  = torch.tensor(data[:, 2], device=CFG["device"])
     self.sigma = torch.tensor(data[:, 3], device=CFG["device"])
-
-
-# Define ASF scaler alias
-AsfScaler = AtomicSymmetryFunctionScaler

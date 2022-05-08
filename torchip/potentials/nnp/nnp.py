@@ -3,7 +3,7 @@ from ...structure import Structure
 from ...loaders import StructureLoader
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.cutoff import CutoffFunction
-from ...descriptors.asf.scaler import AsfScaler
+from ...descriptors.scaler import DescriptorScaler
 from ...descriptors.asf.radial import G1, G2
 from ...descriptors.asf.angular import G3, G9
 from ...models.nn.nn import NeuralNetworkModel
@@ -166,9 +166,9 @@ class NeuralNetworkPotential(Potential):
     logger.debug(f"Preparing ASF scaler kwargs={kwargs}")
 
     # Assign an ASF scaler to each element
-    logger.info(f"Creating ASF descriptor scalers")
+    logger.info(f"Creating descriptor scalers")
     for element in self._settings["elements"]:
-      self.scaler[element] = AsfScaler(descriptor=self.descriptor[element], **kwargs) 
+      self.scaler[element] = DescriptorScaler(**kwargs) 
 
   def _construct_model(self) -> None:
     """
@@ -187,7 +187,7 @@ class NeuralNetworkPotential(Potential):
   def fit_scaler(self, 
       structure_loader: StructureLoader, 
       save_scaler: bool = True,
-      **kwargs
+      **kwargs,
     ) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
@@ -204,7 +204,8 @@ class NeuralNetworkPotential(Potential):
         aids = structure.select(element).detach()
         for batch in create_batch(aids, batch_size):
           logger.debug(f"Structure={index}, element='{element}', batch={batch}")
-          self.scaler[element].fit(structure, batch)
+          x = self.descriptor[element](structure, batch)
+          self.scaler[element].fit(x)
     
     # Save scaler data into file  
     if save_scaler:
