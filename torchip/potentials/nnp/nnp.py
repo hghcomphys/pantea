@@ -14,11 +14,10 @@ from ...structure.element import ElementMap
 from ...config import CFG
 from ..base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
-from collections import defaultdict, Counter
+from collections import defaultdict
 from typing import List
 from pathlib import Path
 import torch
-import numpy as np
 
 
 class NeuralNetworkPotential(Potential):
@@ -169,7 +168,7 @@ class NeuralNetworkPotential(Potential):
     # Assign an ASF scaler to each element
     logger.info(f"Creating ASF descriptor scalers")
     for element in self._settings["elements"]:
-      self.scaler[element] = AsfScaler(**kwargs) 
+      self.scaler[element] = AsfScaler(descriptor=self.descriptor[element], **kwargs) 
 
   def _construct_model(self) -> None:
     """
@@ -185,23 +184,28 @@ class NeuralNetworkPotential(Potential):
       # TODO: read layers from the settings
 
   @Profiler.profile
-  def fit_scaler(self, structure_loader: StructureLoader, save_scaler: bool = True) -> None:
+  def fit_scaler(self, 
+      structure_loader: StructureLoader, 
+      save_scaler: bool = True,
+      **kwargs
+    ) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
-    logger.info("Fitting symmetry function scalers")
+    batch_size = kwargs.get("batch_size", 10)
+    logger.info("Fitting descriptor scalers")
     for index, data in enumerate(structure_loader.get_data(), start=1):
-      structure = Structure(data, 
-                            r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
-                            requires_grad=False)     # NO NEED to keep the graph history (gradients) 
-      for element, scaler in self.scaler.items():
+      structure = Structure(
+          data, 
+          r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
+          requires_grad=False)     # there is NO NEED to keep the graph history (gradients) 
+      for element in structure.elements:
         aids = structure.select(element).detach()
-        for batch in create_batch(aids, 10):
+        for batch in create_batch(aids, batch_size):
           logger.debug(f"Structure={index}, element='{element}', batch={batch}")
-          descriptor = self.descriptor[element](structure, aid=batch) 
-          scaler.fit(descriptor)
-
+          self.scaler[element].fit(structure, batch)
+    
     # Save scaler data into file  
     if save_scaler:
       self.save_scaler()
