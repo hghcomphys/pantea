@@ -1,8 +1,11 @@
 
 from ...logger import logger
-from typing import Dict
-from pathlib import Path
 from ...config import CFG
+from ...structure import Structure
+from ...utils.batch import create_batch
+from ..base import Descriptor
+from typing import Dict, Union, List
+from pathlib import Path
 import torch
 import numpy as np
 
@@ -22,6 +25,7 @@ class AtomicSymmetryFunctionScaler:
   TODO: add warnings for out-of-distribution samples
   """
   def __init__(self, 
+      descriptor: Descriptor,
       scale_type: str = 'scale_center', 
       scale_min: float = 0.0,
       scale_max: float = 1.0,
@@ -29,6 +33,7 @@ class AtomicSymmetryFunctionScaler:
     """
     Initialize scaler including scaler type and min/max values.
     """
+    self.descriptor = descriptor
     # Set min/max range for scaler
     self.scale_type = scale_type
     self.scale_min = scale_min
@@ -49,10 +54,18 @@ class AtomicSymmetryFunctionScaler:
   def __repr__(self) -> str:
       return f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})"     
 
-  def fit(self, descriptor_values: torch.Tensor) -> None:
+  def fit(self, structure: Structure, aid: Union[List[int], int] = None):  
     """
-    This method extract stattical quantities from the input descriptor values.
-    This method can also extract the required quantities even batch-wise.
+    Fit scaler parameters of the descriptor based on the given input structure and atom ids. 
+    The input argument should be the same as descriptor's call method.
+    """
+    logger.info("Fitting descriptor scaler")
+    descriptor_values = self.descriptor(structure, aid)
+    self._fit(descriptor_values)
+
+  def _fit(self, descriptor_values: torch.Tensor) -> None:
+    """
+    This method extracts stattical quantities from the input tensor of descriptor values.
     """
     data = descriptor_values.detach()  # no gradient history is required
     data = torch.atleast_2d(data)
