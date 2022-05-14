@@ -18,17 +18,17 @@ class AtomicSymmetryFunction(Descriptor):
   """
   def __init__(self, element: str) -> None:
     super().__init__(element)    # central element
-    self._radial = []         # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
-    self._angular = []        # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
+    self._radial = []            # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
+    self._angular = []           # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
-    logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')") # TODO: define __repr__
+    logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')")
 
   def register(self, 
                 symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
                 neighbor_element1: str, 
                 neighbor_element2: str = None) -> None:
     """
-    This method adds an input symmetry function to the list of ASFs and assign it to the given neighbor element(s).
+    This method registers an input symmetry function to the list of ASFs and assign it to the given neighbor element(s).
     # TODO: tuple of dict? (tuple is fine if it's used internally)
     # TODO: solve the confusion for aid, starting from 0 or 1?!
     """
@@ -41,7 +41,7 @@ class AtomicSymmetryFunction(Descriptor):
       logger.error(msg)
       raise TypeError(msg)
 
-  def __call__(self, structure:Structure, aid: Union[List[int], int] = None) -> torch.Tensor: 
+  def __call__(self, structure: Structure, aid: Union[List[int], int] = None) -> torch.Tensor: 
     """
     Calculate descriptor values for the input given structure and atom id(s).
     """
@@ -53,7 +53,7 @@ class AtomicSymmetryFunction(Descriptor):
     if self.n_descriptor == 0:
       logger.warning(f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}")
 
-    aids_ = [aid] if isinstance(aid, int) else aid  # TODO:  raise ValueError("Unknown atom id type")
+    aids_ = [aid] if isinstance(aid, int) else aid                     # TODO: raise ValueError("Unknown atom id type")
     aids_ = structure.select(self.element) if aids_ is None else aids_ # TODO: optimize ifs here
 
     if TaskClient.client is None: 

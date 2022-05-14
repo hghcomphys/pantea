@@ -9,9 +9,13 @@ import torch
 
 class NeuralNetworkModel(BaseModel):
   """
-  A neural network model which map descriptor values to energy and force (derivative).
+  A neural network model which maps descriptor values to energy and force (using gradient).
   """
-  def __init__(self, input_size: int, hidden_layers: Tuple[Tuple[int, str]],  output_layer:Tuple[int, str] = (1, 'l')) -> None:
+  def __init__(self, 
+      input_size: int, 
+      hidden_layers: Tuple[Tuple[int, str]],  
+      output_layer:Tuple[int, str] = (1, 'l')
+    ) -> None:
     super(NeuralNetworkModel, self).__init__()
     self.input_size = input_size
     self.hidden_layers = hidden_layers

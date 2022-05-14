@@ -34,7 +34,7 @@ class NeuralNetworkPotential(Potential):
     self.descriptor = None   # A dictionary of {element: Descriptor}   # TODO: short and long descriptors
     self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
-    logger.info(f"Initializing {self.__class__.__name__}") # TODO: define __repr__
+    logger.info(f"Initializing {self.__class__.__name__}(filename={self.filename})")
     # TODO: set formats as class variable or **kwargs
     self.scaler_save_format = "scaling.{:03d}.data"
     self.model_save_format = "weights.{:03d}.zip"
@@ -62,7 +62,8 @@ class NeuralNetworkPotential(Potential):
       '6': 'poly2',
     }  
     # Map scaler type
-    _to_scaler_type = {   # TODO: center & scaler
+    # TODO: center & scaler
+    _to_scaler_type = {  
       'scale_symmetry_functions': 'scale_center',
       'scale_symmetry_functions_sigma': 'scale_sigma',
     }
@@ -184,18 +185,14 @@ class NeuralNetworkPotential(Potential):
       # TODO: read layers from the settings
 
   @Profiler.profile
-  def fit_scaler(self, 
-      structure_loader: StructureLoader, 
-      save_scaler: bool = True,
-      **kwargs,
-    ) -> None:
+  def fit_scaler(self, sloader: StructureLoader, save_scaler: bool = True,  **kwargs) -> None:
     """
     Fit scalers of descriptor for each element using the provided input structure loader.
     # TODO: split scaler, define it as separate step in pipeline
     """
     batch_size = kwargs.get("batch_size", 10)
     logger.info("Fitting descriptor scalers")
-    for index, data in enumerate(structure_loader.get_data(), start=1):
+    for index, data in enumerate(sloader.get_data(), start=1):
       structure = Structure(
           data, 
           r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
@@ -262,7 +259,7 @@ class NeuralNetworkPotential(Potential):
     #   index += count
 
   @Profiler.profile
-  def fit_model(self, structure_loader: StructureLoader, save_best_model: bool = True) -> None:
+  def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> None:
     """
     Fit the model using the input structure loader.
     # TODO: avoid reading and calculating descriptor multiple times
@@ -272,7 +269,7 @@ class NeuralNetworkPotential(Potential):
     """
     # TODO: training must be done outside of the potential
     trainer = NeuralNetworkPotentialTrainer(potential=self)
-    trainer.fit(structure_loader, epochs=10)
+    trainer.fit(sloader, epochs=10)
 
     # TODO: save the best model by default
     if save_best_model:

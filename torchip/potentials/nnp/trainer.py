@@ -31,7 +31,7 @@ class NeuralNetworkPotentialTrainer:
       for element in self.potential.elements
     }
 
-  def fit(self, structure_loader: StructureLoader, epochs=1) -> None:
+  def fit(self, sloader: StructureLoader, epochs=1) -> None:
     """
     Fit models.
     """
@@ -43,7 +43,7 @@ class NeuralNetworkPotentialTrainer:
       training_frc_loss = 0.0
       nbatch = 0
       # Loop over structures
-      for data in structure_loader.get_data():
+      for data in sloader.get_data():
         structure = Structure(data, r_cutoff=self.potential.r_cutoff, requires_grad=True)
 
         # Initialize energy and optimizer

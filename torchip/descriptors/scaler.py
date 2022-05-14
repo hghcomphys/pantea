@@ -33,7 +33,7 @@ class DescriptorScaler:
     self.scale_type = scale_type
     self.scale_min = scale_min
     self.scale_max = scale_max
-    logger.debug(repr(self))
+    logger.debug(f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})")
 
     # Statistical parameters
     self.nsamples = 0       # number of samples
@@ -44,10 +44,7 @@ class DescriptorScaler:
     self.max =  None        # maximum
 
     # Set scaler type function     
-    self._transform = getattr(self, f'_{self.scale_type}')   
-
-  def __repr__(self) -> str:
-      return f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})"     
+    self._transform = getattr(self, f'_{self.scale_type}')    
 
   def fit(self, x: torch.Tensor) -> None:
     """

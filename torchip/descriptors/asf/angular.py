@@ -6,6 +6,7 @@ import math
 import torch
 # import angular_cpp
 
+
 class AngularSymmetryFunction(SymmetryFunction):
   """
   Three body symmetry function.
@@ -25,8 +26,8 @@ class G3(AngularSymmetryFunction):
     self.lambda0 = lambda0
     self.r_shift = r_shift
     self._scale_factor = math.pow(2.0, 1.0-self.zeta)
-    self._params = [self.eta, self.zeta, self.lambda0, self.r_shift, self._scale_factor]
     super().__init__(cutoff_function)
+    # self._params = [self.eta, self.zeta, self.lambda0, self.r_shift, self._scale_factor]
     
   def kernel(self, rij: torch.Tensor, rik: torch.Tensor, rjk: torch.Tensor, cost: torch.Tensor) -> torch.Tensor:
     res = self._scale_factor * torch.pow(1 + self.lambda0 * cost, self.zeta) * torch.exp( -self.eta * (rij**2 + rik**2 + rjk**2) )  # TODO: r_shift

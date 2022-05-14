@@ -18,11 +18,7 @@ class RunnerStructureLoader(StructureLoader):
     self.filename = Path(filename)
     self._data = None
     self._ignore_next = False
-    logger.info(f"Initializing {self.__class__.__name__}")
-    logger.debug(self)  
-
-  def __repr__(self) -> str:
-      return f"{self.__class__.__name__}(filename='{self.filename}')"
+    logger.info(f"Initializing {self.__class__.__name__}(filename='{self.filename}')")
 
   def get_data(self) -> Dict[str, List]:
     """
