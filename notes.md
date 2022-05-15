@@ -70,6 +70,35 @@ It's just similar to numpy and can be parallelized using Dask.
 ### Algorithm
 Defining groups of symmetry functions and caching the repeated terms seems to be a more efficient approach (not tested yet).
 
+
+### Documentation
+Using `Sphinx` as it is suitable for both Python and C++.
+
+Following [this](https://betterprogramming.pub/auto-documenting-a-python-project-using-sphinx-8878f9ddc6e9) tutorial for python project.
+
+How to install
+```bash
+$ pip install -U Sphinx
+$ pip install sphinx-rtd-theme
+```
+
+Go to `docs/` and then 
+``` bash
+$ sphinx-quickstart
+```
+
+Create `.rst` and `Makefile`
+```bash
+$ sphinx-apidoc -F -f -o ./ ../torchip
+```
+_Note_: The `-F` flag must be use only the first time to create `index.rst` and `conf.py` files.
+
+Make html
+```bash
+$ make html
+```
+
+
 ## References
 ### Tutorials
 - https://www.pytorchlightning.ai/
@@ -86,3 +115,4 @@ Defining groups of symmetry functions and caching the repeated terms seems to be
 
 ### Logo
 - https://fsymbols.com/text-art/
+
