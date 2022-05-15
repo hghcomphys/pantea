@@ -1,13 +1,14 @@
 
 from ..logger import logger
 from ..config import CFG
+from torch import Tensor
 from typing import Dict
 from pathlib import Path
 import torch
 import numpy as np
 
 
-def std_(data: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
+def std_(data: Tensor, mean: Tensor) -> Tensor:
   """
   An utility function which is defined because of the difference observed when using torch.std function.
   This occurs for torch (numpy version is fine).
@@ -46,7 +47,7 @@ class DescriptorScaler:
     # Set scaler type function     
     self._transform = getattr(self, f'_{self.scale_type}')    
 
-  def fit(self, x: torch.Tensor) -> None:
+  def fit(self, x: Tensor) -> None:
     """
     This method fits the scaler parameters based on the given input tensor.
     It also works also in a batch-wise form.
@@ -84,7 +85,7 @@ class DescriptorScaler:
       self.min = torch.minimum(self.min, new_min)
       self.nsamples += n
 
-  def __call__(self, x: Dict[str, torch.Tensor]):
+  def __call__(self, x: Dict[str, Tensor]):
     """
     Transform the input descriptor values base on the selected scaler type.
     This merhod has to be called when fit method is called batch-wise over all descriptor values, 
@@ -92,16 +93,16 @@ class DescriptorScaler:
     """
     return self._transform(x)
 
-  def _center(self, x: torch.Tensor) -> torch.Tensor:
+  def _center(self, x: Tensor) -> Tensor:
     return x - self.mean
 
-  def _scale(self, x: torch.Tensor) -> torch.Tensor:
+  def _scale(self, x: Tensor) -> Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (x - self.min) / (self.max - self.min)
 
-  def _scale_center(self, x: torch.Tensor) -> torch.Tensor:
+  def _scale_center(self, x: Tensor) -> Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / (self.max - self.min)
   
-  def _scale_sigma(self, x: torch.Tensor) -> torch.Tensor:
+  def _scale_sigma(self, x: Tensor) -> Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / self.sigma
 
   def save(self, filename: Path) -> None:

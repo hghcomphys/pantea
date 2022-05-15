@@ -1,12 +1,13 @@
 from ...logger import logger
 from ...structure import Structure
+from ...config import TaskClient
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from typing import Union, List
 import itertools
 import torch
-from ...config import TaskClient
+from torch import Tensor
    
 
 class AtomicSymmetryFunction(Descriptor):
@@ -41,7 +42,7 @@ class AtomicSymmetryFunction(Descriptor):
       logger.error(msg)
       raise TypeError(msg)
 
-  def __call__(self, structure: Structure, aid: Union[List[int], int] = None) -> torch.Tensor: 
+  def __call__(self, structure: Structure, aid: Union[List[int], int] = None) -> Tensor: 
     """
     Calculate descriptor values for the input given structure and atom id(s).
     """
@@ -66,7 +67,7 @@ class AtomicSymmetryFunction(Descriptor):
     # Return descriptor values
     return torch.squeeze(torch.stack(results, dim=0))
    
-  def compute(self, structure:Structure, aid: int) -> torch.Tensor:
+  def compute(self, structure:Structure, aid: int) -> Tensor:
     """
     Comute descriptor values of an input atom id for the given structure. 
     """

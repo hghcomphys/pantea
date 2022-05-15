@@ -1,6 +1,6 @@
 from ...logger import logger
 from .cutoff import CutoffFunction
-import torch
+from torch import Tensor
 
 
 class SymmetryFunction:
@@ -12,7 +12,7 @@ class SymmetryFunction:
     self.cfn = cfn
     logger.debug(repr(self))
 
-  def kernel(self, *args, **kwargs) -> torch.Tensor:
+  def kernel(self, *args, **kwargs) -> Tensor:
     raise NotImplementedError
 
   def __repr__(self) -> str:

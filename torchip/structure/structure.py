@@ -6,6 +6,7 @@ from .box import Box
 from ..utils.attribute import set_tensors_as_attr
 from typing import List, Dict
 from collections import defaultdict
+from torch import Tensor
 import torch
 # import structure_cpp
 
@@ -104,7 +105,7 @@ class Structure:
     self.neighbor.update(self)
 
   @staticmethod
-  def _apply_pbc(dx: torch.Tensor, l: float) -> torch.Tensor:
+  def _apply_pbc(dx: Tensor, l: float) -> Tensor:
     """
     An utility and static method to apply PBC along a specific direction. 
     """   
@@ -113,7 +114,7 @@ class Structure:
     return dx
     # return structure_cpp._apply_pbc(dx, l)
 
-  def apply_pbc(self, dx: torch.Tensor) -> torch.Tensor: 
+  def apply_pbc(self, dx: Tensor) -> Tensor: 
     """
     This method applies PBC on the input array (assuming position difference).
     """
@@ -128,7 +129,7 @@ class Structure:
     # TODO: non-orthogonal box
     # return structure_cpp.apply_pbc(dx, torch.diagonal(self.box.lattice)) 
 
-  def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> torch.Tensor: # TODO: also tuple?
+  def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> Tensor: # TODO: also tuple?
     """
     This method calculates an array of distances of all atoms existing in the structure from an input atom. 
     TODO: input pbc flag, using default pbc from global configuration
@@ -151,7 +152,7 @@ class Structure:
 
     return distance if not difference else (distance, dx)
 
-  def select(self, element: str) -> torch.Tensor:
+  def select(self, element: str) -> Tensor:
     """
     Return all atom ids with atom type same as the input element. 
     """

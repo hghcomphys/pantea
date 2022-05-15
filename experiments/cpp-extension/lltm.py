@@ -1,5 +1,6 @@
 import math
 from torch import nn
+from torch import Tensor
 from torch.autograd import Function
 import torch
 
@@ -31,8 +32,8 @@ class LLTM(nn.Module):
         self.input_features = input_features
         self.state_size = state_size
         self.weights = nn.Parameter(
-            torch.Tensor(3 * state_size, input_features + state_size))
-        self.bias = nn.Parameter(torch.Tensor(1, 3 * state_size))
+            Tensor(3 * state_size, input_features + state_size))
+        self.bias = nn.Parameter(Tensor(1, 3 * state_size))
         self.reset_parameters()
 
     def reset_parameters(self):

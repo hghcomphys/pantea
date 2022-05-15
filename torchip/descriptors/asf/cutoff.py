@@ -1,4 +1,5 @@
 from ...logger import logger
+from torch import Tensor
 import math
 import torch
 import cutoff_cpp
@@ -28,35 +29,35 @@ class CutoffFunction:
       logger.error(msg)
       raise NotImplementedError(msg)
 
-  def __call__(self, r: torch.Tensor) -> torch.Tensor:
+  def __call__(self, r: Tensor) -> Tensor:
     # TODO: add C++ kernel
     return torch.where( r < self.r_cutoff, self.cfn(r), torch.zeros_like(r))
 
-  def hard(self, r: torch.Tensor) -> torch.Tensor:
+  def hard(self, r: Tensor) -> Tensor:
     # return torch.ones_like(r)
     return cutoff_cpp._hard(r)
 
-  def tanhu(self, r: torch.Tensor) -> torch.Tensor:
+  def tanhu(self, r: Tensor) -> Tensor:
     # return torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
     return cutoff_cpp._tanhu(r, self.inv_r_cutoff)
   
-  def tanh(self, r: torch.Tensor) -> torch.Tensor:
+  def tanh(self, r: Tensor) -> Tensor:
     # return self._TANH_PRE * torch.tanh(1.0 - r * self.inv_r_cutoff).pow(3)
     return cutoff_cpp._tanh(r, self.inv_r_cutoff)
 
-  def cos(self, r: torch.Tensor) -> torch.Tensor:
+  def cos(self, r: Tensor) -> Tensor:
     # return 0.5 * (torch.cos(math.pi * r * self.inv_r_cutoff) + 1.0)
     return cutoff_cpp._cos(r, self.inv_r_cutoff)
 
-  def exp(self, r: torch.Tensor) -> torch.Tensor:
+  def exp(self, r: Tensor) -> Tensor:
     # return torch.exp(1.0 - 1.0 / (1.0 - (r * self.inv_r_cutoff)**2) )
     return cutoff_cpp._exp(r, self.inv_r_cutoff)
 
-  def poly1(self, r: torch.Tensor) -> torch.Tensor:
+  def poly1(self, r: Tensor) -> Tensor:
     # return (2.0*r - 3.0) * r**2 + 1.0
     return cutoff_cpp._poly1(r)
 
-  def poly2(self, r: torch.Tensor) -> torch.Tensor:
+  def poly2(self, r: Tensor) -> Tensor:
     # return ((15.0 - 6.0*r) * r - 10) * r**3 + 1.0
     return cutoff_cpp._poly2(r)
 

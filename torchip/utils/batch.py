@@ -1,8 +1,9 @@
 import math
 import torch
+from torch import Tensor
 
 
-def create_batch(array: torch.Tensor , batch_size: int) -> torch.Tensor:
+def create_batch(array: Tensor , batch_size: int) -> Tensor:
   """
   Return the input array in form of batches (generator)
   """

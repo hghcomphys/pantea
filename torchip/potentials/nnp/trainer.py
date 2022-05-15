@@ -44,6 +44,7 @@ class NeuralNetworkPotentialTrainer:
       nbatch = 0
       # Loop over structures
       for data in sloader.get_data():
+        
         structure = Structure(data, r_cutoff=self.potential.r_cutoff, requires_grad=True)
 
         # Initialize energy and optimizer

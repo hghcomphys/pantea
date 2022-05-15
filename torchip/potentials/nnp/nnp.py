@@ -17,6 +17,7 @@ from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict
 from typing import List
 from pathlib import Path
+from torch import Tensor
 import torch
 
 
@@ -301,7 +302,7 @@ class NeuralNetworkPotential(Potential):
     """
     pass
 
-  def __call__(self, structure: Structure) -> torch.Tensor:
+  def __call__(self, structure: Structure) -> Tensor:
     """
     Return the total energy of the given input structure.
     """

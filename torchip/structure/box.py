@@ -1,6 +1,7 @@
 from ..logger import logger
 from ..config import CFG
 from typing import Tuple
+from torch import Tensor
 import torch
 
 
@@ -11,7 +12,7 @@ class Box:
   TODO: box variables as numpy or pytorch?
   TODO: triclinic lattice
   """
-  def __init__(self, lattice: torch.Tensor) -> None:
+  def __init__(self, lattice: Tensor) -> None:
     
     # Check lattice matrix shape
     if lattice.shape != (3, 3):
@@ -28,17 +29,17 @@ class Box:
     self.zhi = lattice[2, 2]
 
   @property
-  def lx(self) -> torch.Tensor:
+  def lx(self) -> Tensor:
     return self.xhi - self.xlo
 
   @property
-  def ly(self) -> torch.Tensor:
+  def ly(self) -> Tensor:
     return self.yhi - self.ylo
 
   @property
-  def lz(self) -> torch.Tensor:
+  def lz(self) -> Tensor:
     return self.zhi - self.zlo
 
   @property
-  def length(self) -> Tuple[torch.Tensor]:
+  def length(self) -> Tuple[Tensor]:
     return self.lx, self.ly, self.lz

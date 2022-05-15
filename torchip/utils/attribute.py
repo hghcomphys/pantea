@@ -1,10 +1,11 @@
 from ..logger import logger
 from ..config import CFG
 from typing import Dict
+from torch import Tensor
 import torch
 
 
-def set_tensors_as_attr(obj, tensors: Dict[str, torch.Tensor]) -> None:
+def set_tensors_as_attr(obj, tensors: Dict[str, Tensor]) -> None:
   """
   An utility function to set an input dictionary of tensors as the class attributes.
   """
