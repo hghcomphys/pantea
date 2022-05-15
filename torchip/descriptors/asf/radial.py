@@ -7,14 +7,14 @@ from torch import Tensor
 
 
 class RadialSymmetryFunction(SymmetryFunction):
-  """
-  Two body symmetry function.
-  TODO: define generic **params input arguments in the base class?
-  TODO: add __call__() method?
-  TODO: define a internal cutoff radius
-  TODO: add other variant of radial symmetry functions.
-  TODO: add logging when initializing each symmetry function.
-  """
+  # """
+  # Two body symmetry function.
+  # TODO: define generic **params input arguments in the base class?
+  # TODO: add __call__() method?
+  # TODO: define a internal cutoff radius
+  # TODO: add other variant of radial symmetry functions.
+  # TODO: add logging when initializing each symmetry function.
+  # """
   def kernel(self, rij: Tensor) -> Tensor:
     raise NotImplementedError
 
