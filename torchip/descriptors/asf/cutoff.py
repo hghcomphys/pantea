@@ -1,5 +1,4 @@
 from ...logger import logger
-from functools import partial
 import math
 import torch
 import cutoff_cpp
@@ -23,7 +22,7 @@ class CutoffFunction:
     self.inv_r_cutoff = 1.0 / self.r_cutoff
     # Set cutoff type function
     try:
-      self.cutoff_function = getattr(self, f"{self.cutoff_type}")
+      self.cfn = getattr(self, f"{self.cutoff_type}")
     except AttributeError:
       msg = f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'"
       logger.error(msg)
@@ -31,7 +30,7 @@ class CutoffFunction:
 
   def __call__(self, r: torch.Tensor) -> torch.Tensor:
     # TODO: add C++ kernel
-    return torch.where( r < self.r_cutoff, self.cutoff_function(r), torch.zeros_like(r))
+    return torch.where( r < self.r_cutoff, self.cfn(r), torch.zeros_like(r))
 
   def hard(self, r: torch.Tensor) -> torch.Tensor:
     # return torch.ones_like(r)

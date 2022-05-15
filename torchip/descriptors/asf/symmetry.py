@@ -8,8 +8,8 @@ class SymmetryFunction:
   A base class for symmetry functions. 
   All symmetry functions (i.e. radial and angular) must derive from this base class.
   """
-  def __init__(self, cutoff_function: CutoffFunction):
-    self.cutoff_function = cutoff_function
+  def __init__(self, cfn: CutoffFunction):
+    self.cfn = cfn
     logger.debug(repr(self))
 
   def kernel(self, *args, **kwargs) -> torch.Tensor:
@@ -21,4 +21,4 @@ class SymmetryFunction:
 
   @property
   def r_cutoff(self) -> float:
-    return self.cutoff_function.r_cutoff
+    return self.cfn.r_cutoff

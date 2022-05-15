@@ -22,24 +22,24 @@ class G1(RadialSymmetryFunction):
   """
   Plain cutoff function.
   """
-  def __init__(self, cutoff_function: CutoffFunction):
-    super().__init__(cutoff_function)
+  def __init__(self, cfn: CutoffFunction):
+    super().__init__(cfn)
 
   def kernel(self, rij: torch.Tensor) -> torch.Tensor:
     # No cpp kernel is required
-    return self.cutoff_function(rij) 
+    return self.cfn(rij) 
 
 
 class G2(RadialSymmetryFunction):
   """
   Radial exponential term.
   """
-  def __init__(self, cutoff_function: CutoffFunction, r_shift: float, eta: float):
+  def __init__(self, cfn: CutoffFunction, r_shift: float, eta: float):
     self.r_shift = r_shift
     self.eta = eta
     self._params = [self.eta, self.r_shift]
-    super().__init__(cutoff_function)
+    super().__init__(cfn)
 
   def kernel(self, rij: torch.Tensor) -> torch.Tensor:
-    return torch.exp( -self.eta * (rij - self.r_shift)**2 ) * self.cutoff_function(rij)
-    #return radial_cpp.g2_kernel(rij, self._params) * self.cutoff_function(rij)
+    return torch.exp( -self.eta * (rij - self.r_shift)**2 ) * self.cfn(rij)
+    #return radial_cpp.g2_kernel(rij, self._params) * self.cfn(rij)

@@ -7,7 +7,7 @@ torch::Tensor g3_kernel(torch::Tensor rij,
                         torch::Tensor cost,
                         std::vector<double> params) {
   return params[4] * torch::pow(1.0D + params[2] * cost, params[1]) * torch::exp( -params[0] * (rij*rij + rik*rik + rjk*rjk) ); // TODO: r_shift
-  // return res * self.cutoff_function(rij) * self.cutoff_function(rik) * self.cutoff_function(rjk)
+  // return res * self.cfn(rij) * self.cfn(rik) * self.cfn(rjk)
 }
 
 
@@ -17,7 +17,7 @@ torch::Tensor g9_kernel(torch::Tensor rij,
                         torch::Tensor cost,
                         std::vector<double> params) {
   return params[4] * torch::pow(1.0D + params[2] * cost, params[1]) * torch::exp( -params[0] * (rij*rij + rik*rik) ); // TODO: r_shift
-  // return res * self.cutoff_function(rij) * self.cutoff_function(rik) * self.cutoff_function(rjk)
+  // return res * self.cfn(rij) * self.cfn(rik) * self.cfn(rjk)
 }
 
 
