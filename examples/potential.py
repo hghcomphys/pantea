@@ -73,8 +73,8 @@ loader = StructureLoader(Path(base_dir, "input.data"))
 # Potential
 pot = NeuralNetworkPotential(Path(base_dir, "input.nn"))
 with Profiler("ASF scaling profiler"):
-  pot.fit_scaler(loader, filename=Path(base_dir, "scaler.data"))
-  pot.read_scaler(filename=Path(base_dir, "scaler.data"))
+  pot.fit_scaler(loader)
+  pot.load_scaler()
 
 # str0 = read_structures(loader, between=(1, 1))[0]
 # print("r_cutoff:", pot.r_cutoff)
