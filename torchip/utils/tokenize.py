@@ -1,7 +1,7 @@
 from typing import Tuple, List
 
 
-def tokenize(line: str, comment: str = None) -> Tuple[str, List[str]]:
+def tokenize(line: str, comment: str = None) -> Tuple[str, List[str]]:  
   """
   An utility method to read the input line as a keyword and list of tokens.
   """

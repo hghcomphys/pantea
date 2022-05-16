@@ -1,10 +1,6 @@
 """
-╭━━━━╮╱╱╱╱╱╱╭╮╱╭━━┳━━━╮
-┃╭╮╭╮┃╱╱╱╱╱╱┃┃╱╰┫┣┫╭━╮┃
-╰╯┃┃┣┻━┳━┳━━┫╰━╮┃┃┃╰━╯┃
-╱╱┃┃┃╭╮┃╭┫╭━┫╭╮┃┃┃┃╭━━╯
-╱╱┃┃┃╰╯┃┃┃╰━┫┃┃┣┫┣┫┃
-╱╱╰╯╰━━┻╯╰━━┻╯╰┻━━┻╯
+.. image:: ./images/logo.png
+  :width: 300
 
 TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate 
 the development of emerging machine learning interatomic potentials. TorchIP is intended 

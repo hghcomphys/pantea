@@ -9,15 +9,16 @@ import copy
 _default_profiler = None
 
 class Profiler:
-  # """
-  # An implementation of a basic profiler for investigating code performace.
-  # How to use it:
-  #     1. add profile() as a decorator before each targeted method 
-  #     2. use context manager to collect stattistics from the region of interest
-  #         Or otherwise those descorators are ignored - there will be small overheads
+  """
+  An implementation of a basic profiler for investigating code performace.
+  How to use it: 
+  1) add profile() as a decorator before each targeted method 
+  2) use context manager to collect stattistics from the region of interest
+
+  Otherwise, the introduced descorators are ignored. There will be small overheads.  
+  """
   # TODO: testing multi-thread applications
-  # TODO: no support for multi-process 
-  # """
+  # TODO: no support for multi-process
   
   def __init__(self, name: str = 'Profiler', sort_by: str = 'cumtime'):
     logger.debug(f"An instance of {self.__class__.__name__} object has been initialized")

@@ -1,8 +1,12 @@
+"""
+Setup logger including the console and the rotating file handlers.
+"""
+
 # from .config import CFG
 import logging
 from logging.handlers import RotatingFileHandler
 
-logger = logging.getLogger('MLP-Framework') 
+logger = logging.getLogger('TorchIP') 
 logger.setLevel(logging.DEBUG)
 
 # File handler is also useful for multi-process logging.

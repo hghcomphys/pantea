@@ -7,8 +7,9 @@ import torch
 class CFG:
   """
   A global configuration class of default values for variables whithin the framework.
-  # TODO: circular import error between CFG & logger
   """
+  # TODO: circular import error between CFG & logger
+  
   __conf = {
     "is_cuda": torch.cuda.is_available(),
     "device" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),

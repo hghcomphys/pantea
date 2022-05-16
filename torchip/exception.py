@@ -5,6 +5,11 @@ class CustomErrorException(Exception):
   """
   A customized exception that logs the error message prior to throwing the exception.
   """
-  def __init__(self, message="Somthing wrong"):
-    logger.error(message)
+  def __init__(self, message: str = "Somthing wrong"):
+    """
+
+    Args:
+        message (str, optional): _description_. Defaults to "Somthing wrong".
+    """
+    logger.error(message) 
     super().__init__(message)
