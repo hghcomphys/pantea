@@ -2,7 +2,7 @@ import math
 from torch import Tensor
 
 
-def create_batch(array: Tensor , batch_size: int) -> Tensor:
+def create_batch(array: Tensor, batch_size: int) -> Tensor:
   """
   Return the input array in form of batches (generator).
 
