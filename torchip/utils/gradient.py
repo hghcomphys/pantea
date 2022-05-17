@@ -1,9 +1,18 @@
 import torch
+from torch import Tensor
 
 
-def gradient(y, x, grad_outputs=None):
+def gradient(y: Tensor, x: Tensor, grad_outputs=None) -> Tensor:
   """
-  Compute dy/dx @ grad_outputs
+  An utility function that computes derivative of input *y* tensor respect to input *x* at grad_outputs.
+
+  Args:
+      y (Tensor): output of the differentiated function
+      x (Tensor):  Input w.r.t. which the gradient will be returned 
+      grad_outputs (Tensor, optional): The “vector” in the vector-Jacobian product. Defaults to None.
+
+  Returns:
+      Tensor: dy/dx
 
   See `here <https://discuss.pytorch.org/t/how-to-compute-jacobian-matrix-in-pytorch/14968/14>`_
   """
