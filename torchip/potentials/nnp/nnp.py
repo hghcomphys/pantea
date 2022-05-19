@@ -182,6 +182,7 @@ class NeuralNetworkPotential(Potential):
     for element in self._settings["elements"]:
       input_size = self.descriptor[element].n_descriptor
       self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((3, 't'), (3, 't')), output_layer=(1, 'l'))
+      self.model[element].to(CFG["device"])
       # TODO: add element argument
       # TODO: read layers from the settings
 
