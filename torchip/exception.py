@@ -9,7 +9,7 @@ class CustomErrorException(Exception):
     """
 
     Args:
-        message (str, optional): _description_. Defaults to "Somthing wrong".
+        message (str, optional): Error message. Defaults to "Somthing wrong".
     """
     logger.error(message) 
     super().__init__(message)
