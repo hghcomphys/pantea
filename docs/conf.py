@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
+    'sphinx.ext.mathjax',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -80,5 +81,6 @@ autodoc_default_options = {
     'member-order': 'bysource',
     'special-members': '__init__,__call__',
     'undoc-members': True,
-    'exclude-members': '__weakref__'
+    'exclude-members': '__weakref__',
+    'private-members': True,
 }
