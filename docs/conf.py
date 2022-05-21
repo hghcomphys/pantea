@@ -74,3 +74,11 @@ html_theme = 'sphinx_rtd_theme' #'alabaster'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': '__init__,__call__',
+    'undoc-members': True,
+    'exclude-members': '__weakref__'
+}
