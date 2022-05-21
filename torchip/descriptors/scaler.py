@@ -8,12 +8,12 @@ import torch
 import numpy as np
 
 
-def std_(data: Tensor, mean: Tensor) -> Tensor:
-  """
-  An utility function which is defined because of the difference observed when using torch.std function.
-  This occurs for torch (numpy version is fine).
-  """
-  return torch.sqrt(torch.mean((data - mean)**2, dim=0))
+# def std_(data: Tensor, mean: Tensor) -> Tensor:
+#   """
+#   An utility function which is defined because of the difference observed when using torch.std function.
+#   This occurs for torch (numpy version is fine).
+#   """
+#   return torch.sqrt(torch.mean((data - mean)**2, dim=0))
 
 
 class DescriptorScaler:
@@ -60,7 +60,7 @@ class DescriptorScaler:
       self.nsamples = data.shape[0]
       self.dimension = data.shape[1]
       self.mean = torch.mean(data, dim=0)
-      self.sigma = std_(data, self.mean) #torch.std(data, dim=0)
+      self.sigma = torch.std(data, dim=0)
       self.max = torch.max(data, dim=0)[0]
       self.min = torch.min(data, dim=0)[0]
     else:
@@ -72,25 +72,31 @@ class DescriptorScaler:
 
       # New data (batch)
       new_mean = torch.mean(data, dim=0)
-      new_sigma = std_(data, new_mean) #torch.std(data, dim=0)
+      new_sigma = torch.std(data, dim=0)
       new_min = torch.min(data, dim=0)[0]
       new_max = torch.max(data, dim=0)[0]
       m, n = float(self.nsamples), data.shape[0]
 
       # Calculate quantities for entire data
-      mean = self.mean 
+      mean = self.mean.clone()
       self.mean = m/(m+n)*mean + n/(m+n)*new_mean  # self.mean is now a new array and different from the above mean variable
       self.sigma  = torch.sqrt( m/(m+n)*self.sigma**2 + n/(m+n)*new_sigma**2 + m*n/(m+n)**2 * (mean - new_mean)**2 ) 
       self.max = torch.maximum(self.max, new_max)
       self.min = torch.minimum(self.min, new_min)
       self.nsamples += n
 
-  def __call__(self, x: Dict[str, Tensor]):
+  def __call__(self, x: Tensor) -> Tensor:
     """
     Transform the input descriptor values base on the selected scaler type.
-    This merhod has to be called when fit method is called batch-wise over all descriptor values, 
+    This merhod has to be called when fit method is called ``batch-wise`` over all descriptor values, 
     or statistical parameters are read from a saved file. 
-    """
+
+    Args:
+        x (Tensor): input 
+
+    Returns:
+        Tensor: scaled input
+    """    
     return self._transform(x)
 
   def _center(self, x: Tensor) -> Tensor:
