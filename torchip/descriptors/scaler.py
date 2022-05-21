@@ -100,6 +100,9 @@ class DescriptorScaler:
     return self._transform(x)
 
   def _center(self, x: Tensor) -> Tensor:
+    """
+    Subtract the mean value from the input tensor.
+    """    
     return x - self.mean
 
   def _scale(self, x: Tensor) -> Tensor:
