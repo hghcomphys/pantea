@@ -15,7 +15,7 @@ from ...config import CFG
 from ..base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 from torch import Tensor
 import torch
@@ -65,8 +65,10 @@ class NeuralNetworkPotential(Potential):
     # Map scaler type
     # TODO: center & scaler
     _to_scaler_type = {  
-      'scale_symmetry_functions': 'scale_center',
-      'scale_symmetry_functions_sigma': 'scale_sigma',
+      'center_symmetry_functions': 'center',
+      'scale_symmetry_functions': 'scale',
+      'scale_center_symmetry_functions': 'scale_center',
+      'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
     }
     # Read setting file
     logger.info(f"Reading NNP settings file:'{self.filename}'")
@@ -94,9 +96,13 @@ class NeuralNetworkPotential(Potential):
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
           self._settings[keyword].append(asf_) 
         # Read symmetry function scaler parameters
+        elif keyword == "center_symmetry_functions":
+          self._settings["scale_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_symmetry_functions":
           self._settings["scale_type"] = _to_scaler_type[keyword]
-        elif keyword == "scale_symmetry_functions_sigma":
+        elif keyword == "scale_center_symmetry_functions":
+          self._settings["scale_type"] = _to_scaler_type[keyword]
+        elif keyword == "scale_center_symmetry_functions_sigma":
           self._settings["scale_type"] = _to_scaler_type[keyword]
         elif keyword == "scale_min_short":
           self._settings[keyword] = float(tokens[0])
@@ -261,7 +267,7 @@ class NeuralNetworkPotential(Potential):
     #   index += count
 
   @Profiler.profile
-  def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> None:
+  def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> Dict:
     """
     Fit the model using the input structure loader.
     # TODO: avoid reading and calculating descriptor multiple times
@@ -271,11 +277,13 @@ class NeuralNetworkPotential(Potential):
     """
     # TODO: training must be done outside of the potential
     trainer = NeuralNetworkPotentialTrainer(potential=self)
-    trainer.fit(sloader, epochs=10)
+    history = trainer.fit(sloader, epochs=100)
 
     # TODO: save the best model by default
     if save_best_model:
       self.save_model()
+
+    return history
 
   def save_model(self):
     """
