@@ -111,7 +111,7 @@ class DescriptorScaler:
   def _scale_center(self, x: Tensor) -> Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / (self.max - self.min)
   
-  def _scale_sigma(self, x: Tensor) -> Tensor:
+  def _scale_center_sigma(self, x: Tensor) -> Tensor:
     return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / self.sigma
 
   def save(self, filename: Path) -> None:
