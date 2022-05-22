@@ -3,6 +3,7 @@ from ...potentials.base import Potential
 from ...loaders.base import StructureLoader
 from ...structure import Structure
 from ...utils.gradient import gradient
+from collections import defaultdict
 from typing import Dict
 from torch import nn
 import torch
@@ -31,10 +32,11 @@ class NeuralNetworkPotentialTrainer:
       for element in self.potential.elements
     }
 
-  def fit(self, sloader: StructureLoader, epochs=1) -> None:
+  def fit(self, sloader: StructureLoader, epochs=1) -> Dict:
     """
     Fit models.
     """
+    dict_ = defaultdict(list)
     logger.info("Fitting energy models")
     for epoch in range(epochs):
       print(f"Epoch {epoch+1}/{epochs}")
@@ -62,7 +64,7 @@ class NeuralNetworkPotentialTrainer:
           energy = x if energy is None else energy + x
 
         #indices = torch.randperm(len(structure.position))[:10]
-        force = gradient(energy, structure.position)
+        force = -gradient(energy, structure.position)
 
         # Energy and force losses
         eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
@@ -85,4 +87,9 @@ class NeuralNetworkPotentialTrainer:
       training_eng_loss /= nbatch
       training_frc_loss /= nbatch
       training_loss = training_eng_loss + training_frc_loss
+      dict_['training_energy_loss'].append(training_eng_loss)
+      dict_['training_force_loss'].append(training_frc_loss)
+      dict_['training_loss'].append(training_loss)
       print()
+
+    return dict_
