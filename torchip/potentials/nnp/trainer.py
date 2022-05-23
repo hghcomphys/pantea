@@ -26,9 +26,11 @@ class NeuralNetworkPotentialTrainer:
     self.potential = potential
     self.learning_rate = kwargs.get('learning_rate', 0.001)
     self.optimizer_func = kwargs.get('optimizer_func', torch.optim.Adam)
+    self.optimizer_func_kwargs = kwargs.get('optimizer_func_kwargs', {'lr': 0.001})
     self.criterion = kwargs.get('criterion', nn.MSELoss())
+
     self.optimizer = {
-      element: self.optimizer_func(self.potential.model[element].parameters(), lr=self.learning_rate) \
+      element: self.optimizer_func(self.potential.model[element].parameters(), **self.optimizer_func_kwargs) \
       for element in self.potential.elements
     }
 
