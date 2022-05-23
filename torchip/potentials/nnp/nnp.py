@@ -18,6 +18,7 @@ from collections import defaultdict
 from typing import List, Dict
 from pathlib import Path
 from torch import Tensor
+from torch import nn
 import torch
 
 
@@ -30,11 +31,15 @@ class NeuralNetworkPotential(Potential):
   TODO: split structure from the potential model (in design)
   """
   def __init__(self, filename: Path) -> None:
+
+    # Initialization
     self.filename = Path(filename)
     self._settings = None    # A dictionary representation of the NNP settgins including descriptor, scaler, and model
     self.descriptor = None   # A dictionary of {element: Descriptor}   # TODO: short and long descriptors
     self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
+    self.trainer = None
+
     logger.info(f"Initializing {self.__class__.__name__}(filename={self.filename})")
     # TODO: set formats as class variable or **kwargs
     self.scaler_save_format = "scaling.{:03d}.data"
@@ -45,6 +50,7 @@ class NeuralNetworkPotential(Potential):
       self._construct_descriptor()
       self._construct_scaler()
       self._construct_model()
+      self._construct_trainer()
 
   def _read_settings_file(self) -> None:
     """
@@ -70,16 +76,26 @@ class NeuralNetworkPotential(Potential):
       'scale_center_symmetry_functions': 'scale_center',
       'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
     }
+    # Defaults
+    self._settings = defaultdict(list)
+    self._settings.update({
+      "epochs": 1,
+      "updater_type": 0,
+      "gradient_type": 1, 
+    })
+ 
     # Read setting file
     logger.info(f"Reading NNP settings file:'{self.filename}'")
-    self._settings = defaultdict(list)
     with open(str(self.filename), 'r') as file:
+
       while True:
         # Read the next line
         line = file.readline()
         if not line:
           break
+        
         # Read descriptor parameters
+        # TODO: improve how to handle keyword and values (apply DRY)
         keyword, tokens = tokenize(line, comment='#')
         if keyword is not None:
           logger.debug(f"keyword:'{keyword}', values:{tokens}")
@@ -95,6 +111,7 @@ class NeuralNetworkPotential(Potential):
           except ValueError:
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
           self._settings[keyword].append(asf_) 
+        
         # Read symmetry function scaler parameters
         elif keyword == "center_symmetry_functions":
           self._settings["scale_type"] = _to_scaler_type[keyword]
@@ -108,8 +125,25 @@ class NeuralNetworkPotential(Potential):
           self._settings[keyword] = float(tokens[0])
         elif keyword == "scale_max_short":
           self._settings[keyword] = float(tokens[0])
-        # Read neural network parameters
-
+      
+        # Read trainer
+        elif keyword == "epochs":
+          self._settings[keyword] = int(tokens[0])
+        elif keyword == "updater_type":
+          self._settings[keyword] = int(tokens[0])
+        elif keyword == "gradient_type":
+          self._settings[keyword] = int(tokens[0])
+        elif keyword == "gradient_eta":
+          self._settings[keyword] = float(tokens[0])
+        elif keyword == "gradient_adam_eta":
+          self._settings[keyword] = float(tokens[0])
+        elif keyword == "gradient_adam_beta1":
+          self._settings[keyword] = float(tokens[0])
+        elif keyword == "gradient_adam_beta2":
+          self._settings[keyword] = float(tokens[0])
+        elif keyword == "gradient_adam_epsilon":
+          self._settings[keyword] = float(tokens[0])
+        
   def _construct_descriptor(self) -> None:
     """
     Construct a descriptor for each element and add the relevant radial and angular symmetry 
@@ -192,6 +226,30 @@ class NeuralNetworkPotential(Potential):
       # TODO: add element argument
       # TODO: read layers from the settings
 
+  def _construct_trainer(self) -> None:
+    """This method initializes a trainer instance including optimizer, loss function, criterion, etc.
+    The created trainer instance when is used when fitting the energy models. 
+    """
+    kwargs = {}
+    if self._settings["updater_type"] == 0:  # Gradient Descent
+      if self._settings["gradient_type"] == 1:  # Adam
+        kwargs["criterion"] = nn.MSELoss()
+        kwargs["learning_rate"] = self._settings["gradient_adam_eta"] # TODO: defining learning_rate?
+        kwargs["optimizer_func"] = torch.optim.Adam
+        kwargs["optimizer_func_kwargs"] = {
+          "lr": self._settings["gradient_adam_eta"],
+          "betas": (self._settings["gradient_adam_beta1"], self._settings["gradient_adam_beta2"]),
+          "eps": self._settings["gradient_adam_epsilon"],
+        }
+      elif self._settings["gradient_type"] == 0:  # Fixed Step  
+        msg = "Gradient descent type fixed step is not implemented yet"
+        logger.error(msg)
+        raise NotImplementedError(msg)
+    # Create trainer instance
+    logger.debug(f"Preparing trainer kwargs={kwargs}")
+    logger.info(f"Creating NNP trainer")
+    self.trainer = NeuralNetworkPotentialTrainer(self, **kwargs)
+
   @Profiler.profile
   def fit_scaler(self, sloader: StructureLoader, save_scaler: bool = True,  **kwargs) -> None:
     """
@@ -269,17 +327,15 @@ class NeuralNetworkPotential(Potential):
   @Profiler.profile
   def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> Dict:
     """
-    Fit the model using the input structure loader.
+    Fit the energy model for all elements using the provided structure loader.
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
     """
-    # TODO: training must be done outside of the potential
-    trainer = NeuralNetworkPotentialTrainer(potential=self)
-    history = trainer.fit(sloader, epochs=100)
+    history = self.trainer.fit(sloader, epochs=100)
 
-    # TODO: save the best model by default
+    # TODO: save the best model by default, move to trainer
     if save_best_model:
       self.save_model()
 
