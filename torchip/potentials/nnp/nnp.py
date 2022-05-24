@@ -30,7 +30,41 @@ class NeuralNetworkPotential(Potential):
   TODO: implement structure dumper/writer
   TODO: split structure from the potential model (in design)
   """
+  # Default settings
+  _default_settings = {
+    "symfunction_short": [],
+    "epochs": 1,
+    "updater_type": 0,
+    "gradient_type": 1, 
+  }
+  # Map cutoff type
+  _map_cutoff_type = {  # TODO: poly 3 & 4
+    '0': 'hard',
+    '1': 'cos',
+    '2': 'tanhu',
+    '3': 'tanh',
+    '4': 'exp',
+    '5': 'poly1',
+    '6': 'poly2',
+  }  
+  # Map scaler type
+  _map_scaler_type = {  
+    'center_symmetry_functions': 'center',
+    'scale_symmetry_functions': 'scale',
+    'scale_center_symmetry_functions': 'scale_center',
+    'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
+  }
+  # saving formats
+  _scaler_save_format = "scaling.{:03d}.data"
+  _model_save_format = "weights.{:03d}.zip"
+ 
   def __init__(self, filename: Path) -> None:
+    """
+    Initialize NNP potential including reading settings and creating descriptors, scalers, models, and trainer.
+
+    Args:
+        filename (Path): A file path to potential settings.
+    """
 
     # Initialization
     self.filename = Path(filename)
@@ -41,50 +75,22 @@ class NeuralNetworkPotential(Potential):
     self.trainer = None
 
     logger.info(f"Initializing {self.__class__.__name__}(filename={self.filename})")
-    # TODO: set formats as class variable or **kwargs
-    self.scaler_save_format = "scaling.{:03d}.data"
-    self.model_save_format = "weights.{:03d}.zip"
+    self._read_settings()
+    self._init_descriptor()
+    self._init_scaler()
+    self._init_model()
+    self._init_trainer()
 
-    if self._settings is None:
-      self._read_settings_file()
-      self._construct_descriptor()
-      self._construct_scaler()
-      self._construct_model()
-      self._construct_trainer()
-
-  def _read_settings_file(self) -> None:
+  def _read_settings(self) -> None:
     """
     This method reads all NNP settings from the file including elements, cutoff type, 
     symmetry functions, neural network, traning parameters, etc. 
     See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
-    # Map cutoff type
-    _to_cutoff_type = {  # TODO: poly 3 & 4
-      '0': 'hard',
-      '1': 'cos',
-      '2': 'tanhu',
-      '3': 'tanh',
-      '4': 'exp',
-      '5': 'poly1',
-      '6': 'poly2',
-    }  
-    # Map scaler type
-    # TODO: center & scaler
-    _to_scaler_type = {  
-      'center_symmetry_functions': 'center',
-      'scale_symmetry_functions': 'scale',
-      'scale_center_symmetry_functions': 'scale_center',
-      'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
-    }
-    # Defaults
-    self._settings = defaultdict(list)
-    self._settings.update({
-      "epochs": 1,
-      "updater_type": 0,
-      "gradient_type": 1, 
-    })
- 
-    # Read setting file
+    self._settings = defaultdict(None)
+    self._settings.update(self._default_settings)
+
+    # Read settings from file
     logger.info(f"Reading NNP settings file:'{self.filename}'")
     with open(str(self.filename), 'r') as file:
 
@@ -94,39 +100,40 @@ class NeuralNetworkPotential(Potential):
         if not line:
           break
         
-        # Read descriptor parameters
-        # TODO: improve how to handle keyword and values (apply DRY)
+        # Read keyword and values
         keyword, tokens = tokenize(line, comment='#')
         if keyword is not None:
           logger.debug(f"keyword:'{keyword}', values:{tokens}")
+        
+        # General settings  
         if keyword == "number_of_elements":
           self._settings[keyword] = int(tokens[0])
         elif keyword == "elements":
           self._settings[keyword] = sorted(set([t for t in tokens]), key=ElementMap.get_atomic_number)
         elif keyword == "cutoff_type":
-          self._settings[keyword] = _to_cutoff_type[tokens[0]]
+          self._settings[keyword] = self._map_cutoff_type[tokens[0]]
         elif keyword == "symfunction_short":
           try:
             asf_ = (tokens[0], int(tokens[1]), tokens[2]) + tuple([float(t) for t in tokens[3:]])
           except ValueError:
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
-          self._settings[keyword].append(asf_) 
+          self._settings[keyword].append(asf_)     
         
-        # Read symmetry function scaler parameters
+        # Symmetry function settings
         elif keyword == "center_symmetry_functions":
-          self._settings["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = self._map_scaler_type[keyword]
         elif keyword == "scale_symmetry_functions":
-          self._settings["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = self._map_scaler_type[keyword]
         elif keyword == "scale_center_symmetry_functions":
-          self._settings["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = self._map_scaler_type[keyword]
         elif keyword == "scale_center_symmetry_functions_sigma":
-          self._settings["scale_type"] = _to_scaler_type[keyword]
+          self._settings["scale_type"] = self._map_scaler_type[keyword]
         elif keyword == "scale_min_short":
           self._settings[keyword] = float(tokens[0])
         elif keyword == "scale_max_short":
           self._settings[keyword] = float(tokens[0])
-      
-        # Read trainer
+
+        # Trainer settings
         elif keyword == "epochs":
           self._settings[keyword] = int(tokens[0])
         elif keyword == "updater_type":
@@ -144,12 +151,12 @@ class NeuralNetworkPotential(Potential):
         elif keyword == "gradient_adam_epsilon":
           self._settings[keyword] = float(tokens[0])
         
-  def _construct_descriptor(self) -> None:
+  def _init_descriptor(self) -> None:
     """
-    Construct a descriptor for each element and add the relevant radial and angular symmetry 
-    functions from the a dictionary representation of potential settings.
-    TODO: add logging
+    Construct **descriptor** for each element and add the relevant radial and angular symmetry functions 
+    from the potential settings.
     """
+    # TODO: add logging
     self.descriptor = {}
 
     # Elements
@@ -191,9 +198,9 @@ class NeuralNetworkPotential(Potential):
           neighbor_element2 = cfg[3]
         ) 
 
-  def _construct_scaler(self) -> None:
+  def _init_scaler(self) -> None:
     """
-    Construct a descriptor for each element using a dictionary representation of NNP settings.
+    Construct descriptor scaler for each element from the potential settings.
     """
     self.scaler = {}
 
@@ -212,7 +219,7 @@ class NeuralNetworkPotential(Potential):
     for element in self._settings["elements"]:
       self.scaler[element] = DescriptorScaler(**kwargs) 
 
-  def _construct_model(self) -> None:
+  def _init_model(self) -> None:
     """
     Construct a neural network for each element using a dictionary representation of NNP settings.
     """
@@ -226,9 +233,10 @@ class NeuralNetworkPotential(Potential):
       # TODO: add element argument
       # TODO: read layers from the settings
 
-  def _construct_trainer(self) -> None:
-    """This method initializes a trainer instance including optimizer, loss function, criterion, etc.
-    The created trainer instance when is used when fitting the energy models. 
+  def _init_trainer(self) -> None:
+    """
+    This method initializes a trainer instance including optimizer, loss function, criterion, etc.
+    The trainer is used for fitting the energy models. 
     """
     kwargs = {}
     if self._settings["updater_type"] == 0:  # Gradient Descent
@@ -282,7 +290,7 @@ class NeuralNetworkPotential(Potential):
     for element in self.elements:
       logger.info(f"Saving scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
-      scaler_fn = Path(self.filename.parent, self.scaler_save_format.format(atomic_number)) 
+      scaler_fn = Path(self.filename.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].save(scaler_fn)
     # # Save scaler parameters for all element into a single file
     # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
@@ -305,7 +313,7 @@ class NeuralNetworkPotential(Potential):
     for element in self.elements:
       logger.info(f"Loading scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
-      scaler_fn = Path(self.filename.parent, self.scaler_save_format.format(atomic_number)) 
+      scaler_fn = Path(self.filename.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].load(scaler_fn)
     # # Load scaler parameters for all element into a single file
     # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
@@ -348,7 +356,7 @@ class NeuralNetworkPotential(Potential):
     for element in self.elements:
       logger.info(f"Saving model weights for element: {element}")   
       atomic_number = ElementMap.get_atomic_number(element)
-      model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
+      model_fn = Path(self.filename.parent, self._model_save_format.format(atomic_number))
       self.model[element].save(model_fn)
 
   def load_model(self):
@@ -358,7 +366,7 @@ class NeuralNetworkPotential(Potential):
     for element in self.elements:
         logger.info(f"Loading model weights for element: {element}")
         atomic_number = ElementMap.get_atomic_number(element)
-        model_fn = Path(self.filename.parent, self.model_save_format.format(atomic_number))
+        model_fn = Path(self.filename.parent, self._model_save_format.format(atomic_number))
         self.model[element].load(model_fn)
 
   def fit(self)  -> None:
