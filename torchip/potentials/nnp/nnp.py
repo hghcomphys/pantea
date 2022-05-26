@@ -24,12 +24,14 @@ import torch
 
 class NeuralNetworkPotential(Potential):
   """
-  This class contains all required data and operations to train a high-dimensional neural network potential 
-  including structures, descriptors, and neural networks. 
-  TODO: split structures from the potential model
-  TODO: implement structure dumper/writer
-  TODO: split structure from the potential model (in design)
+  A suitcase class of high-dimensional neural network potential (HDNNP). 
+  It contains all the required descriptors, scalers, neural networks, and a trainer to fit the potential using 
+  provided structure data and a potential setting file. 
   """
+  # TODO: split structures from the potential model
+  # TODO: implement structure dumper/writer
+  # TODO: split structure from the potential model (in design)
+
   # Default settings
   _default_settings = {
     "symfunction_short": [],
@@ -58,23 +60,24 @@ class NeuralNetworkPotential(Potential):
   _scaler_save_format = "scaling.{:03d}.data"
   _model_save_format = "weights.{:03d}.zip"
  
-  def __init__(self, filename: Path) -> None:
+  def __init__(self, potfile: Path) -> None:
     """
-    Initialize NNP potential including reading settings and creating descriptors, scalers, models, and trainer.
+    Initialize a HDNNP potential instance by reading the potential file and 
+    creating descriptors, scalers, models, and trainer.
 
     Args:
-        filename (Path): A file path to potential settings.
+        potfile (Path): A file path to potential file.
     """
 
     # Initialization
-    self.filename = Path(filename)
+    self.potfile = Path(potfile)
     self._settings = None    # A dictionary representation of the NNP settgins including descriptor, scaler, and model
     self.descriptor = None   # A dictionary of {element: Descriptor}   # TODO: short and long descriptors
     self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     self.trainer = None
 
-    logger.info(f"Initializing {self.__class__.__name__}(filename={self.filename})")
+    logger.info(f"Initializing {self.__class__.__name__}(potfile={self.potfile})")
     self._read_settings()
     self._init_descriptor()
     self._init_scaler()
@@ -84,15 +87,15 @@ class NeuralNetworkPotential(Potential):
   def _read_settings(self) -> None:
     """
     This method reads all NNP settings from the file including elements, cutoff type, 
-    symmetry functions, neural network, traning parameters, etc. 
+    symmetry functions, neural network, training parameters, etc. 
     See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
     """
     self._settings = defaultdict(None)
     self._settings.update(self._default_settings)
 
     # Read settings from file
-    logger.info(f"Reading NNP settings file:'{self.filename}'")
-    with open(str(self.filename), 'r') as file:
+    logger.info(f"Reading the HDNNP potential file:'{self.potfile}'")
+    with open(str(self.potfile), 'r') as file:
 
       while True:
         # Read the next line
@@ -153,8 +156,8 @@ class NeuralNetworkPotential(Potential):
         
   def _init_descriptor(self) -> None:
     """
-    Construct **descriptor** for each element and add the relevant radial and angular symmetry functions 
-    from the potential settings.
+    Initialize a **descriptor** for each element and add the relevant radial and angular 
+    symmetry functions from the potential settings.
     """
     # TODO: add logging
     self.descriptor = {}
@@ -200,7 +203,7 @@ class NeuralNetworkPotential(Potential):
 
   def _init_scaler(self) -> None:
     """
-    Construct descriptor scaler for each element from the potential settings.
+    Initialize a descriptor scaler for each element from the potential settings.
     """
     self.scaler = {}
 
@@ -221,7 +224,7 @@ class NeuralNetworkPotential(Potential):
 
   def _init_model(self) -> None:
     """
-    Construct a neural network for each element using a dictionary representation of NNP settings.
+    Initialize a neural network for each element using a dictionary representation of potential settings.
     """
     self.model = {}
     # Instantiate neural network model for each element 
@@ -261,9 +264,13 @@ class NeuralNetworkPotential(Potential):
   @Profiler.profile
   def fit_scaler(self, sloader: StructureLoader, save_scaler: bool = True,  **kwargs) -> None:
     """
-    Fit scalers of descriptor for each element using the provided input structure loader.
+    Fit scaler parameters for each element using the input structure data.
+
+    Args:
+        sloader (StructureLoader): A structure loader
+        save_scaler (bool, optional): Save fitted scaler parameters into a file. Defaults to True.
+    """    
     # TODO: split scaler, define it as separate step in pipeline
-    """
     batch_size = kwargs.get("batch_size", 10)
     logger.info("Fitting descriptor scalers")
     for index, data in enumerate(sloader.get_data(), start=1):
@@ -284,16 +291,16 @@ class NeuralNetworkPotential(Potential):
 
   def save_scaler(self):
     """
-    Save scaler parameters for each element. 
+    This method saves scaler parameters for each element into separate files. 
     """
     # Save scaler parameters for each element separately
     for element in self.elements:
       logger.info(f"Saving scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
-      scaler_fn = Path(self.filename.parent, self._scaler_save_format.format(atomic_number)) 
+      scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].save(scaler_fn)
     # # Save scaler parameters for all element into a single file
-    # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    # scaler_fn = Path(self.potfile.parent, self.scaler_save_format) 
     # logger.info(f"Saving scaler parameters into '{scaler_fn}'")
     # with open(str(scaler_fn), "w") as file:
     #   file.write(f"# Symmetry function scaling data\n")
@@ -306,17 +313,17 @@ class NeuralNetworkPotential(Potential):
   @Profiler.profile
   def load_scaler(self) -> None:
     """
-    load scaler parameters for each element.
-    No need to fit the scalers in this case. 
+    This method loads scaler parameters of each element from separate files.
+    This save computational time as the would be no need to fit the scalers each time. 
     """
     # Load scaler parameters for each element separately
     for element in self.elements:
       logger.info(f"Loading scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
-      scaler_fn = Path(self.filename.parent, self._scaler_save_format.format(atomic_number)) 
+      scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].load(scaler_fn)
     # # Load scaler parameters for all element into a single file
-    # scaler_fn = Path(self.filename.parent, self.scaler_save_format) 
+    # scaler_fn = Path(self.potfile.parent, self.scaler_save_format) 
     # logger.info(f"Loading scaler parameters from '{scaler_fn}'")
     # data = np.loadtxt(scaler_fn, usecols=(1, 2, 3, 4))
     # element_count = Counter(np.loadtxt(scaler_fn, usecols=(0), dtype=str))
@@ -335,12 +342,12 @@ class NeuralNetworkPotential(Potential):
   @Profiler.profile
   def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> Dict:
     """
-    Fit the energy model for all elements using the provided structure loader.
+    Fit the energy models for all elements using the input structure loader.
+    """
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
-    """
     history = self.trainer.fit(sloader, epochs=100)
 
     # TODO: save the best model by default, move to trainer
@@ -351,33 +358,33 @@ class NeuralNetworkPotential(Potential):
 
   def save_model(self):
     """
-    Save model weights separately for all element.
+    Save model weights separately for all elements.
     """
     for element in self.elements:
       logger.info(f"Saving model weights for element: {element}")   
       atomic_number = ElementMap.get_atomic_number(element)
-      model_fn = Path(self.filename.parent, self._model_save_format.format(atomic_number))
+      model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
       self.model[element].save(model_fn)
 
   def load_model(self):
     """
-    Load model weights separately for all element.
+    Load model weights separately for all elements.
     """
     for element in self.elements:
         logger.info(f"Loading model weights for element: {element}")
         atomic_number = ElementMap.get_atomic_number(element)
-        model_fn = Path(self.filename.parent, self._model_save_format.format(atomic_number))
+        model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
         self.model[element].load(model_fn)
 
   def fit(self)  -> None:
     """
-    Fit descriptor and model (if needed). 
+    This method provides a user-friendly interface to fit both descriptor and model in one step. 
     """
     pass
 
   def __call__(self, structure: Structure) -> Tensor:
     """
-    Return the total energy of the given input structure.
+    Calculate the total energy of the input structure.
     """
     # Loop over elements
     energy = None
@@ -398,7 +405,7 @@ class NeuralNetworkPotential(Potential):
   @property
   def r_cutoff(self) -> float:
     """
-    Return the maximum cutoff radius of all elemental descriptors.
+    Return the maximum cutoff radius found between all descriptors.
     """
     return max([dsc.r_cutoff for dsc in self.descriptor.values()])
 
