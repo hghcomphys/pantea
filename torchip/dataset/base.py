@@ -1,9 +1,9 @@
+from torch.utils.data import Dataset
 
-class StructureLoader:
+
+class StructureDataset (Dataset):
   """
-  A base class for loading atomic data structure in different formats. 
-  All loader must be derived from this class.
+  A base class for atomic data structure. 
+  All other atomic dataset must be derived from this base class.
   """
   pass
-
- 
