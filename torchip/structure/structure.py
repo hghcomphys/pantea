@@ -20,14 +20,14 @@ class Structure:
 
   The most computationally expensive section of this class is when calculating the neighbor list. 
   This task is done by giving an instance of Structure to the Neighbor class which is responsible for updating the neighbor lists.
-  TODO: mesh gird methid can be used to seed up of creating/updating the neighbot list.
+  TODO: mesh gird method can be used to seed up of creating/updating the neighbot list.
 
-  For the MPI implementation, this class can be considerend as one domain in domain decomposition method (see miniMD code).
+  For the MPI implementation, this class can be considered as one domain in domain decomposition method (see miniMD code).
   An C++ implementation might be required for MD simulation but not necessarily developing ML potential.   
   """
   _default_r_cutoff = 12.0 # TODO: move to CFG?
 
-  def __init__(self, data: Dict[str, List], **kwargs) -> None:
+  def __init__(self, data: Dict, **kwargs) -> None:
     """
     Initialization of tensors, neighbor atoms, and box.
     """ 
@@ -59,7 +59,7 @@ class Structure:
       self.box = None 
       logger.debug("No lattice info were found in structure")
     
-  def _cast_data_to_tensors(self, data: Dict[str, List]) -> None:
+  def _cast_data_to_tensors(self, data: Dict) -> None:
     """
     Cast a dictionary structure data into the (pytorch) tensors.
     It convert element (string) to atom type (integer) because of computational efficiency.
@@ -86,7 +86,7 @@ class Structure:
         f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
       )
       
-  def _cast_tensors_to_data(self) -> Dict[str, List]:
+  def _cast_tensors_to_data(self) -> Dict:
     """
     Cast the tensors to structure data.
     To be used for dumping structure into a file. 
@@ -168,3 +168,11 @@ class Structure:
 
   def __str__(self) -> str:
     return f"Structure: natoms={self.natoms}, elements={self.elements}"
+
+
+class ToStructure:
+  """
+  An utility transformer that converts a structure dataset into a **Structure** object. 
+  """
+  def __call__(self, data: Dict) -> Structure:
+    return Structure(data)
