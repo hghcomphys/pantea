@@ -1,89 +1,71 @@
 from ...logger import logger
 from ...utils.tokenize import tokenize
 from ...structure.structure import Structure
-from ..base import StructureLoader
-from typing import List, TextIO, Dict
+from ..base import StructureDataset
+from typing import Callable, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
 
 
-class RunnerStructureLoader(StructureLoader):
+class RunnerStructureDataset(StructureDataset):
   """
-  A derived class of structure loader that reads RuNNer (NNP) structure file format.
-  TODO: logging
-  TODO: define a derived structure loader class specific to NNP and leave the base class here 
+  Structure dataset of RuNNer.
+  The input structure file contains snapshots of atoms located in the simulation box.
+  Each snapshot includes per-atom and collective properties.
+  The per-atom properties are element name, coordinates, energy, charge, and force components.
+  the collective properties are lattice info, total energy, and total charge.
   """
+  # TODO: logging
 
-  def __init__(self, filename: Path) -> None:
-    self.filename = Path(filename)
-    self._data = None
-    self._ignore_next = False
-    logger.info(f"Initializing {self.__class__.__name__}(filename='{self.filename}')")
+  def __init__(self, structure_file: Path, transform: Callable = None):   
+    """
+    Args:
+        structure_file (Path): path to the RuNNer structure file.
+        transform (Callable, optional): Optional transform to be applied on a structure. Defaults to None.
+    """
+    self.structure_file = Path(structure_file)
+    self.transform = transform
+    logger.info(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
 
-  def get_data(self) -> Dict[str, List]:
+  def __len__(self) -> int:
     """
-    A generator method which returns each snapshot of atomic data structure as a data dictionary.
-    The output dictionary can be used to create a Structure objects. 
-    """
-    logger.info(f"Reading structure file:'{self.filename}'")
-    with open(str(self.filename), "r") as file:
-      try:
-        while ( self.read(file) if not self._ignore_next else self.ignore(file) ):
-          yield self._data
-      except AttributeError as err:
-        logger.warning(f"It seems that {self.__class__.__name__} has no 'ignore()' method defined")
-        while self.read(file):
-          yield self._data
-    # Clean up
-    self._data = None
-    self._ignore_next = False
+    This method opens the structure file and quickly finds the number of structures.
 
-  def get_structure(self, **kwargs):
+    Returns:
+        int: Total number of structures
     """
-    A generator which directly returns Structure object instead of the dictionary data, see get_data() method.
-    """
-    for data in self.get_data():
-      yield Structure(data, **kwargs)
+    n_structures = 0
+    with open(str(self.structure_file), "r") as file:
+      while self.ignore(file):
+        n_structures += 1
+    return n_structures
 
-  def read(self, file: TextIO) -> bool:
+  def __getitem__(self, index) -> Dict:
     """
-    This method reads the next structure from the given input file.
+    Return *it*th structure.
+    Multiple-indexing is also supported.
+
+    Args:
+        index (_type_): Index of structure.
+
+    Returns:
+        Dict: Data structure
     """
-    self._data = defaultdict(list)
-    # Read next structure
-    while True:
-      # Read one line from file handler
-      line = file.readline()
-      if not line:
-        return False
-      # Read keyword and values
-      keyword, tokens = tokenize(line)
-      # TODO: check begin keyword
-      if keyword == "atom":
-        self._data["position"].append( [float(t) for t in tokens[:3]] )
-        self._data["element"].append( tokens[3] )
-        self._data["charge"].append( float(tokens[4]) )
-        self._data["energy"].append( float(tokens[5]) )
-        self._data["force"].append( [float(t) for t in tokens[6:9]] )
-      elif keyword == "lattice":
-        self._data["lattice"].append( [float(t) for t in tokens[:3]] )
-      elif keyword == "energy":
-        self._data["total_energy"].append( float(tokens[0]) )
-      elif keyword == "charge":
-        self._data["total_charge"].append( float(tokens[0]) )
-      elif keyword == "comment":
-        self._data["comment"].append(' '.join(line.split()[1:]) )
-      elif keyword == "end": 
-        break
-    return True
+    # TODO: index as a list
+    # TODO: assert range of index
+    return self._read(index)
 
   def ignore(self, file: TextIO) -> bool:
     """
     This method ignores the next structure.
-    It reduces time spending on reading a range of structures and not all of them.
-    This is an optional method that can be define in a derived structure loader to reach a better I/O performance.
+    It reduces the spent time while reading a range of structures.
+
+    Args:
+        file (TextIO): Input structure file handler
+
+    Returns:
+        bool: whether ignoring the next structure was successful or not
     """
-    self._data = None
     # Read next structure
     while True:
       # Read one line from file
@@ -94,12 +76,60 @@ class RunnerStructureLoader(StructureLoader):
       # TODO: check begin keyword
       if keyword == "end": 
         break
-    self._ignore_next = False
     return True
 
-  def ignore_next(self):
+  def read(self, file: TextIO) -> Dict:
     """
-    Set the internal variable true.
+    This method reads the next structure.
+
+    Args:
+        file (TextIO): Input structure file handler
+
+    Returns:
+        Dict: Sample of dataset.
     """
-    self._ignore_next = True
+    sample = defaultdict(list)
+    # Read next structure
+    while True:
+      # Read one line from file handler
+      line = file.readline()
+      if not line:
+        return False
+      # Read keyword and values
+      keyword, tokens = tokenize(line)
+      # TODO: check begin keyword
+      if keyword == "atom":
+        sample["position"].append( [float(t) for t in tokens[:3]] )
+        sample["element"].append( tokens[3] )
+        sample["charge"].append( float(tokens[4]) )
+        sample["energy"].append( float(tokens[5]) )
+        sample["force"].append( [float(t) for t in tokens[6:9]] )
+      elif keyword == "lattice":
+        sample["lattice"].append( [float(t) for t in tokens[:3]] )
+      elif keyword == "energy":
+        sample["total_energy"].append( float(tokens[0]) )
+      elif keyword == "charge":
+        sample["total_charge"].append( float(tokens[0]) )
+      elif keyword == "comment":
+        sample["comment"].append(' '.join(line.split()[1:]) )
+      elif keyword == "end": 
+        break
+    return sample
+
+  def _read(self, index) -> Dict:
+    """
+    This method reads only the *i*th structure.
+    """
+    logger.debug(f"Reading structure {index}")
+    with open(str(self.structure_file), "r") as file:
+      for _ in range(index):
+        self.ignore(file) 
+      sample = self.read(file)
+
+      if self.transform:
+        sample = self.transform(sample)
+
+      return sample
+
+
 
