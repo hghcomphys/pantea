@@ -25,7 +25,6 @@ class Structure:
   For the MPI implementation, this class can be considered as one domain in domain decomposition method (see miniMD code).
   An C++ implementation might be required for MD simulation but not necessarily developing ML potential.   
   """
-  _default_r_cutoff = 12.0 # TODO: move to CFG?
 
   def __init__(self, data: Dict, **kwargs) -> None:
     """
@@ -42,11 +41,9 @@ class Structure:
     self.element_map = None             # map an element to corrresponsing atom type and vice versa.    
 
     # Neighboring atoms
-    self.is_neighbor = False
-    self.r_cutoff = kwargs.get("r_cutoff", self._default_r_cutoff) 
-
-    self.neighbor = Neighbor(r_cutoff=self.r_cutoff) 
-    # self.update_neighbor()     
+    self.r_cutoff = kwargs.get("r_cutoff", None) 
+    self.neighbor = Neighbor(self.r_cutoff) if self.r_cutoff else None
+    self.is_neighbor = False   
 
     # Prepare tensors from input structure data
     self._cast_data_to_tensors(data)
@@ -58,6 +55,25 @@ class Structure:
     else:
       self.box = None 
       logger.debug("No lattice info were found in structure")
+
+  def reset_r_cutoff(self, r_cutoff: float) -> None:
+    """
+    Reset cutoff radius and set the neighbor list accordingly.
+
+    Args:
+        r_cutoff (float): New cutoff radius
+    """
+    if r_cutoff is None:
+      self.r_cutoff = None
+      self.neighbor = None
+      self.is_neighbor = False
+      return
+
+    if (self.r_cutoff is None) or (self.r_cutoff < r_cutoff):
+      self.r_cutoff = r_cutoff
+      self.neighbor = Neighbor(self.r_cutoff)
+      self.is_neighbor = False
+      logger.debug(f"Resetting cutoff radius of structure: r_cutoff={self.r_cutoff}")
     
   def _cast_data_to_tensors(self, data: Dict) -> None:
     """
@@ -102,7 +118,12 @@ class Structure:
     update neighbor list.
     This is a computationally expensive method.
     """
-    self.neighbor.update(self)
+    if self.neighbor:
+      self.neighbor.update(self)
+    else:
+      msg = "No cutoff radius is given"
+      logger.error(msg)
+      raise ValueError(msg)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:
@@ -169,10 +190,12 @@ class Structure:
   def __str__(self) -> str:
     return f"Structure: natoms={self.natoms}, elements={self.elements}"
 
-
 class ToStructure:
   """
   An utility transformer that converts a structure dataset into a **Structure** object. 
   """
+  def __init__(self, **kwargs):
+    self.kwargs = kwargs
+
   def __call__(self, data: Dict) -> Structure:
-    return Structure(data)
+    return Structure(data, **self.kwargs)
