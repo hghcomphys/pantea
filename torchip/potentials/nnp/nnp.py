@@ -1,6 +1,6 @@
 from ...logger import logger
-from ...structure import Structure
-from ...loaders import StructureLoader
+from ...structure import Structure, ToStructure
+from ...dataset import RunnerStructureDataset
 from ...descriptors.asf.asf import ASF
 from ...descriptors.asf.cutoff import CutoffFunction
 from ...descriptors.scaler import DescriptorScaler
@@ -16,9 +16,11 @@ from ..base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict
 from typing import List, Dict
+from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
 from torch import Tensor
 from torch import nn
+
 import torch
 
 
@@ -159,7 +161,7 @@ class NeuralNetworkPotential(Potential):
     Initialize a **descriptor** for each element and add the relevant radial and angular 
     symmetry functions from the potential settings.
     """
-    # TODO: add logging
+    # TODO: add logging 
     self.descriptor = {}
 
     # Elements
@@ -262,29 +264,38 @@ class NeuralNetworkPotential(Potential):
     self.trainer = NeuralNetworkPotentialTrainer(self, **kwargs)
 
   @Profiler.profile
-  def fit_scaler(self, sloader: StructureLoader, save_scaler: bool = True,  **kwargs) -> None:
+  def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
     """
     Fit scaler parameters for each element using the input structure data.
 
     Args:
-        sloader (StructureLoader): A structure loader
-        save_scaler (bool, optional): Save fitted scaler parameters into a file. Defaults to True.
+        structures (RunnerStructureDataset): Structure dataset
     """    
-    # TODO: split scaler, define it as separate step in pipeline
+    # Set parameters
+    save_scaler = kwargs.get("save_scaler", True)
     batch_size = kwargs.get("batch_size", 10)
+
+    # Prepare structure dataset and loader (for fitting scaler)
+    # FIXME: DRY, solution: define clone() method
+    transform_ = dataset.transform
+    dataset.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
+    loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
+
     logger.info("Fitting descriptor scalers")
-    for index, data in enumerate(sloader.get_data(), start=1):
-      structure = Structure(
-          data, 
-          r_cutoff=self.r_cutoff,  # global cutoff radius (maximum) 
-          requires_grad=False)     # there is NO NEED to keep the graph history (gradients) 
+    for index, batch in enumerate(loader): 
+      # TODO: spawn processes
+      structure = batch[0] 
       for element in structure.elements:
         aids = structure.select(element).detach()
         for batch in create_batch(aids, batch_size):
           logger.debug(f"Structure={index}, element='{element}', batch={batch}")
           x = self.descriptor[element](structure, batch)
           self.scaler[element].fit(x)
-    
+    logger.info("Finished scaler fitting.")
+
+    # Set back the original transformer
+    dataset.transform = transform_
+
     # Save scaler data into file  
     if save_scaler:
       self.save_scaler()
@@ -340,21 +351,15 @@ class NeuralNetworkPotential(Potential):
     #   index += count
 
   @Profiler.profile
-  def fit_model(self, sloader: StructureLoader, save_best_model: bool = True) -> Dict:
+  def fit_model(self, dataset: RunnerStructureDataset, **kwargs) -> Dict:
     """
-    Fit the energy models for all elements using the input structure loader.
+    Fit energy model for all elements using the input structure loader.
     """
     # TODO: avoid reading and calculating descriptor multiple times
     # TODO: descriptor element should be the same atom type as the aid
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
-    history = self.trainer.fit(sloader, epochs=100)
-
-    # TODO: save the best model by default, move to trainer
-    if save_best_model:
-      self.save_model()
-
-    return history
+    return self.trainer.fit(dataset, **kwargs)
 
   def save_model(self):
     """
@@ -386,6 +391,11 @@ class NeuralNetworkPotential(Potential):
     """
     Calculate the total energy of the input structure.
     """
+
+    # FIXME: DRY, solution: define clone() method
+    r_cutoff_ = structure.r_cutoff
+    structure.reset_r_cutoff(self.r_cutoff)
+
     # Loop over elements
     energy = None
     for element in self.elements:
@@ -394,8 +404,12 @@ class NeuralNetworkPotential(Potential):
       x = self.scaler[element](x)
       x = self.model[element](x.float())
       x = torch.sum(x, dim=0)
-      # TODO: float type neural network
+      # FIXME: float type neural network
       energy = x if energy is None else energy + x
+
+    # Set back cutoff radius of the input structure
+    structure.reset_r_cutoff(r_cutoff_)
+
     return energy
 
   @property
