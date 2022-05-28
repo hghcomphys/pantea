@@ -1,10 +1,11 @@
 from ...logger import logger
 from ...potentials.base import Potential
-from ...loaders.base import StructureLoader
-from ...structure import Structure
+from ...dataset.base import StructureDataset
+from ...structure import ToStructure
 from ...utils.gradient import gradient
 from collections import defaultdict
 from typing import Dict
+from torch.utils.data import DataLoader as TorchDataLoader
 from torch import nn
 import torch
 
@@ -28,17 +29,39 @@ class NeuralNetworkPotentialTrainer:
     self.optimizer_func = kwargs.get('optimizer_func', torch.optim.Adam)
     self.optimizer_func_kwargs = kwargs.get('optimizer_func_kwargs', {'lr': 0.001})
     self.criterion = kwargs.get('criterion', nn.MSELoss())
+    self.save_best_model = kwargs.get('save_best_model', True)
 
     self.optimizer = {
       element: self.optimizer_func(self.potential.model[element].parameters(), **self.optimizer_func_kwargs) \
       for element in self.potential.elements
     }
 
-  def fit(self, sloader: StructureLoader, epochs=1) -> Dict:
+  def fit(self, dataset: StructureDataset, **kwargs) -> Dict:
     """
     Fit models.
     """
-    dict_ = defaultdict(list)
+    # TODO: train and test dataset
+    # TODO: more arguments to have better control on training
+    epochs = kwargs.get("epochs", 1)
+    history = defaultdict(list)
+    transform_ = dataset.transform
+
+    # Prepare structure dataset and loader (for training model)
+    # FIXME: DRY, solution: define clone() method
+    transform_ = dataset.transform
+    dataset.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
+    # TODO: further optimization using different parameters in Dataloader         
+    loader = TorchDataLoader(
+        dataset, 
+        batch_size=1, 
+        shuffle=True, 
+        #num_workers=2,
+        #prefetch_factor=3,
+        #pin_memory=True,
+        #persistent_workers=True,
+        collate_fn=lambda batch: batch
+      )
+
     logger.info("Fitting energy models")
     for epoch in range(epochs):
       print(f"Epoch {epoch+1}/{epochs}")
@@ -47,9 +70,11 @@ class NeuralNetworkPotentialTrainer:
       training_frc_loss = 0.0
       nbatch = 0
       # Loop over structures
-      for data in sloader.get_data():
+      for batch in loader:
         
-        structure = Structure(data, r_cutoff=self.potential.r_cutoff, requires_grad=True)
+        # TODO: what if batch size > 1
+        # TODO: spawn process
+        structure = batch[0] 
 
         # Initialize energy and optimizer
         energy = None
@@ -62,16 +87,17 @@ class NeuralNetworkPotentialTrainer:
           x = self.potential.scaler[element](x)
           x = self.potential.model[element](x.float())
           x = torch.sum(x, dim=0)
-          # TODO: float type neural network
+          # FIXME: float type neural network
           energy = x if energy is None else energy + x
 
-        #indices = torch.randperm(len(structure.position))[:10]
+        # Calculate force components
         force = -gradient(energy, structure.position)
 
         # Energy and force losses
         eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
         frc_loss = self.criterion(force.float(), structure.force.float()); 
         loss = eng_loss + frc_loss
+        
         # Update weights
         loss.backward(retain_graph=True)
         [self.optimizer[element].step() for element in self.potential.elements]
@@ -89,9 +115,15 @@ class NeuralNetworkPotentialTrainer:
       training_eng_loss /= nbatch
       training_frc_loss /= nbatch
       training_loss = training_eng_loss + training_frc_loss
-      dict_['training_energy_loss'].append(training_eng_loss)
-      dict_['training_force_loss'].append(training_frc_loss)
-      dict_['training_loss'].append(training_loss)
+      history['training_energy_loss'].append(training_eng_loss)
+      history['training_force_loss'].append(training_frc_loss)
+      history['training_loss'].append(training_loss)
       print()
+    
+    # Set back the original transformer
+    dataset.transform = transform_
 
-    return dict_
+    if self.save_best_model:
+      self.potential.save_model()
+
+    return history
