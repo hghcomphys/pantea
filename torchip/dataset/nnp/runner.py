@@ -1,15 +1,15 @@
 from ...logger import logger
 from ...utils.tokenize import tokenize
-from ...structure.structure import Structure
 from ..base import StructureDataset
 from typing import Callable, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
+import torch
 
 
 class RunnerStructureDataset(StructureDataset):
   """
-  Structure dataset of RuNNer.
+  Structure dataset for RuNNer file format.
   The input structure file contains snapshots of atoms located in the simulation box.
   Each snapshot includes per-atom and collective properties.
   The per-atom properties are element name, coordinates, energy, charge, and force components.
@@ -20,7 +20,7 @@ class RunnerStructureDataset(StructureDataset):
   def __init__(self, structure_file: Path, transform: Callable = None):   
     """
     Args:
-        structure_file (Path): path to the RuNNer structure file.
+        structure_file (Path): Path to the RuNNer structure file.
         transform (Callable, optional): Optional transform to be applied on a structure. Defaults to None.
     """
     self.structure_file = Path(structure_file)
@@ -29,10 +29,7 @@ class RunnerStructureDataset(StructureDataset):
 
   def __len__(self) -> int:
     """
-    This method opens the structure file and quickly finds the number of structures.
-
-    Returns:
-        int: Total number of structures
+    This method opens the structure file and return the number of structures.
     """
     n_structures = 0
     with open(str(self.structure_file), "r") as file:
@@ -40,19 +37,34 @@ class RunnerStructureDataset(StructureDataset):
         n_structures += 1
     return n_structures
 
-  def __getitem__(self, index) -> Dict:
+  def __getitem__(self, index: int) -> Dict:
     """
-    Return *it*th structure.
-    Multiple-indexing is also supported.
+    Return i-th structure form the.
+    This is a lazy load. Data is read from the file only if this method is called.
+    Multiple-indexing with some limitations is possible. 
 
     Args:
-        index (_type_): Index of structure.
+        index (int): Index of structure.
 
     Returns:
         Dict: Data structure
     """
-    # TODO: index as a list
     # TODO: assert range of index
+
+    if torch.is_tensor(index):
+      # TODO: what if indices live on GPU?
+      index = index.tolist()  
+    
+    # TODO: start and stop has to be explicitly given
+    if isinstance(index, slice):
+      if index.step is None:
+          index = list(range(index.start, index.stop))
+      else:
+          index = list(range(index.start, index.stop, index.step))
+   
+    if isinstance(index, list):
+      return [self._read(idx) for idx in index] 
+
     return self._read(index)
 
   def ignore(self, file: TextIO) -> bool:
@@ -118,7 +130,7 @@ class RunnerStructureDataset(StructureDataset):
 
   def _read(self, index) -> Dict:
     """
-    This method reads only the *i*th structure.
+    This method reads only the i-th structure.
     """
     logger.debug(f"Reading structure {index}")
     with open(str(self.structure_file), "r") as file:
