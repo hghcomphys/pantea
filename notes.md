@@ -1,21 +1,8 @@
 # Notes
 Technical notes regarding implementation, validation, references, etc.
 
-## TODOs
-- Optimization
-  - [ ] adding C++ core
-  - [ ] GPU computing 
-- Validation
-  - [ ] descriptor values
-  - [ ] scaler statistics
-  - [ ] gradient
-- Model
-  - [x] neural network
-  - [x] trainer
-- Examples
-  - [ ] ideal gas (LJ potential)
-  - [x] notebooks: descriptor, model, potential
-<!-- 
+<!--
+TODO: 
 - [ ] define a customized exception class that handles internal error messages and also python exceptions
 - [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
 - [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
@@ -89,9 +76,9 @@ $ sphinx-quickstart
 
 Create `.rst` and `Makefile`
 ```bash
-$ sphinx-apidoc -F -f -o ./ ../torchip
+$ sphinx-apidoc -f -o ./ ../torchip
 ```
-_Note_: The `-F` flag must be use only the first time to create `index.rst` and `conf.py` files.
+_Note_: The `-F` flag must be added for the first time in order to create default `index.rst` and `conf.py` files.
 
 Make html
 ```bash
