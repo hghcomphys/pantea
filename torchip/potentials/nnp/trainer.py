@@ -44,13 +44,11 @@ class NeuralNetworkPotentialTrainer:
     # TODO: more arguments to have better control on training
     epochs = kwargs.get("epochs", 1)
     history = defaultdict(list)
-    transform_ = dataset.transform
 
     # Prepare structure dataset and loader (for training model)
-    # FIXME: DRY, solution: define clone() method
-    transform_ = dataset.transform
+    dataset = dataset.clone() # because of the new transformer, no structure data will be copied
     dataset.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
-    # TODO: further optimization using different parameters in Dataloader         
+    # TODO: further optimization using the existing parameters in TorchDataloader         
     loader = TorchDataLoader(
         dataset, 
         batch_size=1, 
@@ -119,9 +117,6 @@ class NeuralNetworkPotentialTrainer:
       history['training_force_loss'].append(training_frc_loss)
       history['training_loss'].append(training_loss)
       print()
-    
-    # Set back the original transformer
-    dataset.transform = transform_
 
     if self.save_best_model:
       self.potential.save_model()

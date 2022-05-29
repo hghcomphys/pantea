@@ -276,8 +276,7 @@ class NeuralNetworkPotential(Potential):
     batch_size = kwargs.get("batch_size", 10)
 
     # Prepare structure dataset and loader (for fitting scaler)
-    # FIXME: DRY, solution: define clone() method
-    transform_ = dataset.transform
+    dataset = dataset.clone() # because of the new transformer, no structure data will be copied
     dataset.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
     loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
@@ -292,9 +291,6 @@ class NeuralNetworkPotential(Potential):
           x = self.descriptor[element](structure, batch)
           self.scaler[element].fit(x)
     logger.info("Finished scaler fitting.")
-
-    # Set back the original transformer
-    dataset.transform = transform_
 
     # Save scaler data into file  
     if save_scaler:
