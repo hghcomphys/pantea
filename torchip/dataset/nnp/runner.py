@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ...logger import logger
 from ...utils.tokenize import tokenize
 from ..base import StructureDataset
@@ -66,6 +67,14 @@ class RunnerStructureDataset(StructureDataset):
       return [self._read(idx) for idx in index] 
 
     return self._read(index)
+
+  def clone(self) -> RunnerStructureDataset:
+    """
+    Create an exact copy.
+    No structure data is loaded into the memory. 
+    """
+    return RunnerStructureDataset(self.structure_file, self.transform)
+
 
   def ignore(self, file: TextIO) -> bool:
     """
