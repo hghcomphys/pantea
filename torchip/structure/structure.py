@@ -28,7 +28,7 @@ class Structure:
 
   def __init__(self, data: Dict, **kwargs) -> None:
     """
-    Initialization of tensors, neighbor atoms, and box.
+    Initialization of tensors, neighbor atoms, and simulation box.
     """ 
     # Set dtype and device
     self.device = kwargs.get("device", CFG["device"])
@@ -56,9 +56,9 @@ class Structure:
       self.box = None 
       logger.debug("No lattice info were found in structure")
 
-  def reset_r_cutoff(self, r_cutoff: float) -> None:
+  def set_r_cutoff(self, r_cutoff: float) -> None:
     """
-    Reset cutoff radius and set the neighbor list accordingly.
+    Set cutoff radius and then update the neighbor list accordingly.
 
     Args:
         r_cutoff (float): New cutoff radius

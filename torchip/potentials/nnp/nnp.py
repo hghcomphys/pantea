@@ -390,7 +390,7 @@ class NeuralNetworkPotential(Potential):
 
     # FIXME: DRY, solution: define clone() method
     r_cutoff_ = structure.r_cutoff
-    structure.reset_r_cutoff(self.r_cutoff)
+    structure.set_r_cutoff(self.r_cutoff) # update the neighbor list for the potential's cutoff radius
 
     # Loop over elements
     energy = None
@@ -404,7 +404,7 @@ class NeuralNetworkPotential(Potential):
       energy = x if energy is None else energy + x
 
     # Set back cutoff radius of the input structure
-    structure.reset_r_cutoff(r_cutoff_)
+    structure.set_r_cutoff(r_cutoff_)
 
     return energy
 

@@ -10,12 +10,12 @@ class Neighbor:
   """
   Neighbor class creates a neighbor list of atom for the input structure.
   It is designed to be independent of the input structure. 
-  For MD simulations, re-neighboring the list is required every few steps (e.g. by defining skin). 
+  For MD simulations, re-neighboring the list is required every few steps (e.g. by defining a skin radius). 
   """
   def __init__(self, r_cutoff: float): 
     self.r_cutoff = r_cutoff
     self._tensors = defaultdict(None)
-    logger.debug(self)
+    logger.debug(f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})")
 
   def update(self, structure) -> None:
     """
@@ -47,9 +47,6 @@ class Neighbor:
         ni[aid, :nn[aid]] = ni_ 
     else:
       logger.warning("Skiping to update neighboring atoms in the structure")
-
-  def __repr__(self) -> str:
-      return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
 
 
 
