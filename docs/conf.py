@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'TorchIP'
+project = 'TorchIP - Torch Interatomic Potential'
 copyright = '2022, Hossein Ghorbanfekr'
 author = 'Hossein Ghorbanfekr'
 
