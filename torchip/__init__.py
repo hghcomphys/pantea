@@ -16,7 +16,7 @@ from .logger import logger
 from .config import CFG
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Version
 logger.info(f"{__doc__}")
