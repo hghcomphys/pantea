@@ -1,5 +1,5 @@
 <!-- # TorchIP - A Framework for Machine Learning Interatomic Potential Development -->
-<!-- # TorchIP - Torch Interatomic Potential -->
+# TorchIP - Torch Interatomic Potential
 
 <!-- 
 ╭━━━━╮╱╱╱╱╱╱╭╮╱╭━━┳━━━╮ \
@@ -9,12 +9,8 @@
 ╱╱┃┃┃╰╯┃┃┃╰━┫┃┃┣┫┣┫┃    \
 ╱╱╰╯╰━━┻╯╰━━┻╯╰┻━━┻╯    
  -->
-<img src="./docs/images/logo.png" alt="NNP" width="300"/>
-<!-- <p align = "left">
-A Framework for Machine Learning Interatomic Potential Development -->
-</p>
 
---------------------------------------------------------------------------------
+<img src="./docs/images/logo.png" alt="NNP" width="300"/>
 
 <!-- ## What is it? -->
 TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning (ML) interatomic potentials. 
@@ -37,32 +33,29 @@ $ pip install torchip
 ### High-level API
 ```python
 # Atomic data
-loader = RunnerStructureLoader("input.data")
+structures = RunnerStructureDataset("input.data")
 
-# potential
+# Potential
 nnp = NeuralNetworkPotential("input.nn")
 
 # Scaler
-nnp.fit_scaler(loader)
-nnp.read_scaler("scaler.data")
+nnp.fit_scaler(structures)
+nnp.load_scaler()
 
 # Model
-nnp.fit_model(loader)
-nnp.read_model()
+nnp.fit_model(structures)
+nnp.load_model()
 
-# Train
-nnp.fit(loader)
-
-# Inference
-energy = nnp.compute(loader)
-force = nnp.compute_force(loader)
+# Prediction
+structure = structures[0]
+energy = nnp(structure)
+force = -gradient(energy, structure.position)
 ```
 
 ### Low-level API
 ```python
 # Atomic data
-loader = RunnerStructureLoader("input.data")
-structures = read_structures(loader, between=(1, 5))
+structures = RunnerStructureDataset("input.data")
 
 # Descriptor
 asf = AtomicSymmetryFunction(element="H")
@@ -77,13 +70,5 @@ scaler.fit(val)
 val_scaled = scaler(val)
 
 # Potential
-potential = NeuralNetworkModel(**kwargs)
-
-# Train
-trainer = NeuralNetworkTrainer(model=potential, **kwargs)
-trainer.train(val_scaled)
-
-# Inference
-energy = potential(val_scaled)
-force = -gradient(energy, structures[0].position)
+TBA
 ```
