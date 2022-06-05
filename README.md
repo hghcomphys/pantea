@@ -10,10 +10,10 @@
 ╱╱╰╯╰━━┻╯╰━━┻╯╰┻━━┻╯    
  -->
 
-<img src="./docs/images/logo.png" alt="NNP" width="300"/>
+<!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 
 <!-- ## What is it? -->
-TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning (ML) interatomic potentials. 
+TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. 
 TorchIP is intended to help researchers to construct potentials that are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
 
 The core implementation of TorchIP is based on the [PyTorch](https://github.com/pytorch/pytorch) and its C++ API which provides two high-level features including _optimized tensor computation_ and _automatic differentiation_.
