@@ -15,6 +15,8 @@ class RunnerStructureDataset(StructureDataset):
   Each snapshot includes per-atom and collective properties.
   The per-atom properties are element name, coordinates, energy, charge, and force components.
   the collective properties are lattice info, total energy, and total charge.
+
+  See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
   """
   # TODO: logging
 

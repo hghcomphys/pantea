@@ -19,6 +19,8 @@ class NeuralNetworkPotentialTrainer:
   This class must be independent of the type of the potential.
   A derived trainer class specific to each potential then utilizing the best algorithms to train the models inside the potential
   using energy and force components. 
+
+  See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
   """
   def __init__(self, potential: Potential, **kwargs) -> None:
     """
