@@ -13,7 +13,7 @@
 <!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 
 <!-- ## What is it? -->
-TorchIP is a generic and GPU-accelerated framework written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. 
+TorchIP is a __generic__ and __GPU-accelerated__ software __framework__ written in Python/C++ to facilitate the development of emerging machine learning interatomic potentials. 
 TorchIP is intended to help researchers to construct potentials that are employed to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
 
 The core implementation of TorchIP is based on the [PyTorch](https://github.com/pytorch/pytorch) and its C++ API which provides two high-level features including _optimized tensor computation_ and _automatic differentiation_.
@@ -30,45 +30,50 @@ $ pip install torchip
 ```
 
 ## Usage
-### High-level API
+### ASF Descriptor
 ```python
+from torchip.dataset import RunnerStructureDataset
+from torchip.descriptors import AtomicSymmetryFunction  # ASF
+from torchip.descriptors import CutoffFunction, G2, G3
+
+# Read atomic structure data
+structures = RunnerStructureDataset("input.data")
+structure = structures[0]
+
+# Define descriptor (ASF)
+descriptor = AtomicSymmetryFunction(element="H")
+cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
+descriptor.register( G2(cfn, eta=0.5, r_shift=0.0), "H" )
+descriptor.register( G3(cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
+
+val = descriptor(structure)
+```
+
+### NN Potential
+```python
+from torchip.dataset import RunnerStructureDataset
+from torchip.potentials import NeuralNetworkPotential
+from torchip.utils import gradient
+
 # Atomic data
 structures = RunnerStructureDataset("input.data")
 
 # Potential
-nnp = NeuralNetworkPotential("input.nn")
+pot = NeuralNetworkPotential("input.nn")
 
 # Scaler
-nnp.fit_scaler(structures)
-nnp.load_scaler()
+pot.fit_scaler(structures)
+#pot.load_scaler()
 
 # Model
-nnp.fit_model(structures)
-nnp.load_model()
+pot.fit_model(structures)
+#pot.load_model()
 
 # Prediction
 structure = structures[0]
-energy = nnp(structure)
+energy = pot(structure)
 force = -gradient(energy, structure.position)
 ```
 
-### Low-level API
-```python
-# Atomic data
-structures = RunnerStructureDataset("input.data")
 
-# Descriptor
-asf = AtomicSymmetryFunction(element="H")
-cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
-asf.register( G2(cfn, eta=0.5, r_shift=0.0), "H" )
-asf.register( G3(cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
-val = asf(structures[0], aid=0)
 
-# Scaler
-scaler = AtomicSymmetryFunctionScaler(scaler_type="scale_center")
-scaler.fit(val)
-val_scaled = scaler(val)
-
-# Potential
-TBA
-```
