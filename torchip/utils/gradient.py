@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch import Tensor
 
 
@@ -20,3 +21,16 @@ def gradient(y: Tensor, x: Tensor, grad_outputs=None) -> Tensor:
     grad_outputs = torch.ones_like(y)
   grad = torch.autograd.grad(y, [x], grad_outputs = grad_outputs, create_graph=True)[0]
   return grad
+
+
+def get_value(x: torch.Tensor) -> np.ndarray:
+  """
+  An utility function to get values of the tensor either in the graph or on GPU.
+
+  Args:
+      x (torch.Tensor): Input tensor
+
+  Returns:
+      np.ndarray: A number version of the input tensor
+  """
+  return x.detach().cpu().numpy() 
