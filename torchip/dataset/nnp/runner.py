@@ -20,14 +20,17 @@ class RunnerStructureDataset(StructureDataset):
   """
   # TODO: logging
 
-  def __init__(self, structure_file: Path, transform: Callable = None):   
+  def __init__(self, structure_file: Path, transform: Callable = None, persist: bool= False):   
     """
     Args:
         structure_file (Path): Path to the RuNNer structure file.
         transform (Callable, optional): Optional transform to be applied on a structure. Defaults to None.
+        persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
     """
     self.structure_file = Path(structure_file)
     self.transform = transform
+    self.persist = persist
+    self._cached_structures = {}
     logger.info(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
 
   def __len__(self) -> int:
@@ -66,9 +69,9 @@ class RunnerStructureDataset(StructureDataset):
           index = list(range(index.start, index.stop, index.step))
    
     if isinstance(index, list):
-      return [self._read(idx) for idx in index] 
+      return [self._read_cache(idx) for idx in index] 
 
-    return self._read(index)
+    return self._read_cache(index)
 
   def clone(self) -> RunnerStructureDataset:
     """
@@ -139,20 +142,37 @@ class RunnerStructureDataset(StructureDataset):
         break
     return sample
 
-  def _read(self, index) -> Dict:
+
+  def _read_cache(self, index):
     """
-    This method reads only the i-th structure.
+    This method reads cached structure if persist flag is True.
     """
+    if not self.persist:
+      return self._read_and_transform(index)
+
+    if index not in self._cached_structures:
+      sample = self._read_and_transform(index)
+      # Cache transformed structure
+      self._cached_structures[index] = sample    
+    else:
+      #logger.debug(f"Using cached structure {index}")
+      sample = self._cached_structures[index]
+
+    return sample
+
+
+  def _read_and_transform(self, index):
+    """
+    This method reads the i-th structure and then applying the transformation.
+    """   
     logger.debug(f"Reading structure {index}")
     with open(str(self.structure_file), "r") as file:
       for _ in range(index):
         self.ignore(file) 
       sample = self.read(file)
 
+      # Apply transformation
       if self.transform:
         sample = self.transform(sample)
 
-      return sample
-
-
-
+    return sample
