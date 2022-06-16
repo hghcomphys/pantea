@@ -6,7 +6,9 @@ from ...utils.gradient import gradient
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 from torch import nn
+import numpy as np
 import torch
 
 
@@ -45,32 +47,57 @@ class NeuralNetworkPotentialTrainer:
     # TODO: train and test dataset
     # TODO: more arguments to have better control on training
     epochs = kwargs.get("epochs", 1)
+    validation_split = kwargs.get("validation_split", 0.2)
     history = defaultdict(list)
 
     # Prepare structure dataset and loader (for training model)
+    # TODO: a better approach instead of the cloning?
     dataset = dataset.clone() # because of the new transformer, no structure data will be copied
     dataset.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
+
+    # Train and Validation split
+    dataset_size = len(dataset)
+    indices = list(range(dataset_size))
+    split = int(np.floor(validation_split * dataset_size))
+    np.random.shuffle(indices)
+    train_sampler = SubsetRandomSampler(indices[split:])
+    valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
+
     # TODO: further optimization using the existing parameters in TorchDataloader         
-    loader = TorchDataLoader(
+    train_loader = TorchDataLoader(
         dataset, 
         batch_size=1, 
-        shuffle=True, 
+        #shuffle=True, 
         #num_workers=2,
         #prefetch_factor=3,
         #pin_memory=True,
         #persistent_workers=True,
-        collate_fn=lambda batch: batch
+        collate_fn=lambda batch: batch,
+        sampler=train_sampler,
+      )
+    valid_loader = TorchDataLoader(
+        dataset, 
+        batch_size=1, 
+        #shuffle=False, 
+        #num_workers=2,
+        #prefetch_factor=3,
+        #pin_memory=True,
+        #persistent_workers=True,
+        collate_fn=lambda batch: batch,
+        sampler=valid_sampler,
       )
 
     logger.info("Fitting energy models")
     for epoch in range(epochs):
-      print(f"Epoch {epoch+1}/{epochs}")
+      print(f"Epoch {epoch+1}/{epochs}")  # TODO: print result for epoch 0
 
-      training_eng_loss = 0.0
-      training_frc_loss = 0.0
+      [self.potential.model[element].train() for element in self.potential.elements]
+
       nbatch = 0
-      # Loop over structures
-      for batch in loader:
+      train_eng_loss = 0.0
+      train_frc_loss = 0.0
+      # Loop over training structures
+      for batch in train_loader:
         
         # TODO: what if batch size > 1
         # TODO: spawn process
@@ -103,21 +130,75 @@ class NeuralNetworkPotentialTrainer:
         [self.optimizer[element].step() for element in self.potential.elements]
 
         # Accumulate energy and force loss values for each structure
-        training_eng_loss += eng_loss.data.item()
-        training_frc_loss += frc_loss.data.item()
-        training_loss = training_eng_loss + training_frc_loss
+        train_eng_loss += eng_loss.data.item()
+        train_frc_loss += frc_loss.data.item()
+        train_loss = train_eng_loss + train_frc_loss
         nbatch += 1
 
-        print(f"Structure: [{nbatch:<4}] Training Loss: {training_loss/nbatch:<12.8E} "\
-          f"(Energy: {training_eng_loss/nbatch:<12.8E}, Force: {training_frc_loss/nbatch:<12.8E})", end="\r")
+        print(f"Training   Loss: {train_loss / nbatch:<12.8E} " \
+          f"(Energy: {train_eng_loss / nbatch:<12.8E}, Force: {train_frc_loss / nbatch:<12.8E})", end="\r")
 
-      # Get mean training losses over all structures
-      training_eng_loss /= nbatch
-      training_frc_loss /= nbatch
-      training_loss = training_eng_loss + training_frc_loss
-      history['training_energy_loss'].append(training_eng_loss)
-      history['training_force_loss'].append(training_frc_loss)
-      history['training_loss'].append(training_loss)
+      # Get mean training losses
+      train_eng_loss /= nbatch
+      train_frc_loss /= nbatch
+      train_loss = train_eng_loss + train_frc_loss
+      history['train_energy_loss'].append(train_eng_loss)
+      history['train_force_loss'].append(train_frc_loss)
+      history['train_loss'].append(train_loss)
+
+      # ======================================================
+
+      [self.potential.model[element].eval() for element in self.potential.elements]
+
+      nbatch = 0
+      valid_eng_loss = 0.0
+      valid_frc_loss = 0.0
+      # Loop over validation structures
+      for batch in valid_loader:
+        
+        # TODO: what if batch size > 1
+        # TODO: spawn process
+        structure = batch[0] 
+
+        # Initialize energy and optimizer
+        energy = None
+        [self.optimizer[element].zero_grad() for element in self.potential.elements]
+        
+        # Loop over elements
+        for element in self.potential.elements:
+          aids = structure.select(element).detach()
+          x = self.potential.descriptor[element](structure, aid=aids)
+          x = self.potential.scaler[element](x)
+          x = self.potential.model[element](x.float())
+          x = torch.sum(x, dim=0)
+          # FIXME: float type neural network
+          energy = x if energy is None else energy + x
+
+        # Calculate force components
+        force = -gradient(energy, structure.position)
+
+        # Energy and force losses
+        eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
+        frc_loss = self.criterion(force.float(), structure.force.float()); 
+        loss = eng_loss + frc_loss
+
+        # Accumulate energy and force loss values for each structure
+        valid_eng_loss += eng_loss.data.item()
+        valid_frc_loss += frc_loss.data.item()
+        valid_loss = valid_eng_loss + valid_frc_loss
+        nbatch += 1
+
+      # Get mean validation losses
+      valid_eng_loss /= nbatch
+      valid_frc_loss /= nbatch
+      valid_loss = valid_eng_loss + valid_frc_loss
+      history['valid_energy_loss'].append(valid_eng_loss)
+      history['valid_force_loss'].append(valid_frc_loss)
+      history['valid_loss'].append(valid_loss)
+
+      print()
+      print(f"Validation Loss: {valid_loss:<12.8E} "\
+        f"(Energy: {valid_eng_loss/nbatch:<12.8E}, Force: {valid_frc_loss:<12.8E})")
       print()
 
     if self.save_best_model:
