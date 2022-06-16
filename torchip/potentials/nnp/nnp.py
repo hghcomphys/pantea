@@ -392,6 +392,8 @@ class NeuralNetworkPotential(Potential):
     r_cutoff_ = structure.r_cutoff
     structure.set_r_cutoff(self.r_cutoff) # update the neighbor list for the potential's cutoff radius
 
+    [self.model[element].eval() for element in self.elements]
+
     # Loop over elements
     energy = None
     for element in self.elements:
