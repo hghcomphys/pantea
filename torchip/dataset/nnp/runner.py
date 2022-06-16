@@ -78,7 +78,7 @@ class RunnerStructureDataset(StructureDataset):
     Create an exact copy.
     No structure data is loaded into the memory. 
     """
-    return RunnerStructureDataset(self.structure_file, self.transform)
+    return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
 
 
   def ignore(self, file: TextIO) -> bool:
