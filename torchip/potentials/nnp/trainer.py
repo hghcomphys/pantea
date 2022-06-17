@@ -62,6 +62,8 @@ class NeuralNetworkPotentialTrainer:
     np.random.shuffle(indices)
     train_sampler = SubsetRandomSampler(indices[split:])
     valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
+    print(f"Training   structures: {dataset_size - split} of {dataset_size}")
+    print(f"Validation structures: {split} ({validation_split:0.2%})")
 
     # TODO: further optimization using the existing parameters in TorchDataloader         
     train_loader = TorchDataLoader(
@@ -88,8 +90,8 @@ class NeuralNetworkPotentialTrainer:
       )
 
     logger.info("Fitting energy models")
-    for epoch in range(epochs):
-      print(f"Epoch {epoch+1}/{epochs}")  # TODO: print result for epoch 0
+    for epoch in range(epochs+1):
+      print(f"Epoch {epoch}/{epochs}")
 
       [self.potential.model[element].train() for element in self.potential.elements]
 
@@ -126,8 +128,9 @@ class NeuralNetworkPotentialTrainer:
         loss = eng_loss + frc_loss
         
         # Update weights
-        loss.backward(retain_graph=True)
-        [self.optimizer[element].step() for element in self.potential.elements]
+        if epoch > 0:
+          loss.backward(retain_graph=True)
+          [self.optimizer[element].step() for element in self.potential.elements]
 
         # Accumulate energy and force loss values for each structure
         train_eng_loss += eng_loss.data.item()
@@ -160,9 +163,8 @@ class NeuralNetworkPotentialTrainer:
         # TODO: spawn process
         structure = batch[0] 
 
-        # Initialize energy and optimizer
+        # Initialize energy 
         energy = None
-        [self.optimizer[element].zero_grad() for element in self.potential.elements]
         
         # Loop over elements
         for element in self.potential.elements:
@@ -198,7 +200,7 @@ class NeuralNetworkPotentialTrainer:
 
       print()
       print(f"Validation Loss: {valid_loss:<12.8E} "\
-        f"(Energy: {valid_eng_loss/nbatch:<12.8E}, Force: {valid_frc_loss:<12.8E})")
+        f"(Energy: {valid_eng_loss:<12.8E}, Force: {valid_frc_loss:<12.8E})")
       print()
 
     if self.save_best_model:
