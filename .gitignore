@@ -16,3 +16,4 @@ dask-worker-space/
 .idea/
 *.rst
 _build/
+*.zip
