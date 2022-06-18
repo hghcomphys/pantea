@@ -1,8 +1,8 @@
-from ...logger import logger
-from ...potentials.base import Potential
-from ...dataset.base import StructureDataset
-from ...structure import ToStructure
-from ...utils.gradient import gradient
+from ..logger import logger
+from ..potentials.base import Potential
+from ..dataset.base import StructureDataset
+from ..structure import ToStructure
+from ..utils.gradient import gradient
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader

@@ -1,1 +1,1 @@
-from .nnp import *
+from .runner import *

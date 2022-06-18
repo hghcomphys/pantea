@@ -1,18 +1,18 @@
-from ...logger import logger
-from ...structure import Structure, ToStructure
-from ...dataset import RunnerStructureDataset
-from ...descriptors.asf.asf import ASF
-from ...descriptors.asf.cutoff import CutoffFunction
-from ...descriptors.scaler import DescriptorScaler
-from ...descriptors.asf.radial import G1, G2
-from ...descriptors.asf.angular import G3, G9
-from ...models.nn.nn import NeuralNetworkModel
-from ...utils.tokenize import tokenize
-from ...utils.batch import create_batch
-from ...utils.profiler import Profiler
-from ...structure.element import ElementMap
-from ...config import CFG
-from ..base import Potential
+from ..logger import logger
+from ..structure import Structure, ToStructure
+from ..dataset import RunnerStructureDataset
+from ..descriptors.asf.asf import ASF
+from ..descriptors.asf.cutoff import CutoffFunction
+from ..descriptors.scaler import DescriptorScaler
+from ..descriptors.asf.radial import G1, G2
+from ..descriptors.asf.angular import G3, G9
+from ..models.nn import NeuralNetworkModel
+from ..utils.tokenize import tokenize
+from ..utils.batch import create_batch
+from ..utils.profiler import Profiler
+from ..structure.element import ElementMap
+from ..config import CFG
+from .base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict
 from typing import List, Dict
@@ -20,7 +20,6 @@ from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
 from torch import Tensor
 from torch import nn
-
 import torch
 
 
