@@ -62,8 +62,8 @@ class NeuralNetworkPotentialTrainer:
     np.random.shuffle(indices)
     train_sampler = SubsetRandomSampler(indices[split:])
     valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
-    print(f"Training   structures: {dataset_size - split} of {dataset_size}")
-    print(f"Validation structures: {split} ({validation_split:0.2%})")
+    logger.print(f"Training   structures: {dataset_size - split} of {dataset_size}")
+    logger.print(f"Validation structures: {split} ({validation_split:0.2%})")
 
     # TODO: further optimization using the existing parameters in TorchDataloader         
     train_loader = TorchDataLoader(
@@ -89,9 +89,9 @@ class NeuralNetworkPotentialTrainer:
         sampler=valid_sampler,
       )
 
-    logger.info("Fitting energy models")
+    logger.debug("Fitting energy models")
     for epoch in range(epochs+1):
-      print(f"Epoch {epoch}/{epochs}")
+      logger.print(f"Epoch {epoch}/{epochs}")
 
       [self.potential.model[element].train() for element in self.potential.elements]
 
@@ -138,7 +138,7 @@ class NeuralNetworkPotentialTrainer:
         train_loss = train_eng_loss + train_frc_loss
         nbatch += 1
 
-        print(f"Training   Loss: {train_loss / nbatch:<12.8E} " \
+        logger.print(f"Training   Loss: {train_loss / nbatch:<12.8E} " \
           f"(Energy: {train_eng_loss / nbatch:<12.8E}, Force: {train_frc_loss / nbatch:<12.8E})", end="\r")
 
       # Get mean training losses
@@ -198,10 +198,10 @@ class NeuralNetworkPotentialTrainer:
       history['valid_force_loss'].append(valid_frc_loss)
       history['valid_loss'].append(valid_loss)
 
-      print()
-      print(f"Validation Loss: {valid_loss:<12.8E} "\
+      logger.print()
+      logger.print(f"Validation Loss: {valid_loss:<12.8E} "\
         f"(Energy: {valid_eng_loss:<12.8E}, Force: {valid_frc_loss:<12.8E})")
-      print()
+      logger.print()
 
     if self.save_best_model:
       self.potential.save_model()

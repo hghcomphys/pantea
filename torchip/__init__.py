@@ -19,10 +19,8 @@ from .config import CFG
 __version__ = "0.4.0"
 
 # Version
-logger.info(f"{__doc__}")
+logger.debug(f"{__doc__}")
 logger.info(f"TorchIP {__version__}")
-
-# CUDA availability
 logger.info(f"CUDA availability: {CFG['is_cuda']}")
 logger.info(f"Default device: '{CFG['device']}'")
 logger.info(f"Default precision: '{CFG['dtype']}'")

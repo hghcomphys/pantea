@@ -31,7 +31,7 @@ class RunnerStructureDataset(StructureDataset):
     self.transform = transform
     self.persist = persist
     self._cached_structures = {}
-    logger.info(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
+    logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
 
   def __len__(self) -> int:
     """

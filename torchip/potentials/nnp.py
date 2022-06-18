@@ -78,7 +78,7 @@ class NeuralNetworkPotential(Potential):
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     self.trainer = None
 
-    logger.info(f"Initializing {self.__class__.__name__}(potfile={self.potfile})")
+    logger.debug(f"Initializing {self.__class__.__name__}(potfile={self.potfile})")
     self._read_settings()
     self._init_descriptor()
     self._init_scaler()
@@ -169,12 +169,12 @@ class NeuralNetworkPotential(Potential):
       logger.info(f"Element '{element}' ({ElementMap.get_atomic_number(element):<3})") 
 
     # Instantiate ASF for each element 
-    logger.info(f"Creating ASF descriptors")
+    logger.debug(f"Creating ASF descriptors")
     for element in self._settings["elements"]:
       self.descriptor[element] = ASF(element)
 
     # Add symmetry functions
-    logger.info(f"Registering symmetry functions (radial and angular)") # TODO: move logging inside .add() method
+    logger.debug(f"Registering symmetry functions (radial and angular)") # TODO: move logging inside .add() method
     for cfg in self._settings["symfunction_short"]:
       if cfg[1] == 1:
         self.descriptor[cfg[0]].register(
@@ -219,7 +219,7 @@ class NeuralNetworkPotential(Potential):
     logger.debug(f"Preparing ASF scaler kwargs={kwargs}")
 
     # Assign an ASF scaler to each element
-    logger.info(f"Creating descriptor scalers")
+    logger.debug(f"Creating descriptor scalers")
     for element in self._settings["elements"]:
       self.scaler[element] = DescriptorScaler(**kwargs) 
 
@@ -229,7 +229,7 @@ class NeuralNetworkPotential(Potential):
     """
     self.model = {}
     # Instantiate neural network model for each element 
-    logger.info(f"Creating neural network models")
+    logger.debug(f"Creating neural network models")
     for element in self._settings["elements"]:
       input_size = self.descriptor[element].n_descriptor
       self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((3, 't'), (3, 't')), output_layer=(1, 'l'))
@@ -259,7 +259,7 @@ class NeuralNetworkPotential(Potential):
         raise NotImplementedError(msg)
     # Create trainer instance
     logger.debug(f"Preparing trainer kwargs={kwargs}")
-    logger.info(f"Creating NNP trainer")
+    logger.debug(f"Creating NNP trainer")
     self.trainer = NeuralNetworkPotentialTrainer(self, **kwargs)
 
   @Profiler.profile
@@ -289,7 +289,7 @@ class NeuralNetworkPotential(Potential):
           logger.debug(f"Structure={index}, element='{element}', batch={batch}")
           x = self.descriptor[element](structure, batch)
           self.scaler[element].fit(x)
-    logger.info("Finished scaler fitting.")
+    logger.debug("Finished scaler fitting.")
 
     # Save scaler data into file  
     if save_scaler:
@@ -301,7 +301,7 @@ class NeuralNetworkPotential(Potential):
     """
     # Save scaler parameters for each element separately
     for element in self.elements:
-      logger.info(f"Saving scaler parameters for element: {element}")
+      logger.debug(f"Saving scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
       scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].save(scaler_fn)
@@ -324,7 +324,7 @@ class NeuralNetworkPotential(Potential):
     """
     # Load scaler parameters for each element separately
     for element in self.elements:
-      logger.info(f"Loading scaler parameters for element: {element}")
+      logger.debug(f"Loading scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
       scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
       self.scaler[element].load(scaler_fn)
@@ -361,7 +361,7 @@ class NeuralNetworkPotential(Potential):
     Save model weights separately for all elements.
     """
     for element in self.elements:
-      logger.info(f"Saving model weights for element: {element}")   
+      logger.debug(f"Saving model weights for element: {element}")   
       atomic_number = ElementMap.get_atomic_number(element)
       model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
       self.model[element].save(model_fn)
@@ -371,7 +371,7 @@ class NeuralNetworkPotential(Potential):
     Load model weights separately for all elements.
     """
     for element in self.elements:
-        logger.info(f"Loading model weights for element: {element}")
+        logger.debug(f"Loading model weights for element: {element}")
         atomic_number = ElementMap.get_atomic_number(element)
         model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
         self.model[element].load(model_fn)
@@ -386,7 +386,6 @@ class NeuralNetworkPotential(Potential):
     """
     Calculate the total energy of the input structure.
     """
-
     # FIXME: DRY, solution: define clone() method
     r_cutoff_ = structure.r_cutoff
     structure.set_r_cutoff(self.r_cutoff) # update the neighbor list for the potential's cutoff radius
