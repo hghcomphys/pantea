@@ -62,8 +62,8 @@ class NeuralNetworkPotentialTrainer:
     np.random.shuffle(indices)
     train_sampler = SubsetRandomSampler(indices[split:])
     valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
-    logger.print(f"Training   structures: {dataset_size - split} of {dataset_size}")
-    logger.print(f"Validation structures: {split} ({validation_split:0.2%})")
+    logger.print(f"Number of structures (training)  : {dataset_size - split} of {dataset_size}")
+    logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%})")
 
     # TODO: further optimization using the existing parameters in TorchDataloader         
     train_loader = TorchDataLoader(
@@ -91,7 +91,7 @@ class NeuralNetworkPotentialTrainer:
 
     logger.debug("Fitting energy models")
     for epoch in range(epochs+1):
-      logger.print(f"Epoch {epoch}/{epochs}")
+      logger.print(f"[Epoch {epoch}/{epochs}]")
 
       [self.potential.model[element].train() for element in self.potential.elements]
 
@@ -105,26 +105,24 @@ class NeuralNetworkPotentialTrainer:
         # TODO: spawn process
         structure = batch[0] 
 
-        # Initialize energy and optimizer
-        energy = None
+        # Reset optimizer
         [self.optimizer[element].zero_grad() for element in self.potential.elements]
         
-        # Loop over elements
+        energy = 0
         for element in self.potential.elements:
           aids = structure.select(element).detach()
           x = self.potential.descriptor[element](structure, aid=aids)
           x = self.potential.scaler[element](x)
-          x = self.potential.model[element](x.float())
+          x = self.potential.model[element](x)
           x = torch.sum(x, dim=0)
-          # FIXME: float type neural network
-          energy = x if energy is None else energy + x
+          energy = energy + x
 
         # Calculate force components
         force = -gradient(energy, structure.position)
 
         # Energy and force losses
-        eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
-        frc_loss = self.criterion(force.float(), structure.force.float()); 
+        eng_loss = self.criterion(energy, structure.total_energy); 
+        frc_loss = self.criterion(force, structure.force); 
         loss = eng_loss + frc_loss
         
         # Update weights
@@ -150,6 +148,7 @@ class NeuralNetworkPotentialTrainer:
       history['train_loss'].append(train_loss)
 
       # ======================================================
+      # TODO: DRY training & validation 
 
       [self.potential.model[element].eval() for element in self.potential.elements]
 
@@ -163,25 +162,22 @@ class NeuralNetworkPotentialTrainer:
         # TODO: spawn process
         structure = batch[0] 
 
-        # Initialize energy 
-        energy = None
-        
-        # Loop over elements
+        energy = 0.0        
         for element in self.potential.elements:
           aids = structure.select(element).detach()
           x = self.potential.descriptor[element](structure, aid=aids)
           x = self.potential.scaler[element](x)
-          x = self.potential.model[element](x.float())
+          x = self.potential.model[element](x)
           x = torch.sum(x, dim=0)
           # FIXME: float type neural network
-          energy = x if energy is None else energy + x
+          energy = energy + x
 
         # Calculate force components
         force = -gradient(energy, structure.position)
 
         # Energy and force losses
-        eng_loss = self.criterion(energy.float(), structure.total_energy.float()); 
-        frc_loss = self.criterion(force.float(), structure.force.float()); 
+        eng_loss = self.criterion(energy, structure.total_energy); 
+        frc_loss = self.criterion(force, structure.force); 
         loss = eng_loss + frc_loss
 
         # Accumulate energy and force loss values for each structure
@@ -201,7 +197,6 @@ class NeuralNetworkPotentialTrainer:
       logger.print()
       logger.print(f"Validation Loss: {valid_loss:<12.8E} "\
         f"(Energy: {valid_eng_loss:<12.8E}, Force: {valid_frc_loss:<12.8E})")
-      logger.print()
 
     if self.save_best_model:
       self.potential.save_model()

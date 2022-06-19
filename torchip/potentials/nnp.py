@@ -95,7 +95,7 @@ class NeuralNetworkPotential(Potential):
     self._settings.update(self._default_settings)
 
     # Read settings from file
-    logger.info(f"Reading the HDNNP potential file:'{self.potfile}'")
+    logger.debug(f"Reading the HDNNP potential file:'{self.potfile}'")
     with open(str(self.potfile), 'r') as file:
 
       while True:
@@ -164,9 +164,9 @@ class NeuralNetworkPotential(Potential):
     self.descriptor = {}
 
     # Elements
-    logger.info(f"Number of elements: {len(self._settings['elements'])}")
+    logger.print(f"Number of elements: {len(self._settings['elements'])}")
     for element in self._settings["elements"]:
-      logger.info(f"Element '{element}' ({ElementMap.get_atomic_number(element):<3})") 
+      logger.print(f"Element: {element} ({ElementMap.get_atomic_number(element):03d})") 
 
     # Instantiate ASF for each element 
     logger.debug(f"Creating ASF descriptors")
@@ -398,7 +398,7 @@ class NeuralNetworkPotential(Potential):
       aids = structure.select(element).detach()
       x = self.descriptor[element](structure, aid=aids)
       x = self.scaler[element](x)
-      x = self.model[element](x.float())
+      x = self.model[element](x)
       x = torch.sum(x, dim=0)
       # FIXME: float type neural network
       energy = x if energy is None else energy + x
