@@ -130,7 +130,8 @@ class DescriptorScaler:
     data = np.loadtxt(str(filename))
     self.nsamples = 1
     self.dimension = data.shape[1]
-    self.min   = torch.tensor(data[:, 0], device=CFG["device"]) # TODO: dtype?
-    self.max   = torch.tensor(data[:, 1], device=CFG["device"])
-    self.mean  = torch.tensor(data[:, 2], device=CFG["device"])
-    self.sigma = torch.tensor(data[:, 3], device=CFG["device"])
+    kwargs = { "dtype": CFG["dtype"], "device":CFG["device"] }
+    self.min   = torch.tensor(data[:, 0], **kwargs) 
+    self.max   = torch.tensor(data[:, 1], **kwargs)
+    self.mean  = torch.tensor(data[:, 2], **kwargs)
+    self.sigma = torch.tensor(data[:, 3], **kwargs)
