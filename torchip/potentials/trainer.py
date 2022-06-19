@@ -64,6 +64,7 @@ class NeuralNetworkPotentialTrainer:
     valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
     logger.print(f"Number of structures (training)  : {dataset_size - split} of {dataset_size}")
     logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%})")
+    logger.print()
 
     # TODO: further optimization using the existing parameters in TorchDataloader         
     train_loader = TorchDataLoader(
@@ -197,6 +198,7 @@ class NeuralNetworkPotentialTrainer:
       logger.print()
       logger.print(f"Validation Loss: {valid_loss:<12.8E} "\
         f"(Energy: {valid_eng_loss:<12.8E}, Force: {valid_frc_loss:<12.8E})")
+      logger.print()
 
     if self.save_best_model:
       self.potential.save_model()

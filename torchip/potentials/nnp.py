@@ -419,11 +419,3 @@ class NeuralNetworkPotential(Potential):
     """
     return max([dsc.r_cutoff for dsc in self.descriptor.values()])
 
-
-    
-
-    
-
-
-
-

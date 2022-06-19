@@ -80,7 +80,6 @@ class RunnerStructureDataset(StructureDataset):
     """
     return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
 
-
   def ignore(self, file: TextIO) -> bool:
     """
     This method ignores the next structure.
