@@ -6,14 +6,14 @@ import torch
 
 class CFG:
   """
-  A global configuration class of default values for variables whithin the framework.
+  A global configuration class of default values for variables within the framework.
   """
   # TODO: circular import error between CFG & logger
   
   __conf = {
     "is_cuda": torch.cuda.is_available(),
     "device" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-    "dtype": torch.double,
+    "dtype": torch.float,
     "dtype_index": torch.long, 
     # "logging_level": logging.INFO,
     # "log_file": Path("mlap.log"),
@@ -27,7 +27,7 @@ class CFG:
   @staticmethod
   def set(name, value) -> None:
     if name in CFG.__setters:
-      logger.info(f"Resetting default {name}: '{value}'")
+      logger.debug(f"Resetting default {name}: '{value}'")
       CFG.__conf[name] = value
     else:
       msg = f"Name '{name}' not accepted in the global configuration"
