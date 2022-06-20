@@ -8,6 +8,7 @@ from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch import nn
+from math import sqrt
 import numpy as np
 import torch
 
@@ -109,7 +110,7 @@ class NeuralNetworkPotentialTrainer:
         # Reset optimizer
         [self.optimizer[element].zero_grad() for element in self.potential.elements]
         
-        energy = 0
+        energy = 0.0
         for element in self.potential.elements:
           aids = structure.select(element).detach()
           x = self.potential.descriptor[element](structure, aid=aids)
@@ -137,8 +138,11 @@ class NeuralNetworkPotentialTrainer:
         train_loss = train_eng_loss + train_frc_loss
         nbatch += 1
 
-        logger.print(f"Training   Loss: {train_loss / nbatch:<12.8E} " \
-          f"(Energy: {train_eng_loss / nbatch:<12.8E}, Force: {train_frc_loss / nbatch:<12.8E})", end="\r")
+        # FIXME: what if the loss criterion is other than MSE?
+        logger.print("Training     " \
+                    f"loss: {sqrt(train_loss / nbatch):<12.8E}, " \
+                    f"energy [rmse]: {sqrt(train_eng_loss / nbatch):<12.8E}, " \
+                    f"force [rmse]: {sqrt(train_frc_loss / nbatch):<12.8E}", end="\r")
 
       # Get mean training losses
       train_eng_loss /= nbatch
@@ -147,6 +151,8 @@ class NeuralNetworkPotentialTrainer:
       history['train_energy_loss'].append(train_eng_loss)
       history['train_force_loss'].append(train_frc_loss)
       history['train_loss'].append(train_loss)
+      history['train_energy_rmse'].append(sqrt(train_eng_loss))
+      history['train_force_rmse'].append(sqrt(train_frc_loss))
 
       # ======================================================
       # TODO: DRY training & validation 
@@ -194,12 +200,17 @@ class NeuralNetworkPotentialTrainer:
       history['valid_energy_loss'].append(valid_eng_loss)
       history['valid_force_loss'].append(valid_frc_loss)
       history['valid_loss'].append(valid_loss)
+      history['valid_energy_rmse'].append(sqrt(valid_eng_loss))
+      history['valid_force_rmse'].append(sqrt(valid_frc_loss))
 
       logger.print()
-      logger.print(f"Validation Loss: {valid_loss:<12.8E} "\
-        f"(Energy: {valid_eng_loss:<12.8E}, Force: {valid_frc_loss:<12.8E})")
+      logger.print("Validation   " \
+                  f"loss: {sqrt(valid_loss):<12.8E}, " \
+                  f"energy [rmse]: {sqrt(valid_eng_loss):<12.8E}, " \
+                  f"force [rmse]: {sqrt(valid_frc_loss):<12.8E}")
       logger.print()
 
+    #TODO: save the best model
     if self.save_best_model:
       self.potential.save_model()
 
