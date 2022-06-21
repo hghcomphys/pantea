@@ -189,13 +189,3 @@ class Structure:
 
   def __str__(self) -> str:
     return f"Structure: natoms={self.natoms}, elements={self.elements}"
-
-class ToStructure:
-  """
-  An utility transformer that converts a structure dataset into a **Structure** object. 
-  """
-  def __init__(self, **kwargs):
-    self.kwargs = kwargs
-
-  def __call__(self, data: Dict) -> Structure:
-    return Structure(data, **self.kwargs)
