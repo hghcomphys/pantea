@@ -1,6 +1,7 @@
 from ..logger import logger
-from ..structure import Structure, ToStructure
-from ..dataset import RunnerStructureDataset
+from ..structure import Structure
+from ..dataset.transformer import ToStructure
+from ..dataset.runner import RunnerStructureDataset
 from ..descriptors.asf.asf import ASF
 from ..descriptors.asf.cutoff import CutoffFunction
 from ..descriptors.scaler import DescriptorScaler
@@ -166,7 +167,7 @@ class NeuralNetworkPotential(Potential):
     # Elements
     logger.print(f"Number of elements: {len(self._settings['elements'])}")
     for element in self._settings["elements"]:
-      logger.print(f"Element: {element} ({ElementMap.get_atomic_number(element):03d})") 
+      logger.print(f"Element: {element} ({ElementMap.get_atomic_number(element)})") 
 
     # Instantiate ASF for each element 
     logger.debug(f"Creating ASF descriptors")
@@ -393,15 +394,14 @@ class NeuralNetworkPotential(Potential):
     [self.model[element].eval() for element in self.elements]
 
     # Loop over elements
-    energy = None
+    energy = 0.0
     for element in self.elements:
       aids = structure.select(element).detach()
       x = self.descriptor[element](structure, aid=aids)
       x = self.scaler[element](x)
       x = self.model[element](x)
       x = torch.sum(x, dim=0)
-      # FIXME: float type neural network
-      energy = x if energy is None else energy + x
+      energy = energy + x
 
     # Set back cutoff radius of the input structure
     structure.set_r_cutoff(r_cutoff_)
