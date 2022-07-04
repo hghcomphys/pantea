@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..config import CFG
+from ..config import dtype, device
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
@@ -31,8 +31,8 @@ class Structure:
     Initialization of tensors, neighbor atoms, and simulation box.
     """ 
     # Set dtype and device
-    self.device = kwargs.get("device", CFG["device"])
-    self.dtype = kwargs.get("dtype", CFG["dtype"])
+    self.device = kwargs.get("device", device.DEVICE)
+    self.dtype = kwargs.get("dtype", dtype.FLOATX)
 
     # Whether keep the history of gradients (e.g. position tensor) due to computational efficiency
     self.requires_grad = kwargs.get("requires_grad", True)
@@ -94,7 +94,7 @@ class Structure:
     # Set atom types using element mapping
     self.element_map = ElementMap(data["element"])
     atype = [self.element_map[elem] for elem in data["element"]] # TODO: optimize?
-    self._tensors["atype"] = torch.tensor(atype, dtype=CFG["dtype_index"], device=self.device) # atom type
+    self._tensors["atype"] = torch.tensor(atype, dtype=dtype.INDEX, device=self.device) # atom type
 
     # Logging existing tensors
     for name, tensor in self._tensors.items():

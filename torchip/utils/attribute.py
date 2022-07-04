@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..config import CFG
+from ..config import dtype, device
 from typing import Dict, Any
 from torch import Tensor
 import torch
@@ -28,4 +28,4 @@ def cast_to_tensor(x) -> Tensor:
   Returns:
       Tensor: casted input to a tensor
   """  
-  return torch.tensor(x, dtype=CFG['dtype'], device=CFG['device']) 
+  return torch.tensor(x, dtype=dtype.FLOATX, device=device.DEVICE) 

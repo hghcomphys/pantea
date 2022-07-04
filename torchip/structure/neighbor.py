@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..config import CFG
+from ..config import dtype, device
 from ..utils.attribute import set_tensors_as_attr
 from collections import defaultdict
 # from .structure import Structure  # TODO: circular import error
@@ -30,8 +30,8 @@ class Neighbor:
       structure.is_neighbor = True
 
       # Neighbor atoms numbers and indices
-      self._tensors["number"] = torch.empty(structure.natoms, dtype=CFG["dtype_index"], device=structure.device)
-      self._tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=CFG["dtype_index"], device=structure.device) 
+      self._tensors["number"] = torch.empty(structure.natoms, dtype=dtype.UINT, device=structure.device)
+      self._tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=dtype.INDEX, device=structure.device) 
       set_tensors_as_attr(self, self._tensors)
 
       nn = self.number

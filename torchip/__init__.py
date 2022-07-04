@@ -10,6 +10,7 @@ differentiation
 """
 
 from .logger import logger
+from .config import *
 
 
 __version__ = "0.4.0"

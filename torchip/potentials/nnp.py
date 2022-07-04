@@ -12,7 +12,7 @@ from ..utils.tokenize import tokenize
 from ..utils.batch import create_batch
 from ..utils.profiler import Profiler
 from ..structure.element import ElementMap
-from ..config import CFG
+from ..config import dtype, device
 from .base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
 from collections import defaultdict
@@ -234,7 +234,7 @@ class NeuralNetworkPotential(Potential):
     for element in self._settings["elements"]:
       input_size = self.descriptor[element].n_descriptor
       self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((3, 't'), (3, 't')), output_layer=(1, 'l'))
-      self.model[element].to(CFG["device"])
+      self.model[element].to(device.DEVICE)
       # TODO: add element argument
       # TODO: read layers from the settings
 

@@ -1,6 +1,6 @@
 
 from ..logger import logger
-from ..config import CFG
+from ..config import dtype, device
 from torch import Tensor
 from typing import Dict
 from pathlib import Path
@@ -130,7 +130,7 @@ class DescriptorScaler:
     data = np.loadtxt(str(filename))
     self.nsamples = 1
     self.dimension = data.shape[1]
-    kwargs = { "dtype": CFG["dtype"], "device":CFG["device"] }
+    kwargs = {"dtype": dtype.FLOATX, "device":device.DEVICE}
     self.min   = torch.tensor(data[:, 0], **kwargs) 
     self.max   = torch.tensor(data[:, 1], **kwargs)
     self.mean  = torch.tensor(data[:, 2], **kwargs)

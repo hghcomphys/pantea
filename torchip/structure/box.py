@@ -1,5 +1,6 @@
+from keyword import kwlist
 from ..logger import logger
-from ..config import CFG
+from ..config import dtype, device
 from typing import Tuple
 from torch import Tensor
 import torch
@@ -21,9 +22,10 @@ class Box:
       raise ValueError(msg)
 
     self.lattice = lattice
-    self.xlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
-    self.ylo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
-    self.zlo = torch.tensor(0.0, dtype=CFG["dtype"], device=CFG["device"])
+    kwargs = { "dtype": dtype.FLOATX, "device": device.DEVICE }
+    self.xlo = torch.tensor(0.0, **kwargs)
+    self.ylo = torch.tensor(0.0, **kwargs)
+    self.zlo = torch.tensor(0.0, **kwargs)
     self.xhi = lattice[0, 0]
     self.yhi = lattice[1, 1]
     self.zhi = lattice[2, 2]
