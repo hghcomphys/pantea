@@ -83,9 +83,9 @@ class Logger:
     self.warning(msg, *args, **kwargs)
 
   def error(self, msg, *args, **kwargs):
-    # TODO: get exception type as input argument
     self.logger.error(msg, *args, **kwargs)
-    raise Exception(msg)
+    exception_ = kwargs.get("exception", Exception)
+    raise exception_(msg)
 
 
 # Create a global logger object
