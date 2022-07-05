@@ -38,9 +38,7 @@ class AtomicSymmetryFunction(Descriptor):
     elif isinstance(symmetry_function, AngularSymmetryFunction):
       self._angular.append((symmetry_function, self.element, neighbor_element1, neighbor_element2))
     else:
-      msg = f"Unknown input symmetry function type"
-      logger.error(msg)
-      raise TypeError(msg)
+      logger.error(f"Unknown input symmetry function type", exception=TypeError)
 
   def __call__(self, structure: Structure, aid: Union[List[int], int] = None) -> Tensor: 
     """
@@ -82,9 +80,8 @@ class AtomicSymmetryFunction(Descriptor):
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
-      msg = f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')"
-      logger.error(msg)
-      raise AssertionError(msg)
+      logger.error(f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')",
+                    exception=AssertionError)
         
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    

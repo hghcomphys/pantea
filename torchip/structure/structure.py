@@ -121,9 +121,7 @@ class Structure:
     if self.neighbor:
       self.neighbor.update(self)
     else:
-      msg = "No cutoff radius is given"
-      logger.error(msg)
-      raise ValueError(msg)
+      logger.error("No cutoff radius is given", exception=ValueError)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:

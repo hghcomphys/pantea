@@ -255,9 +255,9 @@ class NeuralNetworkPotential(Potential):
           "eps": self._settings["gradient_adam_epsilon"],
         }
       elif self._settings["gradient_type"] == 0:  # Fixed Step  
-        msg = "Gradient descent type fixed step is not implemented yet"
-        logger.error(msg)
-        raise NotImplementedError(msg)
+        logger.error("Gradient descent type fixed step is not implemented yet", 
+                      exception=NotImplementedError)
+
     # Create trainer instance
     logger.debug(f"Preparing trainer kwargs={kwargs}")
     logger.debug(f"Creating NNP trainer")

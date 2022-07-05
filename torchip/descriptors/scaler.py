@@ -66,9 +66,8 @@ class DescriptorScaler:
     else:
       # Check data dimension
       if data.shape[1] != self.dimension:
-        msg = f"Data dimension doesn't match previous observation ({self.dim}): {data.shape[0]}"
-        logger.error(msg)
-        raise ValueError(msg)
+        logger.error(f"Data dimension doesn't match previous observation ({self.dim}): {data.shape[0]}",
+                      exception=ValueError)
 
       # New data (batch)
       new_mean = torch.mean(data, dim=0)

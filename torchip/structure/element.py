@@ -61,9 +61,7 @@ class ElementMap:
     elif isinstance(item, str):
       return self._elem_to_atom_type[item]
     else:
-      msg = f"Unknown item type '{type(item)}'"
-      logger.error(msg)
-      raise TypeError(msg)
+      logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
 
   def __call__(self, item: Union[str, int]) -> Union[int, str]:
     return self[item]

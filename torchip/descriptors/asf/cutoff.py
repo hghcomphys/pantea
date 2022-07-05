@@ -25,9 +25,8 @@ class CutoffFunction:
     try:
       self.cfn = getattr(self, f"{self.cutoff_type}")
     except AttributeError:
-      msg = f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'"
-      logger.error(msg)
-      raise NotImplementedError(msg)
+      logger.error(f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'",
+                    exception=NotImplementedError)
 
   def __call__(self, r: Tensor) -> Tensor:
     # TODO: add C++ kernel

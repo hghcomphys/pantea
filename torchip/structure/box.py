@@ -17,9 +17,7 @@ class Box:
     
     # Check lattice matrix shape
     if lattice.shape != (3, 3):
-      msg = f"Unexpected lattice dimension {lattice.shape}"
-      logger.error(msg)
-      raise ValueError(msg)
+      logger.error(f"Unexpected lattice dimension {lattice.shape}", exception=ValueError)
 
     self.lattice = lattice
     kwargs = { "dtype": dtype.FLOATX, "device": device.DEVICE }

@@ -50,9 +50,7 @@ class NeuralNetworkModel(BaseModel):
     elif type_ == "l":
       return nn.Identity()  # No activation function
     else:
-      msg = f"Unknown activation function type '{type_}'"
-      logger.error(msg)
-      raise ValueError(msg)
+      logger.error(f"Unknown activation function type '{type_}'", exception=ValueError)
 
   def forward(self, x):
     return self.linear_stack(x)
