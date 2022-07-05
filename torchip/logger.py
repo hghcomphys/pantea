@@ -50,7 +50,7 @@ class Logger:
     console_handler.setLevel(self.level)
     self.handlers.append(console_handler)
 
-  def _add_file_handler(self, filename) -> None:
+  def _add_file_handler(self, filename: Path) -> None:
     """
     Add a file handler to the logging.
     Further fine-tune adjustments (e.g. formatting) on file handler can be applied here. 
@@ -82,11 +82,11 @@ class Logger:
   def warn(self, msg, *args, **kwargs):
     self.warning(msg, *args, **kwargs)
 
-  def error(self, msg, *args, **kwargs):
+  def error(self, msg, exception: Exception = None, *args, **kwargs):
     self.logger.error(msg, *args, **kwargs)
-    exception_ = kwargs.get("exception", Exception)
-    raise exception_(msg)
+    if exception is not None:
+      raise exception(msg)
 
 
-# Create a global logger object
+# Create the global logger object
 logger = Logger() # filename="debug.log"
