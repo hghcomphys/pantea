@@ -367,6 +367,7 @@ class NeuralNetworkPotential(Potential):
       model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
       self.model[element].save(model_fn)
 
+  @Profiler.profile
   def load_model(self):
     """
     Load model weights separately for all elements.
