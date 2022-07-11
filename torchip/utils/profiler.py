@@ -4,6 +4,7 @@ from collections import defaultdict
 import functools
 import time
 import copy
+import torch
 
 
 _default_profiler = None
@@ -109,7 +110,7 @@ class Timer():
 
   def __exit__(self, type, value, traceback):
     self.elapsed_time = time.perf_counter() - self._start
-    logger.info(self)
+    logger.print(self)
 
   def __repr__(self) -> str:
       return f"{self.name} (elapsed time {self.elapsed_time:.8f} seconds)"
@@ -119,10 +120,33 @@ def timer(func):
   """
   A decorator to measure elapsed time when calling a function.
   """
-  print(func.__name__)
+  logger.print(func.__name__)
   @functools.wraps(func)
   def wrapper(*args, **kwargs):
     with Timer(f"Timer {func.__name__} function"):
       retval = func(*args, **kwargs)
+    return retval
+  return wrapper
+
+
+def torch_profile(func):
+  """
+  Use torch profiler for the input function.
+  """
+  # TODO: extend it to be use for class methods
+  logger.print(func.__name__)
+  @functools.wraps(func)
+  def wrapper(*args, **kwargs):
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ]
+    ) as p:
+        retval = func(*args, **kwargs)
+    
+    logger.print(p.key_averages().table(
+        sort_by="self_cuda_time_total", row_limit=-1))
+
     return retval
   return wrapper
