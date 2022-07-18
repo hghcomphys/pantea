@@ -13,18 +13,24 @@ import torch
 
 class Structure:
   """
-  This class contains arrays of atomic information (i.e. position, forces, energy, cell, and  more) for a collection of atoms.   
+  Structure class contains arrays of atomic information including position, forces, energy, cell, and  more) 
+  for a collection of atoms in a simulation box.   
   An instance of the Structure class is an unit of atomic data which being used to calculate the (atomic) descreptors.
-  For computational reasons, vectors (more precisely tensors) of atomic data are used instead of defining 
-  individual atoms as a unit of our atomic data. 
+  For computational reasons, vectors, more precisely tensors, of atomic data are used instead of defining 
+  individual atoms as a unit of the atomic data. 
 
   The most computationally expensive section of this class is when calculating the neighbor list. 
-  This task is done by giving an instance of Structure to the Neighbor class which is responsible for updating the neighbor lists.
-  TODO: mesh gird method can be used to seed up of creating/updating the neighbot list.
+  This task is done by giving an instance of Structure to the Neighbor class which is responsible 
+  for updating the neighbor lists.
 
   For the MPI implementation, this class can be considered as one domain in domain decomposition method (see miniMD code).
   An C++ implementation might be required for MD simulation but not necessarily developing ML potential.   
+
+  Also tensor for atomic positions (and probably atomic change in future) has to be differentiable and this requires
+  keeping track of all operations in the computational graph that can lead ot to large memory usage. 
+  Some methods are intoduced here to avoid gradient whenever it's possible.  
   """
+  # TODO: mesh gird method can be used to seed up of creating/updating the neighbot list.
 
   def __init__(self, data: Dict, **kwargs) -> None:
     """
@@ -34,7 +40,7 @@ class Structure:
     self.device = kwargs.get("device", device.DEVICE)
     self.dtype = kwargs.get("dtype", dtype.FLOATX)
 
-    # Whether keep the history of gradients (e.g. position tensor) due to computational efficiency
+    # Whether keeping the history of gradients (e.g. position tensor) or not
     self.requires_grad = kwargs.get("requires_grad", True)
 
     self._tensors = defaultdict(None)   # an default dictionary of torch tensors
@@ -85,7 +91,7 @@ class Structure:
     # Direct casting
     self._tensors["position"] = torch.tensor(data["position"], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
     self._tensors["force"] = torch.tensor(data["force"], dtype=self.dtype, device=self.device)
-    self._tensors["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device)
+    self._tensors["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device) # TODO: add requires_grad
     self._tensors["energy"] = torch.tensor(data["energy"], dtype=self.dtype, device=self.device)
     self._tensors["lattice"] = torch.tensor(data["lattice"], dtype=self.dtype, device=self.device)
     self._tensors["total_energy"] = torch.tensor(data["total_energy"], dtype=self.dtype, device=self.device)
