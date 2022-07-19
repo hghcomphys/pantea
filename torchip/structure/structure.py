@@ -32,31 +32,34 @@ class Structure:
   """
   # TODO: mesh gird method can be used to seed up of creating/updating the neighbot list.
 
-  def __init__(self, data: Dict, **kwargs) -> None:
+  def __init__(self, data: Dict, **kwargs) -> None: 
     """
     Initialization of tensors, neighbor atoms, and simulation box.
-    """ 
-    # Set dtype and device
-    self.device = kwargs.get("device", device.DEVICE)
-    self.dtype = kwargs.get("dtype", dtype.FLOATX)
 
-    # Whether keeping the history of gradients (e.g. position tensor) or not
-    self.requires_grad = kwargs.get("requires_grad", True)
-
-    self._tensors = defaultdict(None)   # an default dictionary of torch tensors
-    self.element_map = None             # map an element to corrresponsing atom type and vice versa.    
-
-    # Neighboring atoms
-    self.r_cutoff = kwargs.get("r_cutoff", None) 
-    self.neighbor = Neighbor(self.r_cutoff) if self.r_cutoff else None
-    self.is_neighbor = False   
-
-    # Prepare tensors from input structure data
-    self._cast_data_to_tensors(data)
-    set_tensors_as_attr(self, self._tensors)
+    :param data: A dictionary of atomic data including position, charge, energy, etc. 
+    :type data: Dict
+    """     
+    # Set input arguments
+    self.device = kwargs.get("device", device.DEVICE)      # data type float32, float64, etc.
+    self.dtype = kwargs.get("dtype", dtype.FLOATX)         # device either CPU or GPU
+    self.requires_grad = kwargs.get("requires_grad", True) # Whether enabling autograd or not
+    self.r_cutoff = kwargs.get("r_cutoff", None)           # cutoff radius for calculating the neighbor list   
     
-    # Create a box using the lattice matrix (useful for non-orthogonal lattice)
-    if len(self.lattice) != 0:
+    # Prepare tensors from input structure data
+    self.element_map = ElementMap(data["element"]) 
+    self.tensors = self._cast_data_to_tensors(data)
+    set_tensors_as_attr(self, self.tensors)       
+
+    # Neighbor list
+    self.is_neighbor = False   
+    if self.r_cutoff is not None:
+      self.neighbor = Neighbor(self.r_cutoff) 
+    else:
+      self.neighbor = None
+      logger.debug("No cutoff radius was found for the neighbor list")
+    
+    # Simulation box
+    if len(self.lattice) > 0:
       self.box = Box(self.lattice)  
     else:
       self.box = None 
@@ -80,6 +83,13 @@ class Structure:
       self.neighbor = Neighbor(self.r_cutoff)
       self.is_neighbor = False
       logger.debug(f"Resetting cutoff radius of structure: r_cutoff={self.r_cutoff}")
+
+  def _prepare_atype_tensor(self, elements: List) -> Tensor:
+    """
+    Set atom types using the element map
+    """
+    atype = [self.element_map(elem) for elem in elements]
+    return torch.tensor(atype, dtype=dtype.INDEX, device=self.device)
     
   def _cast_data_to_tensors(self, data: Dict) -> None:
     """
@@ -88,25 +98,23 @@ class Structure:
     TODO: check the input data dictionary for possibly missing items
     TODO: take care of some missing items.
     """
-    # Direct casting
-    self._tensors["position"] = torch.tensor(data["position"], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
-    self._tensors["force"] = torch.tensor(data["force"], dtype=self.dtype, device=self.device)
-    self._tensors["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device) # TODO: add requires_grad
-    self._tensors["energy"] = torch.tensor(data["energy"], dtype=self.dtype, device=self.device)
-    self._tensors["lattice"] = torch.tensor(data["lattice"], dtype=self.dtype, device=self.device)
-    self._tensors["total_energy"] = torch.tensor(data["total_energy"], dtype=self.dtype, device=self.device)
-    self._tensors["total_charge"] = torch.tensor(data["total_charge"], dtype=self.dtype, device=self.device)
+    tensors_ = defaultdict(None)
+    tensors_["position"] = torch.tensor(data["position"], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
+    tensors_["force"] = torch.tensor(data["force"], dtype=self.dtype, device=self.device)
+    tensors_["charge"] = torch.tensor(data["charge"], dtype=self.dtype, device=self.device) # TODO: add requires_grad
+    tensors_["energy"] = torch.tensor(data["energy"], dtype=self.dtype, device=self.device)
+    tensors_["lattice"] = torch.tensor(data["lattice"], dtype=self.dtype, device=self.device)
+    tensors_["total_energy"] = torch.tensor(data["total_energy"], dtype=self.dtype, device=self.device)
+    tensors_["total_charge"] = torch.tensor(data["total_charge"], dtype=self.dtype, device=self.device)
+    tensors_["atype"] = self._prepare_atype_tensor(data["element"])
 
-    # Set atom types using element mapping
-    self.element_map = ElementMap(data["element"])
-    atype = [self.element_map[elem] for elem in data["element"]] # TODO: optimize?
-    self._tensors["atype"] = torch.tensor(atype, dtype=dtype.INDEX, device=self.device) # atom type
-
-    # Logging existing tensors
-    for name, tensor in self._tensors.items():
+    # Logging tensors
+    for name, tensor in tensors_.items():
       logger.debug(
         f"Allocating '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
       )
+
+    return tensors_
       
   def _cast_tensors_to_data(self) -> Dict:
     """
@@ -114,10 +122,6 @@ class Structure:
     To be used for dumping structure into a file. 
     """
     pass
-
-  @property
-  def natoms(self) -> int:
-    return self._tensors["position"].shape[0]
 
   def update_neighbor(self) -> None:
     """
@@ -127,7 +131,7 @@ class Structure:
     if self.neighbor:
       self.neighbor.update(self)
     else:
-      logger.error("No cutoff radius is given", exception=ValueError)
+      logger.error("No cutoff radius for structure was given yet", exception=ValueError)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:
@@ -170,7 +174,7 @@ class Structure:
       # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
       # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
       # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
-      dx = self.apply_pbc(dx) # broadcasting instead
+      dx = self.apply_pbc(dx) # using broadcasting
 
     # Calculate distance from dx tensor
     distance = torch.linalg.vector_norm(dx, dim=1)
@@ -185,11 +189,11 @@ class Structure:
 
   @property
   def natoms(self) -> int:
-    return self.position.shape[0]
+    return self.tensors["position"].shape[0]
 
   @property
   def elements(self) -> List[str]:
     return list({self.element_map[int(at)] for at in self.atype})
 
-  def __str__(self) -> str:
-    return f"Structure: natoms={self.natoms}, elements={self.elements}"
+  def __repr__(self) -> str:
+    return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
