@@ -26,12 +26,14 @@ class RunnerStructureDataset(StructureDataset):
         structure_file (Path): Path to the RuNNer structure file.
         transform (Callable, optional): Optional transform to be applied on a structure. Defaults to None.
         persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
+        Also it avoids unnecessary data transfer between CPU and GPU. 
     """
     self.structure_file = Path(structure_file)
     self.transform = transform
     self.persist = persist
     self._cached_structures = {}
     logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
+    self._current_index = 0
 
   def __len__(self) -> int:
     """
@@ -48,6 +50,9 @@ class RunnerStructureDataset(StructureDataset):
     Return i-th structure form the.
     This is a lazy load. Data is read from the file only if this method is called.
     Multiple-indexing with some limitations is possible. 
+    
+    This method is used by Torch Dataloader to create mini-batch of data in a most efficient way 
+    (multiple workers, pinned memory, etc).
 
     Args:
         index (int): Index of structure.
@@ -58,7 +63,7 @@ class RunnerStructureDataset(StructureDataset):
     # TODO: assert range of index
 
     if torch.is_tensor(index):
-      # TODO: what if indices live on GPU?
+      # TODO: what if indices are on GPU?
       index = index.tolist()  
     
     # TODO: start and stop has to be explicitly given
@@ -72,6 +77,25 @@ class RunnerStructureDataset(StructureDataset):
       return [self._read_cache(idx) for idx in index] 
 
     return self._read_cache(index)
+
+  def __next__(self):
+    """
+    This method is useful for iterating over the dataset instance itself.
+    Due to its slow performance better to be only used for testing and debugging. 
+
+    :raises StopIteration: stop iteration
+    :return: Return next structure
+    :rtype: Transformed structure
+    """
+    if self._current_index < len(self):
+      sample = self[self._current_index]
+      self._current_index += 1
+      return sample
+    self._current_index = 0
+    raise StopIteration
+
+  def __iter__(self):
+    return self
 
   def clone(self) -> RunnerStructureDataset:
     """
@@ -105,7 +129,7 @@ class RunnerStructureDataset(StructureDataset):
 
   def read(self, file: TextIO) -> Dict:
     """
-    This method reads the next structure.
+    This method reads the next structure from the input file.
 
     Args:
         file (TextIO): Input structure file handler
@@ -159,7 +183,6 @@ class RunnerStructureDataset(StructureDataset):
 
     return sample
 
-
   def _read_and_transform(self, index):
     """
     This method reads the i-th structure and then applying the transformation.
@@ -175,3 +198,7 @@ class RunnerStructureDataset(StructureDataset):
         sample = self.transform(sample)
 
     return sample
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(structure_file='{self.structure_file}'" \
+            f", transformer={self.transform.__class__.__name__}, persist={self.persist})"
