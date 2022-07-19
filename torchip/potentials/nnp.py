@@ -210,19 +210,19 @@ class NeuralNetworkPotential(Potential):
     self.scaler = {}
 
     # Prepare scaler input argument if exist in settings
-    kwargs = { first: self._settings[second] \
+    scaler_kwargs = { first: self._settings[second] \
       for first, second in { 
           'scale_type': 'scale_type', 
           'scale_min': 'scale_min_short',
           'scale_max': 'scale_max_short',
         }.items() if second in self._settings
     }
-    logger.debug(f"Preparing ASF scaler kwargs={kwargs}")
+    logger.debug(f"Preparing ASF scaler kwargs={scaler_kwargs}")
 
     # Assign an ASF scaler to each element
     logger.debug(f"Creating descriptor scalers")
     for element in self._settings["elements"]:
-      self.scaler[element] = DescriptorScaler(**kwargs) 
+      self.scaler[element] = DescriptorScaler(**scaler_kwargs) 
 
   def _init_model(self) -> None:
     """
@@ -276,7 +276,7 @@ class NeuralNetworkPotential(Potential):
     batch_size = kwargs.get("batch_size", 10)
 
     # Prepare structure dataset and loader (for fitting scaler)
-    dataset = dataset.clone() # because of the new transformer, no structure data will be copied
+    dataset = dataset.clone() # because of using a new transformer (no structure data will be copied)
     dataset.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
     loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
