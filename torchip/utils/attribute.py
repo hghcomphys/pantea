@@ -5,21 +5,23 @@ from torch import Tensor
 import torch
 
 
-def set_tensors_as_attr(obj: Any, tensors: Dict[str, Tensor]) -> None:
-  """An utility function to set an input dictionary of tensors as the class attributes.
+def set_as_attribute(obj: Any, items: Dict[str, Tensor]) -> None:
+  """
+  An utility function to set an input dictionary of items as the class attributes.
 
   Args:
       obj (Any): an instance
-      tensors (Dict[str, Tensor]): a dictionary of tensors
+      tensors (Dict): a dictionary of items
   """  
-  logger.debug(f"Setting {len(tensors)} tensors as '{obj.__class__.__name__}'"
-              f" class attributes: {', '.join(tensors.keys())}")
-  for name, tensor in tensors.items():
-    setattr(obj, name, tensor)
+  logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__}"
+              f" attribute: {', '.join(items.keys())}")
+  for name, item in items.items():
+    setattr(obj, name, item)
 
 
 def cast_to_tensor(x) -> Tensor:
-  """An utility function to cast input variable (scaler, array, etc) 
+  """
+  An utility function to cast input variable (scaler, array, etc) 
   to torch tensor with predefined data and device types.
 
   Args:
