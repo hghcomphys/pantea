@@ -3,7 +3,7 @@ from ..config import dtype, device
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
-from ..utils.attribute import set_tensors_as_attr
+from ..utils.attribute import set_as_attribute
 from typing import List, Dict
 from collections import defaultdict
 from torch import Tensor
@@ -32,39 +32,87 @@ class Structure:
   """
   # TODO: mesh gird method can be used to seed up of creating/updating the neighbot list.
 
-  def __init__(self, data: Dict, **kwargs) -> None: 
+  def __init__(self, data: Dict = None, **kwargs) -> None: 
     """
     Initialization of tensors, neighbor atoms, and simulation box.
 
     :param data: A dictionary of atomic data including position, charge, energy, etc. 
     :type data: Dict
-    """     
-    # Set input arguments
-    self.device = kwargs.get("device", device.DEVICE)      # data type float32, float64, etc.
-    self.dtype = kwargs.get("dtype", dtype.FLOATX)         # device either CPU or GPU
-    self.requires_grad = kwargs.get("requires_grad", True) # Whether enabling autograd or not
-    self.r_cutoff = kwargs.get("r_cutoff", None)           # cutoff radius for calculating the neighbor list   
-    
-    # Prepare tensors from input structure data
-    self.element_map = ElementMap(data["element"]) 
-    self.tensors = self._cast_data_to_tensors(data)
-    set_tensors_as_attr(self, self.tensors)       
+    """   
+    # Set input arguments # TODO: loop over a class dict instead  
+    self.device        = kwargs.get("device", device.DEVICE)    # data type float32, float64, etc.
+    self.dtype         = kwargs.get("dtype", dtype.FLOATX)      # device either CPU or GPU
+    self.requires_grad = kwargs.get("requires_grad", True)      # whether enabling autograd or not
+    self.r_cutoff      = kwargs.get("r_cutoff", None)           # cutoff radius for calculating the neighbor list
+    self.element_map   = kwargs.get("element_map", None)        # an instance of element map
+    self.tensors       = kwargs.get("tensors", None)            # tensors including position, energy, etc.
+    self.is_neighbor   = kwargs.get("is_neighbor", None)        # determine whether the neighbor list is updated or not
+    self.neighbor      = kwargs.get("neighbor", None)           # an instance of Neighbor atoms
+    self.box           = kwargs.get("box", None)                # an instance of simulation box
 
-    # Neighbor list
-    self.is_neighbor = False  
+    self.set_neighbor()
+    if data is not None:
+      self.element_map = ElementMap(data["element"]) 
+      self.tensors = self._cast_data_to_tensors(data)    
+      set_as_attribute(self, self.tensors)  
+      self.set_box()
+      
+  def set_neighbor(self):
+    """
+    Set neighbor list
+    """
     if self.r_cutoff is not None:
       self.neighbor = Neighbor(self.r_cutoff) 
     else:
-      self.neighbor = None
-      logger.debug("No cutoff radius was found for the neighbor list") 
-    
-    # Simulation box
+      logger.debug("No cutoff radius was given, ignoring initializing the neighbor list") 
+
+  def set_box(self):
+    """
+    Set simulation box
+    """
     if len(self.lattice) > 0:
+      self.is_neighbor = False
       self.box = Box(self.lattice)  
     else:
-      self.box = None 
       logger.debug("No lattice info were found in structure")
 
+  def _copy_tensors(self):
+    """
+    Return a shallow copy of all tensors.
+
+    :return: A dictionary of copied tensors
+    :rtype: Dict[Tensors]
+    """
+    tensors_ = {}
+    for name, tensor in self.tensors.items():
+      if name == "position" and self.requires_grad: # TODO: define __gradients_cols dict
+        tensors_[name] = tensor #.detach().requires_grad_() 
+      else:
+        tensors_[name] = tensor #.detach()
+    return tensors_
+
+  def copy(self, **kwargs):
+    """
+    This method return a shallow copy of structure (tensors are not copied) with adjusted settings
+    possible from the input arguments. 
+    """
+    init_kwargs = {
+      'device'        : self.device,    
+      'dtype'         : self.dtype,     
+      'requires_grad' : self.requires_grad,
+      'r_cutoff'      : self.r_cutoff,                   
+      'element_map'   : self.element_map,
+      'tensors'       : self._copy_tensors(),          
+      'neighbor'      : self.neighbor,
+      'box'           : self.box,
+    }
+    init_kwargs.update(kwargs)  # override the defaults
+
+    structure_ = Structure(**init_kwargs)
+    set_as_attribute(structure_, structure_.tensors)
+
+    return structure_
+    
   def set_r_cutoff(self, r_cutoff: float) -> None:
     """
     Set cutoff radius and then update the neighbor list accordingly.
