@@ -53,25 +53,26 @@ class NeuralNetworkPotentialTrainer:
 
     # Prepare structure dataset and loader (for training model)
     # TODO: a better approach instead of the cloning?
-    dataset = dataset.clone() # because of the new transformer, no structure data will be copied
-    dataset.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
+    dataset_ = dataset.copy() # because of the new transformers, no structure data will be copied
+    dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
 
     # Train and Validation split
-    dataset_size = len(dataset)
-    indices = list(range(dataset_size))
-    split = int(np.floor(validation_split * dataset_size))
+    nsamples = len(dataset_)
+    indices = list(range(nsamples))
+    split = int(np.floor(validation_split * nsamples))
     np.random.shuffle(indices)
     train_sampler = SubsetRandomSampler(indices[split:])
-    valid_sampler = SubsetRandomSampler(indices[:split]) # FIXME: simpler sampler!
-    logger.print(f"Number of structures (training)  : {dataset_size - split} of {dataset_size}")
-    logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%})")
+    valid_sampler = SubsetRandomSampler(indices[:split]) # random sampler here can provide more reliable error metric
+    logger.print(f"Number of structures (training)  : {nsamples - split} of {nsamples}")
+    logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%} split)")
     logger.print()
 
-    # TODO: further optimization using the existing parameters in TorchDataloader         
+    # TODO: further optimization using the existing parameters in TorchDataloader 
+    # workers, pinned memory, etc.        
     train_loader = TorchDataLoader(
-        dataset, 
+        dataset_, 
         batch_size=1, 
-        #shuffle=True, 
+        # shuffle=True, 
         # num_workers=4,
         #prefetch_factor=3,
         # pin_memory=True,
@@ -80,7 +81,7 @@ class NeuralNetworkPotentialTrainer:
         sampler=train_sampler,
       )
     valid_loader = TorchDataLoader(
-        dataset, 
+        dataset_, 
         batch_size=1, 
         #shuffle=False, 
         # num_workers=4,
@@ -95,7 +96,10 @@ class NeuralNetworkPotentialTrainer:
     for epoch in range(epochs+1):
       logger.print(f"[Epoch {epoch}/{epochs}]")
 
-      [self.potential.model[element].train() for element in self.potential.elements]
+      # ======================================================
+      # Set models in training status
+      for element in self.potential.elements:
+        self.potential.model[element].train()
 
       nbatch = 0
       train_eng_loss = 0.0
@@ -108,7 +112,8 @@ class NeuralNetworkPotentialTrainer:
         structure = batch[0] 
 
         # Reset optimizer
-        [self.optimizer[element].zero_grad() for element in self.potential.elements]
+        for element in self.potential.elements:
+          self.optimizer[element].zero_grad(set_to_none=True)
         
         energy = 0.0
         for element in self.potential.elements:
@@ -130,7 +135,8 @@ class NeuralNetworkPotentialTrainer:
         # Update weights
         if epoch > 0:
           loss.backward(retain_graph=True)
-          [self.optimizer[element].step() for element in self.potential.elements]
+          for element in self.potential.elements:
+            self.optimizer[element].step()
 
         # Accumulate energy and force loss values for each structure
         train_eng_loss += eng_loss.data.item()
@@ -157,7 +163,9 @@ class NeuralNetworkPotentialTrainer:
       # ======================================================
       # TODO: DRY training & validation 
 
-      [self.potential.model[element].eval() for element in self.potential.elements]
+      # Set models in evaluation status
+      for element in self.potential.elements:
+        self.potential.model[element].eval()
 
       nbatch = 0
       valid_eng_loss = 0.0

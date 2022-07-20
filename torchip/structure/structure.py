@@ -51,12 +51,12 @@ class Structure:
     set_tensors_as_attr(self, self.tensors)       
 
     # Neighbor list
-    self.is_neighbor = False   
+    self.is_neighbor = False  
     if self.r_cutoff is not None:
       self.neighbor = Neighbor(self.r_cutoff) 
     else:
       self.neighbor = None
-      logger.debug("No cutoff radius was found for the neighbor list")
+      logger.debug("No cutoff radius was found for the neighbor list") 
     
     # Simulation box
     if len(self.lattice) > 0:
@@ -131,7 +131,7 @@ class Structure:
     if self.neighbor:
       self.neighbor.update(self)
     else:
-      logger.error("No cutoff radius for structure was given yet", exception=ValueError)
+      logger.error(f"No cutoff radius for structure was given yet: r_cutoff={self.r_cutoff}", exception=ValueError)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:

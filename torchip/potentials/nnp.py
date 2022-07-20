@@ -165,9 +165,9 @@ class NeuralNetworkPotential(Potential):
     self.descriptor = {}
 
     # Elements
-    logger.print(f"Number of elements: {len(self._settings['elements'])}")
+    logger.info(f"Number of elements: {len(self._settings['elements'])}")
     for element in self._settings["elements"]:
-      logger.print(f"Element: {element} ({ElementMap.get_atomic_number(element)})") 
+      logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})") 
 
     # Instantiate ASF for each element 
     logger.debug(f"Creating ASF descriptors")
@@ -273,12 +273,12 @@ class NeuralNetworkPotential(Potential):
     """    
     # Set parameters
     save_scaler = kwargs.get("save_scaler", True)
-    batch_size = kwargs.get("batch_size", 10)
+    batch_size = kwargs.get("batch_size", 4)  # batch of atoms in each structure
 
     # Prepare structure dataset and loader (for fitting scaler)
-    dataset = dataset.clone() # because of using a new transformer (no structure data will be copied)
-    dataset.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
-    loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
+    dataset_ = dataset.copy() # because of using a new transformer (no structure data will be copied)
+    dataset_.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
+    loader = TorchDataLoader(dataset_, collate_fn=lambda batch: batch)
 
     logger.info("Fitting descriptor scalers")
     for index, batch in enumerate(loader): 
@@ -286,9 +286,9 @@ class NeuralNetworkPotential(Potential):
       structure = batch[0] 
       for element in structure.elements:
         aids = structure.select(element).detach()
-        for batch in create_batch(aids, batch_size):
-          logger.debug(f"Structure={index}, element='{element}', batch={batch}")
-          x = self.descriptor[element](structure, batch)
+        for aids_batch in create_batch(aids, batch_size):
+          logger.debug(f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})")
+          x = self.descriptor[element](structure, aids_batch) # kernel
           self.scaler[element].fit(x)
     logger.debug("Finished scaler fitting.")
 
@@ -302,9 +302,9 @@ class NeuralNetworkPotential(Potential):
     """
     # Save scaler parameters for each element separately
     for element in self.elements:
-      logger.debug(f"Saving scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
       scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
+      logger.info(f"Saving scaler parameters for element ({element}): {scaler_fn.name}")
       self.scaler[element].save(scaler_fn)
     # # Save scaler parameters for all element into a single file
     # scaler_fn = Path(self.potfile.parent, self.scaler_save_format) 
@@ -389,6 +389,7 @@ class NeuralNetworkPotential(Potential):
     Calculate the total energy of the input structure.
     """
     # FIXME: DRY, solution: define clone() method
+    
     r_cutoff_ = structure.r_cutoff
     structure.set_r_cutoff(self.r_cutoff) # update the neighbor list for the potential's cutoff radius
 
