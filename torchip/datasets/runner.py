@@ -29,11 +29,11 @@ class RunnerStructureDataset(StructureDataset):
         Also it avoids unnecessary data transfer between CPU and GPU. 
     """
     self.structure_file = Path(structure_file)
-    self.transform = transform
-    self.persist = persist
-    self._cached_structures = {}
+    self.transform = transform      # transform after loading each sample
+    self.persist = persist          # enabling caching
+    self._cached_structures = {}    # a dictionary of cached structures
+    self._current_index = 0         # used only for direct iteration
     logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
-    self._current_index = 0
 
   def __len__(self) -> int:
     """
@@ -52,7 +52,7 @@ class RunnerStructureDataset(StructureDataset):
     Multiple-indexing with some limitations is possible. 
     
     This method is used by Torch Dataloader to create mini-batch of data in a most efficient way 
-    (multiple workers, pinned memory, etc).
+    (multiple workers, pinned memory, shuffling, batching, etc).
 
     Args:
         index (int): Index of structure.
@@ -80,8 +80,9 @@ class RunnerStructureDataset(StructureDataset):
 
   def __next__(self):
     """
-    This method is useful for iterating over the dataset instance itself.
-    Due to its slow performance better to be only used for testing and debugging. 
+    This method is used for iterating directly over the dataset instance.
+    Due to its slow performance, lack of shuffling, and no parallel loading, 
+    it's better to be only used for testing and debugging. 
 
     :raises StopIteration: stop iteration
     :return: Return next structure
@@ -97,9 +98,9 @@ class RunnerStructureDataset(StructureDataset):
   def __iter__(self):
     return self
 
-  def clone(self) -> RunnerStructureDataset:
+  def copy(self) -> RunnerStructureDataset:
     """
-    Create an exact copy.
+    Create a copy of the object.
     No structure data is loaded into the memory. 
     """
     return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
@@ -121,10 +122,12 @@ class RunnerStructureDataset(StructureDataset):
       line = file.readline()
       if not line:
         return False
+
       keyword, tokens = tokenize(line)
       # TODO: check begin keyword
       if keyword == "end": 
         break
+
     return True
 
   def read(self, file: TextIO) -> Dict:
@@ -144,6 +147,7 @@ class RunnerStructureDataset(StructureDataset):
       line = file.readline()
       if not line:
         return False
+
       # Read keyword and values
       keyword, tokens = tokenize(line)
       # TODO: check begin keyword
@@ -163,6 +167,7 @@ class RunnerStructureDataset(StructureDataset):
         sample["comment"].append(' '.join(line.split()[1:]) )
       elif keyword == "end": 
         break
+
     return sample
 
 
@@ -175,7 +180,6 @@ class RunnerStructureDataset(StructureDataset):
 
     if index not in self._cached_structures:
       sample = self._read_and_transform(index)
-      # Cache transformed structure
       self._cached_structures[index] = sample    
     else:
       #logger.debug(f"Using cached structure {index}")
@@ -193,7 +197,6 @@ class RunnerStructureDataset(StructureDataset):
         self.ignore(file) 
       sample = self.read(file)
 
-      # Apply transformation
       if self.transform:
         sample = self.transform(sample)
 
