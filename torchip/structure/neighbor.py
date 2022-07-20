@@ -1,6 +1,6 @@
 from ..logger import logger
 from ..config import dtype, device
-from ..utils.attribute import set_tensors_as_attr
+from ..utils.attribute import set_as_attribute
 from collections import defaultdict
 # from .structure import Structure  # TODO: circular import error
 import torch
@@ -14,7 +14,7 @@ class Neighbor:
   """
   def __init__(self, r_cutoff: float): 
     self.r_cutoff = r_cutoff
-    self._tensors = defaultdict(None)
+    self.tensors = defaultdict(None)
     logger.debug(f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})")
 
   def update(self, structure) -> None:
@@ -30,9 +30,9 @@ class Neighbor:
       structure.is_neighbor = True
 
       # Neighbor atoms numbers and indices
-      self._tensors["number"] = torch.empty(structure.natoms, dtype=dtype.UINT, device=structure.device)
-      self._tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=dtype.INDEX, device=structure.device) 
-      set_tensors_as_attr(self, self._tensors)
+      self.tensors["number"] = torch.empty(structure.natoms, dtype=dtype.UINT, device=structure.device)
+      self.tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=dtype.INDEX, device=structure.device) 
+      set_as_attribute(self, self.tensors)
 
       nn = self.number
       ni = self.index
