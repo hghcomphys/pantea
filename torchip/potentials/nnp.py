@@ -388,25 +388,21 @@ class NeuralNetworkPotential(Potential):
     """
     Calculate the total energy of the input structure.
     """
-    # FIXME: DRY, solution: define clone() method
-    
-    r_cutoff_ = structure.r_cutoff
-    structure.set_r_cutoff(self.r_cutoff) # update the neighbor list for the potential's cutoff radius
+    structure_ = structure.copy(r_cutoff=self.r_cutoff)
 
-    [self.model[element].eval() for element in self.elements]
+    # Set models in evaluation status
+    for element in self.elements:
+      self.model[element].eval()
 
     # Loop over elements
     energy = 0.0
     for element in self.elements:
-      aids = structure.select(element).detach()
-      x = self.descriptor[element](structure, aid=aids)
+      aids = structure_.select(element).detach()
+      x = self.descriptor[element](structure_, aid=aids)
       x = self.scaler[element](x)
       x = self.model[element](x)
       x = torch.sum(x, dim=0)
       energy = energy + x
-
-    # Set back cutoff radius of the input structure
-    structure.set_r_cutoff(r_cutoff_)
 
     return energy
 
