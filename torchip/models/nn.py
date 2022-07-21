@@ -19,8 +19,10 @@ class NeuralNetworkModel(BaseModel):
     self.input_size = input_size
     self.hidden_layers = hidden_layers
     self.output_layer = output_layer
-    self._create_network()
 
+    logger.debug(f"Initializing {self}")
+    self._create_network()
+    
   def _create_network(self) -> None:
     """
     Create a network using provided parameters.
@@ -67,6 +69,10 @@ class NeuralNetworkModel(BaseModel):
     """
     self.load_state_dict(torch.load(str(filename)))
     self.eval()
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(input_size={self.input_size}" \
+           f", hidden_layers={self.hidden_layers}, output_layer={self.output_layer})"
 
 
     
