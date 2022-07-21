@@ -96,7 +96,7 @@ class NeuralNetworkPotential(Potential):
     self._settings.update(self._default_settings)
 
     # Read settings from file
-    logger.debug(f"Reading the HDNNP potential file:'{self.potfile}'")
+    logger.debug(f"Reading the HDNNP setting file:'{self.potfile}'")
     with open(str(self.potfile), 'r') as file:
 
       while True:
@@ -123,6 +123,14 @@ class NeuralNetworkPotential(Potential):
           except ValueError:
             asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
           self._settings[keyword].append(asf_)     
+
+        # Neural network
+        elif keyword == "global_hidden_layers_short":
+          self._settings["global_hidden_layers_short"] = tokens[0]
+        elif keyword == "global_nodes_short":
+          self._settings["global_nodes_short"] = [int(t) for t in tokens]
+        elif keyword == "global_activation_short":
+          self._settings["global_activation_short"] = [t for t in tokens]
         
         # Symmetry function settings
         elif keyword == "center_symmetry_functions":
@@ -231,37 +239,43 @@ class NeuralNetworkPotential(Potential):
     self.model = {}
     # Instantiate neural network model for each element 
     logger.debug(f"Creating neural network models")
+    hidden_layers= zip(self._settings["global_nodes_short"], self._settings["global_activation_short"][1:])
+    output_layer = (1, self._settings["global_activation_short"][0])
+    # TODO: what if we want to have a different model architecture for each element
     for element in self._settings["elements"]:
       input_size = self.descriptor[element].n_descriptor
-      self.model[element] = NeuralNetworkModel(input_size, hidden_layers=((3, 't'), (3, 't')), output_layer=(1, 'l'))
+      self.model[element] = NeuralNetworkModel(
+        input_size, 
+        hidden_layers=tuple([(n, t) for n, t in hidden_layers]),
+        output_layer=output_layer,
+      )
       self.model[element].to(device.DEVICE)
       # TODO: add element argument
       # TODO: read layers from the settings
 
   def _init_trainer(self) -> None:
     """
-    This method initializes a trainer instance including optimizer, loss function, criterion, etc.
-    The trainer is used for fitting the energy models. 
+    This method initializes a trainer instance including optimizer, loss function, criterion, etc from the settings.
+    The trainer is used later for fitting the energy models. 
     """
-    kwargs = {}
+    trainer_kwargs = {}
     if self._settings["updater_type"] == 0:  # Gradient Descent
       if self._settings["gradient_type"] == 1:  # Adam
-        kwargs["criterion"] = nn.MSELoss()
-        kwargs["learning_rate"] = self._settings["gradient_adam_eta"] # TODO: defining learning_rate?
-        kwargs["optimizer_func"] = torch.optim.Adam
-        kwargs["optimizer_func_kwargs"] = {
+        trainer_kwargs["criterion"] = nn.MSELoss()
+        trainer_kwargs["learning_rate"] = self._settings["gradient_adam_eta"] # TODO: defining learning_rate?
+        trainer_kwargs["optimizer_func"] = torch.optim.Adam
+        trainer_kwargs["optimizer_func_kwargs"] = {
           "lr": self._settings["gradient_adam_eta"],
           "betas": (self._settings["gradient_adam_beta1"], self._settings["gradient_adam_beta2"]),
           "eps": self._settings["gradient_adam_epsilon"],
         }
       elif self._settings["gradient_type"] == 0:  # Fixed Step  
-        logger.error("Gradient descent type fixed step is not implemented yet", 
-                      exception=NotImplementedError)
+        logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)
 
     # Create trainer instance
-    logger.debug(f"Preparing trainer kwargs={kwargs}")
+    logger.debug(f"Preparing trainer kwargs={trainer_kwargs}")
     logger.debug(f"Creating NNP trainer")
-    self.trainer = NeuralNetworkPotentialTrainer(self, **kwargs)
+    self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   @Profiler.profile
   def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
