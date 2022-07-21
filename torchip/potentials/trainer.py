@@ -13,15 +13,19 @@ import numpy as np
 import torch
 
 
-class NeuralNetworkPotentialTrainer:
+class BasePotentialTrainer:
   """
-  This derived trainer class trains the neural network potential using energy and force components (gradients).
-
-  TODO: 
-  A base trainer class for fitting a generic potential.
+  A trainer class for fitting a generic potential.
   This class must be independent of the type of the potential.
-  A derived trainer class specific to each potential then utilizing the best algorithms to train the models inside the potential
-  using energy and force components. 
+
+  A derived trainer class, which is specific to a potential, can benefit from the best algorithms to 
+  train the model(s) in the potential using energy and force components. 
+  """
+  pass
+
+class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
+  """
+  This derived trainer class that trains the neural network potential using energy and force components.
 
   See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
   """
@@ -36,10 +40,11 @@ class NeuralNetworkPotentialTrainer:
     self.criterion = kwargs.get('criterion', nn.MSELoss())
     self.save_best_model = kwargs.get('save_best_model', True)
 
-    self.optimizer = {
-      element: self.optimizer_func(self.potential.model[element].parameters(), **self.optimizer_func_kwargs) \
-      for element in self.potential.elements
-    }
+    # The implementation can be either as a single or multiple optimizers.
+    self.optimizer = self.optimizer_func(
+      [{'params': self.potential.model[element].parameters()} for element in self.potential.elements], 
+      **self.optimizer_func_kwargs,
+    )
 
   def fit(self, dataset: StructureDataset, **kwargs) -> Dict:
     """
@@ -53,7 +58,7 @@ class NeuralNetworkPotentialTrainer:
 
     # Prepare structure dataset and loader (for training model)
     # TODO: a better approach instead of the cloning?
-    dataset_ = dataset.copy() # because of the new transformers, no structure data will be copied
+    dataset_ = dataset.copy() # because of having new r_cutoff specific to the potential, no structure data will be copied
     dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
 
     # Train and Validation split
@@ -112,8 +117,7 @@ class NeuralNetworkPotentialTrainer:
         structure = batch[0] 
 
         # Reset optimizer
-        for element in self.potential.elements:
-          self.optimizer[element].zero_grad(set_to_none=True)
+        self.optimizer.zero_grad(set_to_none=True)
         
         energy = 0.0
         for element in self.potential.elements:
@@ -135,8 +139,7 @@ class NeuralNetworkPotentialTrainer:
         # Update weights
         if epoch > 0:
           loss.backward(retain_graph=True)
-          for element in self.potential.elements:
-            self.optimizer[element].step()
+          self.optimizer.step()
 
         # Accumulate energy and force loss values for each structure
         train_eng_loss += eng_loss.data.item()
