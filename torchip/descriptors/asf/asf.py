@@ -44,9 +44,8 @@ class AtomicSymmetryFunction(Descriptor):
     """
     Calculate descriptor values for the input given structure and atom id(s).
     """
-    # Update neighbor list first if needed
-    if not structure.is_neighbor:
-      structure.update_neighbor()
+    # Update neighbor list if needed
+    structure.update_neighbor()
 
     # Check number of symmetry functions
     if self.n_descriptor == 0:
