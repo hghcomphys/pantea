@@ -88,7 +88,7 @@ class Structure:
     if len(self.lattice) > 0:
       self.box = Box(self.lattice)  
     else:
-      logger.debug("No lattice info were found in structure")
+      logger.debug("No lattice info were found in the structure")
 
   def _copy_tensors(self):
     """
@@ -100,9 +100,9 @@ class Structure:
     tensors_ = {}
     for name, tensor in self.tensors.items():
       if name in self.__differentiable_atomic_attributes and self.requires_grad:
-        tensors_[name] = tensor #.detach().requires_grad_() 
+        tensors_[name] = tensor #.detach().requires_grad_() # torch.clone
       else:
-        tensors_[name] = tensor #.detach()
+        tensors_[name] = tensor #.detach() # torch.clone
 
     return tensors_
 
