@@ -274,7 +274,7 @@ class NeuralNetworkPotential(Potential):
 
     # Create trainer instance
     logger.debug(f"Preparing trainer kwargs={trainer_kwargs}")
-    logger.debug(f"Creating NNP trainer")
+    logger.debug(f"Creating trainer for neural network potential")
     self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   @Profiler.profile
@@ -290,14 +290,14 @@ class NeuralNetworkPotential(Potential):
     batch_size = kwargs.get("batch_size", 4)  # batch of atoms in each structure
 
     # Prepare structure dataset and loader (for fitting scaler)
-    dataset_ = dataset.copy() # because of using a new transformer (no structure data will be copied)
-    dataset_.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
-    loader = TorchDataLoader(dataset_, collate_fn=lambda batch: batch)
+    #dataset_ = dataset.copy() # because of using a new transformer (no structure data will be copied)
+    #dataset_.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)  
+    loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
     logger.info("Fitting descriptor scalers")
     for index, batch in enumerate(loader): 
       # TODO: spawn processes
-      structure = batch[0] 
+      structure = batch[0].copy(r_cutoff=self.r_cutoff)  
       for element in structure.elements:
         aids = structure.select(element).detach()
         for aids_batch in create_batch(aids, batch_size):
@@ -398,15 +398,36 @@ class NeuralNetworkPotential(Potential):
     """
     pass
 
+  def train(self) -> None:
+    """
+    Set pytorch models in training mode. 
+    This is because layers like dropout, batch normalization etc. behave differently on the train and test procedures.
+    """
+    for element in self.elements:
+        self.model[element].train()
+
+  def eval(self) -> None:
+    """
+    Set pytorch models in evaluation mode. 
+    This is because layers like dropout, batch normalization etc. behave differently on the train and test procedures.
+    """
+    for element in self.elements:
+        self.model[element].eval()
+
   def __call__(self, structure: Structure) -> Tensor:
     """
-    Calculate the total energy of the input structure.
-    """
+    Return the total energy of the input structure.
+
+    :param structure: Structure
+    :type structure: Structure
+    :return: total energy
+    :rtype: Tensor
+    """    
+    # FIXME: update neighbor list ONLY if needed
     structure_ = structure.copy(r_cutoff=self.r_cutoff)
 
-    # Set models in evaluation status
-    for element in self.elements:
-      self.model[element].eval()
+    # Set model in evaluation model
+    self.eval()
 
     # Loop over elements
     energy = 0.0
@@ -415,6 +436,7 @@ class NeuralNetworkPotential(Potential):
       x = self.descriptor[element](structure_, aid=aids)
       x = self.scaler[element](x)
       x = self.model[element](x)
+      # FIXME: float type neural network
       x = torch.sum(x, dim=0)
       energy = energy + x
 
@@ -430,4 +452,3 @@ class NeuralNetworkPotential(Potential):
     Return the maximum cutoff radius found between all descriptors.
     """
     return max([dsc.r_cutoff for dsc in self.descriptor.values()])
-
