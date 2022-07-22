@@ -30,7 +30,7 @@ class Structure:
   keeping track of all operations in the computational graph that can lead ot to large memory usage. 
   Some methods are intoduced here to avoid gradient whenever it's possible.  
   """
-  __atomic_attributes = [
+  _atomic_attributes = [
     'position',      # per-atom position x, y, and z
     'force',         # per-atom force components x, y, and z
     'charge',        # per-atom electric charge
@@ -39,7 +39,7 @@ class Structure:
     'total_energy',  # total energy of atoms in simulation box
     'total_charger'  # total charge of atoms in simulation box
   ]
-  __differentiable_atomic_attributes = [
+  _differentiable_atomic_attributes = [
     'position',      # force = -gradient(energy, position)
     #'charge, '      # TODO: for lang range interaction using charge models
   ]
@@ -65,11 +65,11 @@ class Structure:
     if data is not None:
       try:
         self.element_map = ElementMap(data["element"]) 
-        self.tensors = self._cast_data_to_tensors(data)    
+        self.tensors = self._create_tensors_from(data)    
         set_as_attribute(self, self.tensors)  
         self.set_box()    
       except KeyError:
-       logger.error(f"Expected atomic attributes in input data: {''.join(self.__atomic_attributes)}")
+       logger.error(f"Expected atomic attributes in input data: {''.join(self._atomic_attributes)}")
         
   def set_neighbor(self):
     """
@@ -99,7 +99,7 @@ class Structure:
     """
     tensors_ = {}
     for name, tensor in self.tensors.items():
-      if name in self.__differentiable_atomic_attributes and self.requires_grad:
+      if name in self._differentiable_atomic_attributes and self.requires_grad:
         tensors_[name] = tensor #.detach().requires_grad_() # torch.clone
       else:
         tensors_[name] = tensor #.detach() # torch.clone
@@ -153,9 +153,9 @@ class Structure:
     atype = [self.element_map(elem) for elem in elements]
     return torch.tensor(atype, dtype=dtype.INDEX, device=self.device)
     
-  def _cast_data_to_tensors(self, data: Dict) -> None:
+  def _create_tensors_from(self, data: Dict) -> None:
     """
-    Cast a dictionary structure data into the (pytorch) tensors.
+    Create tensors (allocate memory) from the input dictionary of structure data.
     It convert element (string) to atom type (integer) because of computational efficiency.
     TODO: check the input data dictionary for possibly missing items
     """
@@ -163,8 +163,8 @@ class Structure:
 
     try:
       # Tensors for atomic attributes
-      for atomic_attr in self.__atomic_attributes:
-        if atomic_attr in self.__differentiable_atomic_attributes:
+      for atomic_attr in self._atomic_attributes:
+        if atomic_attr in self._differentiable_atomic_attributes:
           tensors_[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
         else:
           tensors_[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device)
