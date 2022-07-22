@@ -23,6 +23,7 @@ class BasePotentialTrainer:
   """
   pass
 
+
 class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
   """
   This derived trainer class that trains the neural network potential using energy and force components.
@@ -50,19 +51,17 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     """
     Fit models.
     """
-    # TODO: train and test dataset
     # TODO: more arguments to have better control on training
     epochs = kwargs.get("epochs", 1)
     validation_split = kwargs.get("validation_split", 0.2)
     history = defaultdict(list)
 
-    # Prepare structure dataset and loader (for training model)
-    # TODO: a better approach instead of the cloning?
-    dataset_ = dataset.copy() # because of having new r_cutoff specific to the potential, no structure data will be copied
-    dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
+    # Prepare structure dataset and loader for training elemental models
+    #dataset_ = dataset.copy() # because of having new r_cutoff specific to the potential, no structure data will be copied
+    #dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
 
     # Train and Validation split
-    nsamples = len(dataset_)
+    nsamples = len(dataset)
     indices = list(range(nsamples))
     split = int(np.floor(validation_split * nsamples))
     np.random.shuffle(indices)
@@ -75,7 +74,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     # TODO: further optimization using the existing parameters in TorchDataloader 
     # workers, pinned memory, etc.        
     train_loader = TorchDataLoader(
-        dataset_, 
+        dataset, 
         batch_size=1, 
         # shuffle=True, 
         # num_workers=4,
@@ -86,7 +85,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         sampler=train_sampler,
       )
     valid_loader = TorchDataLoader(
-        dataset_, 
+        dataset, 
         batch_size=1, 
         #shuffle=False, 
         # num_workers=4,
@@ -102,33 +101,25 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       logger.print(f"[Epoch {epoch}/{epochs}]")
 
       # ======================================================
-      # Set models in training status
-      for element in self.potential.elements:
-        self.potential.model[element].train()
+
+      # Set potential models in training status
+      self.potential.train()
 
       nbatch = 0
       train_eng_loss = 0.0
       train_frc_loss = 0.0
       # Loop over training structures
       for batch in train_loader:
-        
-        # TODO: what if batch size > 1
-        # TODO: spawn process
-        structure = batch[0] 
 
         # Reset optimizer
         self.optimizer.zero_grad(set_to_none=True)
         
-        energy = 0.0
-        for element in self.potential.elements:
-          aids = structure.select(element).detach()
-          x = self.potential.descriptor[element](structure, aid=aids)
-          x = self.potential.scaler[element](x)
-          x = self.potential.model[element](x)
-          x = torch.sum(x, dim=0)
-          energy = energy + x
-
-        # Calculate force components
+        # TODO: what if batch size > 1
+        # TODO: spawn process
+        structure = batch[0].copy(r_cutoff=self.potential.r_cutoff) 
+        
+        # Calculate energy and force
+        energy = self.potential(structure) # total energy
         force = -gradient(energy, structure.position)
 
         # Energy and force losses
@@ -166,9 +157,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       # ======================================================
       # TODO: DRY training & validation 
 
-      # Set models in evaluation status
-      for element in self.potential.elements:
-        self.potential.model[element].eval()
+      # Set potential models in evaluation status
+      self.potential.eval()
 
       nbatch = 0
       valid_eng_loss = 0.0
@@ -178,19 +168,10 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         
         # TODO: what if batch size > 1
         # TODO: spawn process
-        structure = batch[0] 
+        structure = batch[0]
 
-        energy = 0.0        
-        for element in self.potential.elements:
-          aids = structure.select(element).detach()
-          x = self.potential.descriptor[element](structure, aid=aids)
-          x = self.potential.scaler[element](x)
-          x = self.potential.model[element](x)
-          x = torch.sum(x, dim=0)
-          # FIXME: float type neural network
-          energy = energy + x
-
-        # Calculate force components
+        # Calculate energy and force components
+        energy = self.potential(structure) # total energy
         force = -gradient(energy, structure.position)
 
         # Energy and force losses
