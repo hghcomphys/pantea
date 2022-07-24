@@ -2,6 +2,7 @@ from __future__ import annotations
 from ..logger import logger
 from ..utils.tokenize import tokenize
 from .base import StructureDataset
+from .transformer import Transformer, ToStructure
 from typing import Callable, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
@@ -20,11 +21,15 @@ class RunnerStructureDataset(StructureDataset):
   """
   # TODO: logging
 
-  def __init__(self, structure_file: Path, transform: Callable = None, persist: bool= False):   
+  def __init__(self, 
+      structure_file: Path, 
+      transform: Transformer = ToStructure(), 
+      persist: bool= False
+    ):   
     """
     Args:
         structure_file (Path): Path to the RuNNer structure file.
-        transform (Callable, optional): Optional transform to be applied on a structure. Defaults to None.
+        transform (Transformer, optional): Optional transform to be applied on a structure. Defaults to None.
         persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
         Also it avoids unnecessary data transfer between CPU and GPU. 
     """

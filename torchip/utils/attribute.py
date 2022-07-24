@@ -13,7 +13,7 @@ def set_as_attribute(obj: Any, items: Dict[str, Tensor]) -> None:
       obj (Any): an instance
       tensors (Dict): a dictionary of items
   """  
-  logger.debug(f"Setting {len(items)} items as the {obj.__class__.__name__}"
+  logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__}"
               f" attributes: {', '.join(items.keys())}")
   for name, item in items.items():
     setattr(obj, name, item)

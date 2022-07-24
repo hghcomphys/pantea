@@ -277,7 +277,7 @@ class NeuralNetworkPotential(Potential):
     logger.debug(f"Creating trainer for neural network potential")
     self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
-  @Profiler.profile
+  # @Profiler.profile
   def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
     """
     Fit scaler parameters for each element using the input structure data.
@@ -331,7 +331,7 @@ class NeuralNetworkPotential(Potential):
     #       file.write(f"  {element:<10s} ")
     #       file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
-  @Profiler.profile
+  # @Profiler.profile
   def load_scaler(self) -> None:
     """
     This method loads scaler parameters of each element from separate files.
@@ -339,9 +339,9 @@ class NeuralNetworkPotential(Potential):
     """
     # Load scaler parameters for each element separately
     for element in self.elements:
-      logger.debug(f"Loading scaler parameters for element: {element}")
       atomic_number = ElementMap.get_atomic_number(element)
       scaler_fn = Path(self.potfile.parent, self._scaler_save_format.format(atomic_number)) 
+      logger.debug(f"Loading scaler parameters for element {element}: {scaler_fn.name}")
       self.scaler[element].load(scaler_fn)
     # # Load scaler parameters for all element into a single file
     # scaler_fn = Path(self.potfile.parent, self.scaler_save_format) 
@@ -360,7 +360,7 @@ class NeuralNetworkPotential(Potential):
     #   scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
     #   index += count
 
-  @Profiler.profile
+  # @Profiler.profile
   def fit_model(self, dataset: RunnerStructureDataset, **kwargs) -> Dict:
     """
     Fit energy model for all elements using the input structure loader.
@@ -381,7 +381,7 @@ class NeuralNetworkPotential(Potential):
       model_fn = Path(self.potfile.parent, self._model_save_format.format(atomic_number))
       self.model[element].save(model_fn)
 
-  @Profiler.profile
+  # @Profiler.profile
   def load_model(self):
     """
     Load model weights separately for all elements.
