@@ -1,12 +1,13 @@
 from ..logger import logger
-from ..config import dtype, device
+from ..config import dtype as _dtype
+from ..config import device as _device
 from ..utils.attribute import set_as_attribute
 from ..utils.gradient import get_value
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
 from typing import List, Dict
-from torch import Tensor
+from torch import Tensor, tensor
 import torch
 # import structure_cpp
 
@@ -44,67 +45,80 @@ class Structure:
     #'charge, '      # TODO: for lang range interaction using charge models
   ]
 
-  def __init__(self, data: Dict = None, **kwargs) -> None: 
+  def __init__(self, 
+      data: Dict = None,         
+      r_cutoff: float = None, 
+      dtype: torch.dtype = None,
+      device: torch.device = None,
+      requires_grad: bool = True,
+      **kwargs
+    ) -> None: 
     """
-    Initialization of tensors, neighbor atoms, and simulation box.
+    Initialize a structure including tensors, neighbor list atoms, simulation box, etc.
 
-    :param data: A dictionary of atomic data including position, charge, energy, etc. 
+    :param data: A dictionary representation of atomic data including position, charge, energy, etc. 
     :type data: Dict
-    """   
-    # Set input arguments # TODO: loop over a class dict instead  
-    self.device        = kwargs.get("device", device.DEVICE)    # data type float32, float64, etc.
-    self.dtype         = kwargs.get("dtype", dtype.FLOATX)      # device either CPU or GPU
-    self.requires_grad = kwargs.get("requires_grad", True)      # whether enabling autograd or not
-    self.r_cutoff      = kwargs.get("r_cutoff", None)           # cutoff radius for calculating the neighbor list
-    self.element_map   = kwargs.get("element_map", None)        # an instance of element map
-    self.tensors       = kwargs.get("tensors", None)            # tensors including position, energy, etc.
-    self.neighbor      = kwargs.get("neighbor", None)           # an instance of Neighbor atoms
-    self.box           = kwargs.get("box", None)                # an instance of simulation box
+    :param r_cutoff: Cutoff radius for calculating the neighbor list, defaults to None
+    :type r_cutoff: float, optional
+    :param dtype: Data type of internal tensors which represent structure, defaults to None
+    :type dtype: torch.dtype, optional
+    :param device: Device on which tensors are allocated, defaults to None
+    :type device: torch.device, optional
+    :param position_grad: whether the position tensor is differentiable or not, defaults to True
+    :type position_grad: bool, optional
+    """
+    self.dtype = dtype if dtype else _dtype.FLOATX
+    self.device = device if device else _device.DEVICE
+    self.requires_grad = requires_grad
+    self.requires_neighbor_update = True
 
-    self.set_neighbor()
-    if data is not None:
+    self.element_map = kwargs.get("element_map", None)  # an instance of element map
+    self.tensors = kwargs.get("tensors", None)          # tensors including position, energy, etc.
+    self.box = kwargs.get("box", None)                  # an instance of simulation box
+    self.neighbor = kwargs.get("neighbor", None)        # an instance of Neighbor atoms
+    
+    if data:
       try:
         self.element_map = ElementMap(data["element"]) 
-        self.tensors = self._create_tensors_from(data)    
-        set_as_attribute(self, self.tensors)  
-        self.set_box()    
+        self._init_tensors(data)    
+        self._init_box(data["lattice"])   
       except KeyError:
-       logger.error(f"Expected atomic attributes in input data: {''.join(self._atomic_attributes)}")
-        
-  def set_neighbor(self):
-    """
-    Create a neighbor list for the given cutoff radius. 
-    """
-    if self.r_cutoff is not None:
-      self.neighbor = Neighbor(self.r_cutoff)
+       logger.error(f"Cannot find one of the atomic attributes in input data, expected" \
+                    f"attributes: {''.join(self._atomic_attributes)}", exception=KeyError)
+
+    if r_cutoff:
+      # self._init_neighbor(r_cutoff)
+      self.neighbor = Neighbor(r_cutoff)
       self.requires_neighbor_update = True 
-    else:
-      logger.debug("No cutoff radius was given, ignoring initializing the neighbor list of atoms") 
+      
+    if self.tensors:
+      set_as_attribute(self, self.tensors)
 
-  def set_box(self):
-    """
-    Create a simulation box using provided lattice tensor.
-    """
-    if len(self.lattice) > 0:
-      self.box = Box(self.lattice)  
-    else:
-      logger.debug("No lattice info were found in the structure")
+  # def _init_neighbor(self, r_cutoff) -> None:
+  #   """
+  #   Create a neighbor list for the given cutoff radius. 
+  #   """
+  #   if self.neighbor is None:
+  #     self.neighbor = Neighbor(r_cutoff)
+  #     self.requires_neighbor_update = True 
+  #   else: 
+  #     self.neighbor.reset(r_cutoff)
 
-  def _copy_tensors(self):
-    """
-    Return a shallow copy of all the tensors.
+  # def _copy_tensors(self) -> Dict[str, Tensor]:
+  #   """
+  #   Return a shallow copy of all tensors.
 
-    :return: A dictionary of tensors
-    :rtype: Dict[Tensors]
-    """
-    tensors_ = {}
-    for name, tensor in self.tensors.items():
-      if name in self._differentiable_atomic_attributes and self.requires_grad:
-        tensors_[name] = tensor #.detach().requires_grad_() # torch.clone
-      else:
-        tensors_[name] = tensor #.detach() # torch.clone
+  #   :return: A dictionary of tensors for atomic data including position, energy, etc.
+  #   :rtype: Dict[Tensors]
+  #   """
+  #   tensors_ = {}
+  #   for name, tensor in self.tensors.items():
+  #     if name in self._differentiable_atomic_attributes and self.requires_grad:
+  #       tensors_[name] = tensor #.detach().requires_grad_() # torch.clone
+  #     else:
+  #       tensors_[name] = tensor #.detach() # torch.clone
 
-    return tensors_
+  #   return tensors_
 
   def copy(self, **kwargs):
     """
@@ -112,77 +126,82 @@ class Structure:
     possible from the input arguments. 
     """
     init_kwargs = {
+      'r_cutoff'      : self.r_cutoff,
       'device'        : self.device,    
       'dtype'         : self.dtype,     
-      'requires_grad' : self.requires_grad,
-      'r_cutoff'      : self.r_cutoff,                   
+      'requires_grad' : self.requires_grad,              
       'element_map'   : self.element_map,
-      'tensors'       : self._copy_tensors(),          
+      'tensors'       : self.tensors,          
       'neighbor'      : self.neighbor,
       'box'           : self.box,
     }
     init_kwargs.update(kwargs)  # override the defaults
-
     structure_ = Structure(data=None, **init_kwargs)
-    set_as_attribute(structure_, structure_.tensors)
-
+    structure_.requires_neighbor_update = self.requires_neighbor_update
     return structure_
+
+  def _init_box(self, lattice) -> None:
+    """
+    Create a simulation box object using provided lattice tensor.
+    """
+    if len(lattice) > 0:
+      self.box = Box(lattice)  
+    else:
+      logger.debug("No lattice info were found in the structure")
     
-  def set_r_cutoff(self, r_cutoff: float) -> None:
-    """
-    Set cutoff radius and then update the neighbor list accordingly.
+  # def set_r_cutoff(self, r_cutoff: float) -> None:
+  #   """
+  #   Set cutoff radius and then update the neighbor list accordingly.
 
-    Args:
-        r_cutoff (float): New cutoff radius
-    """
-    if r_cutoff is None:
-      self.r_cutoff = None
-      self.neighbor = None
-      return
+  #   Args:
+  #       r_cutoff (float): New cutoff radius
+  #   """
+  #   if r_cutoff is None:
+  #     self.r_cutoff = None
+  #     self.neighbor = None
+  #     return
 
-    if (self.r_cutoff is None) or (self.r_cutoff < r_cutoff):
-      self.r_cutoff = r_cutoff
-      self.neighbor = Neighbor(self.r_cutoff)
-      self.requires_neighbor_update = True
-      logger.debug(f"Resetting the cutoff radius of structure: new r_cutoff={self.r_cutoff}")
+  #   if (self.r_cutoff is None) or (self.r_cutoff < r_cutoff):
+  #     self.r_cutoff = r_cutoff
+  #     self.neighbor = Neighbor(self.r_cutoff)
+  #     self.requires_neighbor_update = True
+  #     logger.debug(f"Resetting the cutoff radius of structure: new r_cutoff={self.r_cutoff}")
 
   def _prepare_atype_tensor(self, elements: List) -> Tensor:
     """
     Set atom types using the element map
     """
-    atype = [self.element_map(elem) for elem in elements]
-    return torch.tensor(atype, dtype=dtype.INDEX, device=self.device)
+    return torch.tensor([self.element_map(elem) for elem in elements], \
+                          dtype=_dtype.INDEX, device=self.device)
     
-  def _create_tensors_from(self, data: Dict) -> None:
+  def _init_tensors(self, data: Dict) -> None:
     """
     Create tensors (allocate memory) from the input dictionary of structure data.
     It convert element (string) to atom type (integer) because of computational efficiency.
-    TODO: check the input data dictionary for possibly missing items
     """
-    tensors_ = {}
+    self.tensors = {}
 
     try:
       # Tensors for atomic attributes
       for atomic_attr in self._atomic_attributes:
         if atomic_attr in self._differentiable_atomic_attributes:
-          tensors_[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device, requires_grad=self.requires_grad)
+          self.tensors[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device, 
+                                                   requires_grad=self.requires_grad)
         else:
-          tensors_[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device)
+          self.tensors[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device)
       # A tensor for atomic type 
-      tensors_["atype"] = self._prepare_atype_tensor(data["element"])
+      self.tensors["atype"] = self._prepare_atype_tensor(data["element"])
       
     except KeyError:
       logger.error(f"Cannot find expected atomic attribute {atomic_attr} in the input data dictionary", exception=KeyError)
 
     # Logging
-    for name, tensor in tensors_.items():
+    for name, tensor in self.tensors.items():
       logger.debug(
         f"Allocated '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
       )
-
-    return tensors_
       
-  def _cast_tensors_to_data(self) -> Dict:
+  def _tensors_to_data(self) -> Dict:
     """
     Cast the tensors to structure data.
     To be used for dumping structure into a file. 
@@ -201,7 +220,8 @@ class Structure:
     if self.neighbor:
       self.neighbor.update(self)
     else:
-      logger.error(f"No cutoff radius for structure is given yet: r_cutoff={self.r_cutoff}", exception=ValueError)
+      logger.error(f"Structure has not cutoff radius (r_cutoff={self.r_cutoff})"
+                   f", ignored updating the neighbor list", exception=ValueError)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:
@@ -264,6 +284,12 @@ class Structure:
   @property
   def elements(self) -> List[str]:
     return list({self.element_map[int(at)] for at in self.atype})
+
+  @property
+  def r_cutoff(self) -> float:
+    if self.neighbor:
+      return self.neighbor.r_cutoff
+    return None
 
   def __repr__(self) -> str:
     return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
