@@ -1,7 +1,7 @@
+from turtle import st
 from ..logger import logger
-from ..config import dtype, device
+from ..config import dtype
 from ..utils.attribute import set_as_attribute
-from collections import defaultdict
 # from .structure import Structure  # TODO: circular import error
 import torch
 
@@ -14,10 +14,18 @@ class Neighbor:
   """
   def __init__(self, r_cutoff: float): 
     self.r_cutoff = r_cutoff
+    # self.r_cutoff_updated = False
     self.tensors = None
     logger.debug(f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})")
 
-  def _create_tensors_from(self, structure):
+  # def reset(self, r_cutoff: float):
+  #   if r_cutoff > self.r_cutoff:
+  #     self.r_cutoff_updated = True
+  #   else:
+  #     self.r_cutoff_updated = False
+  #   self.r_cutoff = r_cutoff
+
+  def _init_tensors(self, structure) -> None:
     """
     Create neighbor list tensors (allocate memory) from the input structure.
 
@@ -26,33 +34,42 @@ class Neighbor:
     """
     # TODO: reduce natoms*natoms tensor size!
     # TODO: define max_num_neighbor to avoid extra memory allocation!
-    tensors_ = {}
+
+    # # Skip re-allocating structure with the same size
+    # if (self.tensors is not None) and (structure.natoms == len(self.number)):
+    #     print(structure.natoms, len(self.number))
+    #     return
+
+    # --------------------------    
+    self.tensors = {}
 
     # Neighbor atoms numbers and indices
-    tensors_["number"] = torch.empty(structure.natoms, dtype=dtype.UINT, device=structure.device)
-    tensors_["index"] = torch.empty(structure.natoms, structure.natoms, dtype=dtype.INDEX, device=structure.device) 
+    self.tensors["number"] = torch.empty(structure.natoms, dtype=dtype.UINT, device=structure.device)
+    self.tensors["index"] = torch.empty(structure.natoms, structure.natoms, dtype=dtype.INDEX, device=structure.device) 
     
     # Logging
-    for name, tensor in tensors_.items():
+    for name, tensor in self.tensors.items():
       logger.debug(
         f"Allocated '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
       )
 
-    return tensors_
+    set_as_attribute(self, self.tensors)
 
   def update(self, structure) -> None:
     """
     This method updates the neighbor atom tensors including the number of neighbor and neighbor atom indices 
     within the input structure.
     """    
-    #  TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
+    # TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
 
-    if not structure.requires_neighbor_update:
-      logger.debug("Skip updating the neighbor list")
+    if not structure.requires_neighbor_update: # and (not self.r_cutoff_updated):
+      logger.debug("Skipped updating the neighbor list")
       return
 
-    self.tensors = self._create_tensors_from(structure)
-    set_as_attribute(self, self.tensors)
+    self._init_tensors(structure)
+
+    # ----------------------------------------
+    logger.debug("Updating the neighbor list")
     
     nn = self.number
     ni = self.index
@@ -68,5 +85,6 @@ class Neighbor:
 
     # Avoid updating the neighbor list the next time
     structure.requires_neighbor_update = False
+    # self._r_cutoff_updated = False
 
-
+ 
