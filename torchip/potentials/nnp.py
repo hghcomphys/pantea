@@ -40,6 +40,7 @@ class NeuralNetworkPotential(Potential):
     "epochs": 1,
     "updater_type": 0,
     "gradient_type": 1, 
+    "weight_decay": 1.0E-3,
   }
   # Map cutoff type
   _map_cutoff_type = {  # TODO: poly 3 & 4
@@ -96,7 +97,8 @@ class NeuralNetworkPotential(Potential):
     self._settings.update(self._default_settings)
 
     # Read settings from file
-    logger.debug(f"Reading the HDNNP setting file:'{self.potfile}'")
+    logger.debug(f"[Reading settings]")
+    logger.debug(f"Potential file:'{self.potfile}'")
     with open(str(self.potfile), 'r') as file:
 
       while True:
@@ -170,6 +172,7 @@ class NeuralNetworkPotential(Potential):
     symmetry functions from the potential settings.
     """
     # TODO: add logging 
+    logger.debug(f"[Setting descriptors]")
     self.descriptor = {}
 
     # Elements
@@ -178,7 +181,6 @@ class NeuralNetworkPotential(Potential):
       logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})") 
 
     # Instantiate ASF for each element 
-    logger.debug(f"Creating ASF descriptors")
     for element in self._settings["elements"]:
       self.descriptor[element] = ASF(element)
 
@@ -215,6 +217,7 @@ class NeuralNetworkPotential(Potential):
     """
     Initialize a descriptor scaler for each element from the potential settings.
     """
+    logger.debug(f"[Setting scalers]")
     self.scaler = {}
 
     # Prepare scaler input argument if exist in settings
@@ -225,10 +228,9 @@ class NeuralNetworkPotential(Potential):
           'scale_max': 'scale_max_short',
         }.items() if second in self._settings
     }
-    logger.debug(f"Preparing ASF scaler kwargs={scaler_kwargs}")
+    logger.debug(f"Scaler kwargs={scaler_kwargs}")
 
     # Assign an ASF scaler to each element
-    logger.debug(f"Creating descriptor scalers")
     for element in self._settings["elements"]:
       self.scaler[element] = DescriptorScaler(**scaler_kwargs) 
 
@@ -236,28 +238,32 @@ class NeuralNetworkPotential(Potential):
     """
     Initialize a neural network for each element using a dictionary representation of potential settings.
     """
+    logger.debug(f"[Setting models]")
     self.model = {}
+
     # Instantiate neural network model for each element 
-    logger.debug(f"Creating neural network models")
     hidden_layers= zip(self._settings["global_nodes_short"], self._settings["global_activation_short"][1:])
     output_layer = (1, self._settings["global_activation_short"][0])
     # TODO: what if we want to have a different model architecture for each element
+    
     for element in self._settings["elements"]:
+      logger.debug(f"Element: {element}")
       input_size = self.descriptor[element].n_descriptor
-      self.model[element] = NeuralNetworkModel(
-        input_size, 
-        hidden_layers=tuple([(n, t) for n, t in hidden_layers]),
-        output_layer=output_layer,
-      )
+      model_kwargs = {
+        "input_size": input_size,
+        "hidden_layers": tuple([(n, t) for n, t in hidden_layers]),
+        "output_layer": output_layer,
+      }
+      self.model[element] = NeuralNetworkModel(**model_kwargs)
       self.model[element].to(device.DEVICE)
-      # TODO: add element argument
-      # TODO: read layers from the settings
+      
 
   def _init_trainer(self) -> None:
     """
     This method initializes a trainer instance including optimizer, loss function, criterion, etc from the settings.
     The trainer is used later for fitting the energy models. 
     """
+    logger.debug(f"[Setting trainer]")
     trainer_kwargs = {}
     if self._settings["updater_type"] == 0:  # Gradient Descent
       if self._settings["gradient_type"] == 1:  # Adam
@@ -268,13 +274,13 @@ class NeuralNetworkPotential(Potential):
           "lr": self._settings["gradient_adam_eta"],
           "betas": (self._settings["gradient_adam_beta1"], self._settings["gradient_adam_beta2"]),
           "eps": self._settings["gradient_adam_epsilon"],
+          "weight_decay": self._settings["weight_decay"],
         }
       elif self._settings["gradient_type"] == 0:  # Fixed Step  
         logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)
 
     # Create trainer instance
-    logger.debug(f"Preparing trainer kwargs={trainer_kwargs}")
-    logger.debug(f"Creating trainer for neural network potential")
+    logger.debug(f"Trainer kwargs={trainer_kwargs}")
     self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   # @Profiler.profile
@@ -423,7 +429,6 @@ class NeuralNetworkPotential(Potential):
     :return: total energy
     :rtype: Tensor
     """    
-    # FIXME: update neighbor list ONLY if needed
     structure_ = structure.copy(r_cutoff=self.r_cutoff)
 
     # Set model in evaluation model
