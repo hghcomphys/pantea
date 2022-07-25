@@ -34,11 +34,11 @@ class Structure:
   _atomic_attributes = [
     'position',      # per-atom position x, y, and z
     'force',         # per-atom force components x, y, and z
-    'charge',        # per-atom electric charge
+    #'charge',       # per-atom electric charge
     'energy',        # per-atom energy
     'lattice',       # vectors of supercell 3x3 matrix
     'total_energy',  # total energy of atoms in simulation box
-    'total_charger'  # total charge of atoms in simulation box
+    #'total_charger' # total charge of atoms in simulation box
   ]
   _differentiable_atomic_attributes = [
     'position',      # force = -gradient(energy, position)
@@ -46,10 +46,10 @@ class Structure:
   ]
 
   def __init__(self, 
-      data: Dict = None,         
-      r_cutoff: float = None, 
+      data: Dict = None,          
       dtype: torch.dtype = None,
       device: torch.device = None,
+      r_cutoff: float = None,
       requires_grad: bool = True,
       **kwargs
     ) -> None: 
@@ -58,11 +58,11 @@ class Structure:
 
     :param data: A dictionary representation of atomic data including position, charge, energy, etc. 
     :type data: Dict
-    :param r_cutoff: Cutoff radius for calculating the neighbor list, defaults to None
-    :type r_cutoff: float, optional
     :param dtype: Data type of internal tensors which represent structure, defaults to None
     :type dtype: torch.dtype, optional
     :param device: Device on which tensors are allocated, defaults to None
+    :param r_cutoff: Cutoff radius for calculating the neighbor list, defaults to None
+    :type r_cutoff: float, optional
     :type device: torch.device, optional
     :param position_grad: whether the position tensor is differentiable or not, defaults to True
     :type position_grad: bool, optional
@@ -83,42 +83,49 @@ class Structure:
         self._init_tensors(data)    
         self._init_box(data["lattice"])   
       except KeyError:
-       logger.error(f"Cannot find one of the atomic attributes in input data, expected" \
-                    f"attributes: {''.join(self._atomic_attributes)}", exception=KeyError)
+       logger.error(f"Cannot find one of the expected atomic attributes in input data:" \
+                    f"{''.join(self._atomic_attributes)}", exception=KeyError)
 
-    if r_cutoff:
-      # self._init_neighbor(r_cutoff)
-      self.neighbor = Neighbor(r_cutoff)
-      self.requires_neighbor_update = True 
-      
+    self._init_neighbor(r_cutoff)
+    
     if self.tensors:
       set_as_attribute(self, self.tensors)
 
-  # def _init_neighbor(self, r_cutoff) -> None:
-  #   """
-  #   Create a neighbor list for the given cutoff radius. 
-  #   """
-  #   if self.neighbor is None:
-  #     self.neighbor = Neighbor(r_cutoff)
-  #     self.requires_neighbor_update = True 
-  #   else: 
-  #     self.neighbor.reset(r_cutoff)
+  def _init_neighbor(self, r_cutoff) -> None:
+    """
+    Initialize a neighbor list instance for a given cutoff radius. 
+    
+    It ignores updating the neighbor list if the new cutoff radius is the same the existing one.
+    It's important to note that the Neighbor object in Structure is considered as a buffer and not 
+    part of the atomic structure data. But, it uses for calculating descriptors, potential, etc. 
+    It is the task of those classes to prepare the buffer neighbor for their own usage.  
+    """
+    if not self.neighbor:
+      self.neighbor = Neighbor(r_cutoff)
+      self.requires_neighbor_update = True 
+      return
 
-  # def _copy_tensors(self) -> Dict[str, Tensor]:
-  #   """
-  #   Return a shallow copy of all tensors.
+    if self.r_cutoff and self.r_cutoff == r_cutoff: 
+      logger.debug(f"Skipping updating the neighbor list (cutoff radius): "
+                   f"{self.r_cutoff} vs {r_cutoff} (new)")
+      return
 
-  #   :return: A dictionary of tensors for atomic data including position, energy, etc.
-  #   :rtype: Dict[Tensors]
-  #   """
-  #   tensors_ = {}
-  #   for name, tensor in self.tensors.items():
-  #     if name in self._differentiable_atomic_attributes and self.requires_grad:
-  #       tensors_[name] = tensor #.detach().requires_grad_() # torch.clone
-  #     else:
-  #       tensors_[name] = tensor #.detach() # torch.clone
+    self.neighbor.reset_cutoff_radius(r_cutoff)
+    self.requires_neighbor_update = True       
 
-  #   return tensors_
+  def _copy_tensors(self) -> Dict[str, Tensor]:
+    """
+    Return a shallow copy of all tensors.
+    :return: A dictionary of tensors for atomic data including position, energy, etc.
+    :rtype: Dict[Tensors]
+    """
+    tensors_ = {}
+    for attr, tensor in self.tensors.items():
+      if attr in self._differentiable_atomic_attributes and self.requires_grad:
+        tensors_[attr] = tensor #.detach().requires_grad_() # torch.clone
+      else:
+        tensors_[attr] = tensor #.detach() # torch.clone
+    return tensors_
 
   def copy(self, **kwargs):
     """
@@ -131,7 +138,7 @@ class Structure:
       'dtype'         : self.dtype,     
       'requires_grad' : self.requires_grad,              
       'element_map'   : self.element_map,
-      'tensors'       : self.tensors,          
+      'tensors'       : self._copy_tensors(),          
       'neighbor'      : self.neighbor,
       'box'           : self.box,
     }
@@ -148,24 +155,6 @@ class Structure:
       self.box = Box(lattice)  
     else:
       logger.debug("No lattice info were found in the structure")
-    
-  # def set_r_cutoff(self, r_cutoff: float) -> None:
-  #   """
-  #   Set cutoff radius and then update the neighbor list accordingly.
-
-  #   Args:
-  #       r_cutoff (float): New cutoff radius
-  #   """
-  #   if r_cutoff is None:
-  #     self.r_cutoff = None
-  #     self.neighbor = None
-  #     return
-
-  #   if (self.r_cutoff is None) or (self.r_cutoff < r_cutoff):
-  #     self.r_cutoff = r_cutoff
-  #     self.neighbor = Neighbor(self.r_cutoff)
-  #     self.requires_neighbor_update = True
-  #     logger.debug(f"Resetting the cutoff radius of structure: new r_cutoff={self.r_cutoff}")
 
   def _prepare_atype_tensor(self, elements: List) -> Tensor:
     """
@@ -179,6 +168,7 @@ class Structure:
     Create tensors (allocate memory) from the input dictionary of structure data.
     It convert element (string) to atom type (integer) because of computational efficiency.
     """
+    logger.debug("Allocating tensors for structure")
     self.tensors = {}
 
     try:
@@ -196,9 +186,9 @@ class Structure:
       logger.error(f"Cannot find expected atomic attribute {atomic_attr} in the input data dictionary", exception=KeyError)
 
     # Logging
-    for name, tensor in self.tensors.items():
+    for attr, tensor in self.tensors.items():
       logger.debug(
-        f"Allocated '{name}' as a Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
+        f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
       )
       
   def _tensors_to_data(self) -> Dict:
@@ -217,11 +207,16 @@ class Structure:
     update neighbor list.
     This is a computationally expensive method.
     """
-    if self.neighbor:
-      self.neighbor.update(self)
-    else:
-      logger.error(f"Structure has not cutoff radius (r_cutoff={self.r_cutoff})"
-                   f", ignored updating the neighbor list", exception=ValueError)
+    self.neighbor.update(self)
+
+  def reset_cutoff_radius(self, r_cutoff: float) -> None:
+    """
+    Reset cutoff radius of the neighbor list instance.
+
+    :param r_cutoff: New cutoff radius
+    :type r_cutoff: float
+    """        
+    self.neighbor.reset_cutoff_radius(r_cutoff)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, l: float) -> Tensor:
@@ -279,17 +274,15 @@ class Structure:
 
   @property
   def natoms(self) -> int:
-    return self.tensors["position"].shape[0]
+    return self.position.shape[0]
 
   @property
   def elements(self) -> List[str]:
-    return list({self.element_map[int(at)] for at in self.atype})
+    return list({self.element_map(int(at)) for at in self.atype})
 
   @property
   def r_cutoff(self) -> float:
-    if self.neighbor:
       return self.neighbor.r_cutoff
-    return None
 
   def __repr__(self) -> str:
     return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
