@@ -3,7 +3,7 @@ from ..logger import logger
 from ..utils.tokenize import tokenize
 from .base import StructureDataset
 from .transformer import Transformer, ToStructure
-from typing import Callable, TextIO, Dict
+from typing import List, TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
 import torch
@@ -19,6 +19,7 @@ class RunnerStructureDataset(StructureDataset):
 
   See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
   """
+  # TODO: Dataset training and validation split method/utils function
   # TODO: logging
 
   def __init__(self, 
@@ -38,7 +39,7 @@ class RunnerStructureDataset(StructureDataset):
     self.persist = persist          # enabling caching
     self._cached_structures = {}    # a dictionary of cached structures
     self._current_index = 0         # used only for direct iteration
-    logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file}')")
+    logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file.name}')")
 
   def __len__(self) -> int:
     """
@@ -174,7 +175,6 @@ class RunnerStructureDataset(StructureDataset):
         break
 
     return sample
-
 
   def _read_cache(self, index):
     """

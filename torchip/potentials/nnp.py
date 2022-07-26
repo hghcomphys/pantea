@@ -40,7 +40,7 @@ class NeuralNetworkPotential(Potential):
     "epochs": 1,
     "updater_type": 0,
     "gradient_type": 1, 
-    "weight_decay": 1.0E-3,
+    "weight_decay": 1.0e-5,
   }
   # Map cutoff type
   _map_cutoff_type = {  # TODO: poly 3 & 4
