@@ -13,7 +13,8 @@ from .logger import logger
 from .config import *
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 logger.debug(f"{__doc__}")
 logger.debug(f"TorchIP {__version__}")
+4
