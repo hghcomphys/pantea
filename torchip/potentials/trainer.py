@@ -53,55 +53,58 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     """
     # TODO: more arguments to have better control on training
     epochs = kwargs.get("epochs", 1)
-    validation_split = kwargs.get("validation_split", 0.2)
-    history = defaultdict(list)
+    validation_split = kwargs.get("validation_split", None)
+    validation_dataset = kwargs.get("validation_dataset", None)
 
     # Prepare structure dataset and loader for training elemental models
     #dataset_ = dataset.copy() # because of having new r_cutoff specific to the potential, no structure data will be copied
-    #dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)            
-
-    # Train and Validation split
-    nsamples = len(dataset)
-    indices = list(range(nsamples))
-    split = int(np.floor(validation_split * nsamples))
-    np.random.shuffle(indices)
-    train_sampler = SubsetRandomSampler(indices[split:])
-    valid_sampler = SubsetRandomSampler(indices[:split]) # random sampler here can provide more reliable error metric
-    logger.print(f"Number of structures (training)  : {nsamples - split} of {nsamples}")
-    logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%} split)")
-    logger.print()
+    #dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)     
 
     # TODO: further optimization using the existing parameters in TorchDataloader 
-    # workers, pinned memory, etc.        
-    train_loader = TorchDataLoader(
-        dataset, 
-        batch_size=1, 
-        # shuffle=True, 
-        # num_workers=4,
-        #prefetch_factor=3,
-        # pin_memory=True,
-        #persistent_workers=True,
-        collate_fn=lambda batch: batch,
-        sampler=train_sampler,
-      )
-    valid_loader = TorchDataLoader(
-        dataset, 
-        batch_size=1, 
-        #shuffle=False, 
-        # num_workers=4,
-        #prefetch_factor=3,
-        # pin_memory=True,
-        #persistent_workers=True,
-        collate_fn=lambda batch: batch,
-        sampler=valid_sampler,
-      )
+    # workers, pinned memory, etc.      
+    loader_kwargs = {
+        "batch_size": 1, 
+        #"shuffle": True, 
+        #"num_workers": 4,
+        #"prefetch_factor": 3,
+        #"pin_memory": True,
+        #"persistent_workers": True,
+        "collate_fn": lambda batch: batch,
+    }     
+
+    if validation_dataset:
+      # Setting loaders
+      train_loader = TorchDataLoader(dataset,            shuffle=True,  **loader_kwargs)
+      valid_loader = TorchDataLoader(validation_dataset, shuffle=False, **loader_kwargs)
+      # Logging
+      logger.debug(f"Using separate training and validation datasets")
+      logger.print(f"Number of structures (training)  : {len(dataset)}")
+      logger.print(f"Number of structures (validation): {len(validation_dataset)}")
+      logger.print()
+
+    elif validation_split:
+      nsamples = len(dataset)
+      split = int(np.floor(validation_split * nsamples))
+      train_dataset, valid_dataset = torch.utils.data.random_split(dataset, lengths=[nsamples-split, split])
+      # Setting loaders
+      train_loader = TorchDataLoader(train_dataset, shuffle=True,  **loader_kwargs)
+      valid_loader = TorchDataLoader(valid_dataset, shuffle=False, **loader_kwargs)
+      # Logging
+      logger.debug(f"Splitting dataset into training and validation subsets")
+      logger.print(f"Number of structures (training)  : {nsamples - split} of {nsamples}")
+      logger.print(f"Number of structures (validation): {split} ({validation_split:0.2%} split)")
+      logger.print()
+    
+    else:
+      train_loader = TorchDataLoader(dataset, shuffle=True, **loader_kwargs)
+      valid_loader = None
 
     logger.debug("Fitting energy models")
+    history = defaultdict(list)
     for epoch in range(epochs+1):
       logger.print(f"[Epoch {epoch}/{epochs}]")
 
       # ======================================================
-
       # Set potential models in training status
       self.potential.train()
 
@@ -157,49 +160,52 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       # ======================================================
       # TODO: DRY training & validation 
 
-      # Set potential models in evaluation status
-      self.potential.eval()
+      if valid_loader:
 
-      nbatch = 0
-      valid_eng_loss = 0.0
-      valid_frc_loss = 0.0
-      # Loop over validation structures
-      for batch in valid_loader:
-        
-        # TODO: what if batch size > 1
-        # TODO: spawn process
-        structure = batch[0]
+        # Set potential models in evaluation status
+        self.potential.eval()
 
-        # Calculate energy and force components
-        energy = self.potential(structure) # total energy
-        force = -gradient(energy, structure.position)
+        nbatch = 0
+        valid_eng_loss = 0.0
+        valid_frc_loss = 0.0
+        # Loop over validation structures
+        for batch in valid_loader:
+          
+          # TODO: what if batch size > 1
+          # TODO: spawn process
+          structure = batch[0]
 
-        # Energy and force losses
-        eng_loss = self.criterion(energy, structure.total_energy); 
-        frc_loss = self.criterion(force, structure.force); 
-        loss = eng_loss + frc_loss
+          # Calculate energy and force components
+          energy = self.potential(structure) # total energy
+          force = -gradient(energy, structure.position)
 
-        # Accumulate energy and force loss values for each structure
-        valid_eng_loss += eng_loss.data.item()
-        valid_frc_loss += frc_loss.data.item()
+          # Energy and force losses
+          eng_loss = self.criterion(energy, structure.total_energy); 
+          frc_loss = self.criterion(force, structure.force); 
+          loss = eng_loss + frc_loss
+
+          # Accumulate energy and force loss values for each structure
+          valid_eng_loss += eng_loss.data.item()
+          valid_frc_loss += frc_loss.data.item()
+          valid_loss = valid_eng_loss + valid_frc_loss
+          nbatch += 1
+
+        # Get mean validation losses
+        valid_eng_loss /= nbatch
+        valid_frc_loss /= nbatch
         valid_loss = valid_eng_loss + valid_frc_loss
-        nbatch += 1
+        history['valid_energy_loss'].append(valid_eng_loss)
+        history['valid_force_loss'].append(valid_frc_loss)
+        history['valid_loss'].append(valid_loss)
+        history['valid_energy_rmse'].append(sqrt(valid_eng_loss))
+        history['valid_force_rmse'].append(sqrt(valid_frc_loss))
 
-      # Get mean validation losses
-      valid_eng_loss /= nbatch
-      valid_frc_loss /= nbatch
-      valid_loss = valid_eng_loss + valid_frc_loss
-      history['valid_energy_loss'].append(valid_eng_loss)
-      history['valid_force_loss'].append(valid_frc_loss)
-      history['valid_loss'].append(valid_loss)
-      history['valid_energy_rmse'].append(sqrt(valid_eng_loss))
-      history['valid_force_rmse'].append(sqrt(valid_frc_loss))
-
-      logger.print()
-      logger.print("Validation   " \
-                  f"loss: {sqrt(valid_loss):<12.8E}, " \
-                  f"energy [rmse]: {sqrt(valid_eng_loss):<12.8E}, " \
-                  f"force [rmse]: {sqrt(valid_frc_loss):<12.8E}")
+        logger.print()
+        logger.print("Validation   " \
+                    f"loss: {sqrt(valid_loss):<12.8E}, " \
+                    f"energy [rmse]: {sqrt(valid_eng_loss):<12.8E}, " \
+                    f"force [rmse]: {sqrt(valid_frc_loss):<12.8E}")
+      
       logger.print()
 
     #TODO: save the best model
