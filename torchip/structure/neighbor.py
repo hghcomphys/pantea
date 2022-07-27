@@ -25,7 +25,7 @@ class Neighbor:
     self.tensors = None
     logger.debug(f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})")
 
-  def reset_cutoff_radius(self, r_cutoff: float) -> None:
+  def set_cutoff_radius(self, r_cutoff: float) -> None:
     """
     :param r_cutoff: A new cutoff radius
     :type r_cutoff: float
@@ -33,7 +33,6 @@ class Neighbor:
     logger.debug(f"Re-setting Neighbor cutoff radius from {self.r_cutoff} to {r_cutoff}")
     self.r_cutoff = r_cutoff
     self.r_cutoff_updated = True
-
     
   def _init_tensors(self, structure) -> None:
     """

@@ -17,4 +17,3 @@ __version__ = "0.5.1"
 
 logger.debug(f"{__doc__}")
 logger.debug(f"TorchIP {__version__}")
-4
