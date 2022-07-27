@@ -7,7 +7,7 @@ from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
 from typing import List, Dict
-from torch import Tensor, tensor
+from torch import Tensor
 import torch
 # import structure_cpp
 
@@ -110,42 +110,18 @@ class Structure:
                    f"{self.r_cutoff} vs {r_cutoff} (new)")
       return
 
-    self.neighbor.reset_cutoff_radius(r_cutoff)
+    self.neighbor.set_cutoff_radius(r_cutoff)
     self.requires_neighbor_update = True       
 
-  def _copy_tensors(self) -> Dict[str, Tensor]:
+  def set_cutoff_radius(self, r_cutoff: float) -> None:
     """
-    Return a shallow copy of all tensors.
-    :return: A dictionary of tensors for atomic data including position, energy, etc.
-    :rtype: Dict[Tensors]
-    """
-    tensors_ = {}
-    for attr, tensor in self.tensors.items():
-      if attr in self._differentiable_atomic_attributes and self.requires_grad:
-        tensors_[attr] = tensor #.detach().requires_grad_() # torch.clone
-      else:
-        tensors_[attr] = tensor #.detach() # torch.clone
-    return tensors_
+    Set cutoff radius of the structure.
+    This method is useful when having a potential with different cutoff radius.  
 
-  def copy(self, **kwargs):
-    """
-    Return a shallow copy of the structure (the tensors are not actually copied) with some adjusted settings
-    possible from the input arguments. 
-    """
-    init_kwargs = {
-      'r_cutoff'      : self.r_cutoff,
-      'device'        : self.device,    
-      'dtype'         : self.dtype,     
-      'requires_grad' : self.requires_grad,              
-      'element_map'   : self.element_map,
-      'tensors'       : self._copy_tensors(),          
-      'neighbor'      : self.neighbor,
-      'box'           : self.box,
-    }
-    init_kwargs.update(kwargs)  # override the defaults
-    structure_ = Structure(data=None, **init_kwargs)
-    structure_.requires_neighbor_update = self.requires_neighbor_update
-    return structure_
+    :param r_cutoff: New cutoff radius
+    :type r_cutoff: float
+    """    
+    self._init_neighbor(r_cutoff)
 
   def _init_box(self, lattice) -> None:
     """
@@ -286,3 +262,37 @@ class Structure:
 
   def __repr__(self) -> str:
     return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
+
+  # def _copy_tensors(self) -> Dict[str, Tensor]:
+  #   """
+  #   Return a shallow copy of all tensors.
+  #   :return: A dictionary of tensors for atomic data including position, energy, etc.
+  #   :rtype: Dict[Tensors]
+  #   """
+  #   tensors_ = {}
+  #   for attr, tensor in self.tensors.items():
+  #     if attr in self._differentiable_atomic_attributes and self.requires_grad:
+  #       tensors_[attr] = tensor #.detach().requires_grad_() # torch.clone
+  #     else:
+  #       tensors_[attr] = tensor #.detach() # torch.clone
+  #   return tensors_
+
+  # def copy(self, **kwargs):
+  #   """
+  #   Return a shallow copy of the structure (the tensors are not actually copied) with some adjusted settings
+  #   possible from the input arguments. 
+  #   """
+  #   init_kwargs = {
+  #     'r_cutoff'      : self.r_cutoff,
+  #     'device'        : self.device,    
+  #     'dtype'         : self.dtype,     
+  #     'requires_grad' : self.requires_grad,              
+  #     'element_map'   : self.element_map,
+  #     'tensors'       : self._copy_tensors(),          
+  #     'neighbor'      : self.neighbor,
+  #     'box'           : self.box,
+  #   }
+  #   init_kwargs.update(kwargs)  # override the defaults
+  #   structure_ = Structure(data=None, **init_kwargs)
+  #   structure_.requires_neighbor_update = self.requires_neighbor_update
+  #   return structure_
