@@ -6,11 +6,11 @@ from ..utils.gradient import gradient
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
 from torch import nn
 from math import sqrt
 import numpy as np
 import torch
+
 
 
 class BasePotentialTrainer:
@@ -62,7 +62,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
     # TODO: further optimization using the existing parameters in TorchDataloader 
     # workers, pinned memory, etc.      
-    loader_kwargs = {
+    params = {
         "batch_size": 1, 
         #"shuffle": True, 
         #"num_workers": 4,
@@ -74,8 +74,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
     if validation_dataset:
       # Setting loaders
-      train_loader = TorchDataLoader(dataset,            shuffle=True,  **loader_kwargs)
-      valid_loader = TorchDataLoader(validation_dataset, shuffle=False, **loader_kwargs)
+      train_loader = TorchDataLoader(dataset,            shuffle=True,  **params)
+      valid_loader = TorchDataLoader(validation_dataset, shuffle=False, **params)
       # Logging
       logger.debug(f"Using separate training and validation datasets")
       logger.print(f"Number of structures (training)  : {len(dataset)}")
@@ -87,8 +87,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       split = int(np.floor(validation_split * nsamples))
       train_dataset, valid_dataset = torch.utils.data.random_split(dataset, lengths=[nsamples-split, split])
       # Setting loaders
-      train_loader = TorchDataLoader(train_dataset, shuffle=True,  **loader_kwargs)
-      valid_loader = TorchDataLoader(valid_dataset, shuffle=False, **loader_kwargs)
+      train_loader = TorchDataLoader(train_dataset, shuffle=True,  **params)
+      valid_loader = TorchDataLoader(valid_dataset, shuffle=False, **params)
       # Logging
       logger.debug(f"Splitting dataset into training and validation subsets")
       logger.print(f"Number of structures (training)  : {nsamples - split} of {nsamples}")
@@ -96,7 +96,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       logger.print()
     
     else:
-      train_loader = TorchDataLoader(dataset, shuffle=True, **loader_kwargs)
+      train_loader = TorchDataLoader(dataset, shuffle=True, **params)
       valid_loader = None
 
     logger.debug("Fitting energy models")
@@ -119,7 +119,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         
         # TODO: what if batch size > 1
         # TODO: spawn process
-        structure = batch[0].copy(r_cutoff=self.potential.r_cutoff) 
+        structure = batch[0]
+        structure.set_cutoff_radius(self.potential.r_cutoff)
         
         # Calculate energy and force
         energy = self.potential(structure) # total energy
@@ -174,6 +175,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
           # TODO: what if batch size > 1
           # TODO: spawn process
           structure = batch[0]
+          structure.set_cutoff_radius(self.potential.r_cutoff)
 
           # Calculate energy and force components
           energy = self.potential(structure) # total energy

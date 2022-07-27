@@ -303,7 +303,9 @@ class NeuralNetworkPotential(Potential):
     logger.info("Fitting descriptor scalers")
     for index, batch in enumerate(loader): 
       # TODO: spawn processes
-      structure = batch[0].copy(r_cutoff=self.r_cutoff)  
+      structure = batch[0]
+      structure.set_cutoff_radius(self.r_cutoff)  
+
       for element in structure.elements:
         aids = structure.select(element).detach()
         for aids_batch in create_batch(aids, batch_size):
@@ -429,7 +431,7 @@ class NeuralNetworkPotential(Potential):
     :return: total energy
     :rtype: Tensor
     """    
-    structure_ = structure.copy(r_cutoff=self.r_cutoff)
+    structure.set_cutoff_radius(self.r_cutoff)
 
     # Set model in evaluation model
     self.eval()
@@ -437,8 +439,8 @@ class NeuralNetworkPotential(Potential):
     # Loop over elements
     energy = 0.0
     for element in self.elements:
-      aids = structure_.select(element).detach()
-      x = self.descriptor[element](structure_, aid=aids)
+      aids = structure.select(element).detach()
+      x = self.descriptor[element](structure, aid=aids)
       x = self.scaler[element](x)
       x = self.model[element](x)
       # FIXME: float type neural network
