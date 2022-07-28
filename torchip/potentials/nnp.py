@@ -306,12 +306,14 @@ class NeuralNetworkPotential(Potential):
       structure = batch[0]
       structure.set_cutoff_radius(self.r_cutoff)  
 
+      # For each element in the structure
       for element in structure.elements:
         aids = structure.select(element).detach()
-        for aids_batch in create_batch(aids, batch_size):
+        for aids_batch in create_batch(aids, batch_size):  # TODO: replace with future (client.submit)
           logger.debug(f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})")
-          x = self.descriptor[element](structure, aids_batch) # kernel
-          self.scaler[element].fit(x)
+          with torch.no_grad():  # TODO: add torch.no_grad() as decorator?
+            x = self.descriptor[element](structure, aids_batch) # kernel
+            self.scaler[element].fit(x)
     logger.debug("Finished scaler fitting.")
 
     # Save scaler data into file  
