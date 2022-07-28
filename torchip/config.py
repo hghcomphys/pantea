@@ -58,10 +58,11 @@ class Device(_CFG):
   }
   
 
+# from dask.distributed import Client
+# class TaskClient:
+#   client = Client(memory_limit='3GB', n_workers=4, processes=True, threads_per_worker=1, dashboard_address=':8791')
+
+
 # Create dtype and device configurations
 dtype = DataType()
 device = Device()
-
-
-class TaskClient:
-  client = None

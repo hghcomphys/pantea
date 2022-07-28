@@ -1,6 +1,6 @@
 from ...logger import logger
 from ...structure import Structure
-from ...config import TaskClient
+# from ...config import TaskClient
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
@@ -54,25 +54,27 @@ class AtomicSymmetryFunction(Descriptor):
     aids_ = [aid] if isinstance(aid, int) else aid                     # TODO: raise ValueError("Unknown atom id type")
     aids_ = structure.select(self.element) if aids_ is None else aids_ # TODO: optimize ifs here
 
-    if TaskClient.client is None: 
-      results = [self.compute(structure, aid_) for aid_ in aids_]
-    else:
-      structure_ = TaskClient.client.scatter(structure, broadcast=True)
-      futures = [TaskClient.client.submit(self.compute, structure_, aid_) for aid_ in aids_]
-      results = TaskClient.client.gather(futures)
+    # ================ TODO: Parallel Computing ====================
+    # if TaskClient.client is None: 
+    results = [self.compute(structure, aid_) for aid_ in aids_]
+    # else:
+    #   structure_ = TaskClient.client.scatter(structure, broadcast=True)
+    #   futures = [TaskClient.client.submit(self.compute, structure_, aid_) for aid_ in aids_]
+    #   results = TaskClient.client.gather(futures)
+    # ===========================================================
 
     # Return descriptor values
     return torch.squeeze(torch.stack(results, dim=0))
    
   def compute(self, structure:Structure, aid: int) -> Tensor:
     """
-    Comute descriptor values of an input atom id for the given structure. 
+    Commute descriptor values of an input atom id for the given structure. 
     """
-    x = structure.position            # tensor
+    #x = structure.position           # tensor
     at = structure.atype              # tensor
     nn  = structure.neighbor.number   # tensor
     ni = structure.neighbor.index     # tensor
-    emap= structure.element_map       # element map instance
+    emap= structure.element_map       # element map
 
     # A tensor for final descriptor values of a single atom
     result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
