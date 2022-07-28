@@ -1,5 +1,5 @@
 from ..logger import logger
-from typing import Union, List
+from typing import Union, List, Dict
 
 
 _KNOWN_ELEMENTS_LIST = [
@@ -68,7 +68,35 @@ class ElementMap:
 
   @staticmethod
   def get_atomic_number(element: str) -> int:
+    """
+    Return atomic number of the input element. 
+
+    :param element: Element
+    :type element: str
+    :return: Atomic number
+    :rtype: int
+    """    
     return _KNOWN_ELEMENTS_DICT[element]
+
+  @property
+  def atype_to_element(self) -> Dict[int, str]:
+    """
+    Return a dictionary mapping of atom type to element.
+    This property is defined due to a serialization issue of the ElementMap class during parallelization. 
+
+    :rtype: Dict[int, str]
+    """    
+    return self._atom_type_to_elem
+
+  @property
+  def element_to_atype(self) -> Dict[str, int]:
+    """
+    Return a mapping dictionary of element to atom type.
+    This property is defined due to a serialization issue of the ElementMap class during parallelization.
+
+    :rtype: Dict[str, int]
+    """  
+    return self._elem_to_atom_type
 
 
 
