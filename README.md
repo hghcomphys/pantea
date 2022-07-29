@@ -46,7 +46,7 @@ cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
 descriptor.register( G2(cfn, eta=0.5, r_shift=0.0), "H" )
 descriptor.register( G3(cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
 
-# 
+# Calculate descriptor values
 results = descriptor(structure)
 ```
 

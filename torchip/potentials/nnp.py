@@ -293,7 +293,7 @@ class NeuralNetworkPotential(Potential):
     """    
     # Set parameters
     save_scaler = kwargs.get("save_scaler", True)
-    batch_size = kwargs.get("batch_size", 4)  # batch of atoms in each structure
+    batch_size = kwargs.get("batch_size", 8)  # batch of atoms in each structure
 
     # Prepare structure dataset and loader (for fitting scaler)
     #dataset_ = dataset.copy() # because of using a new transformer (no structure data will be copied)
