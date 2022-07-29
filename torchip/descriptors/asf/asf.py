@@ -1,10 +1,10 @@
 from ...logger import logger
 from ...structure import Structure
-# from ...config import TaskClient
+from ...config import TaskClient
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Union, List
+from typing import Union, List, Dict
 import itertools
 import torch
 from torch import Tensor
@@ -55,39 +55,55 @@ class AtomicSymmetryFunction(Descriptor):
     aids_ = structure.select(self.element) if aids_ is None else aids_ # TODO: optimize ifs here
 
     # ================ TODO: Parallel Computing ====================
-    # if TaskClient.client is None: 
-    results = [self.compute(structure, aid_) for aid_ in aids_]
-    # else:
-    #   structure_ = TaskClient.client.scatter(structure, broadcast=True)
-    #   futures = [TaskClient.client.submit(self.compute, structure_, aid_) for aid_ in aids_]
-    #   results = TaskClient.client.gather(futures)
+    if TaskClient.client is None: 
+      results = [self.compute(structure, aid_) for aid_ in aids_]
+    else:
+      logger.debug(f"Parallelizing {self.__class__.__name__} computing kernel")
+      tensors = [
+        structure.position, 
+        structure.atype, 
+        structure.neighbor.number, 
+        structure.neighbor.index
+      ]
+      params = {
+        'emap'  : structure.element_map.element_to_atype, 
+        'dtype' : structure.dtype, 
+        'device': structure.device
+      }
+      broadcasted_tensors = TaskClient.client.scatter(tensors, broadcast=True)
+      futures = [TaskClient.client.submit(self._compute, *broadcasted_tensors, aid_, **params) for aid_ in aids_]
+      results = TaskClient.client.gather(futures)
     # ===========================================================
 
     # Return descriptor values
     return torch.squeeze(torch.stack(results, dim=0))
    
-  def compute(self, structure:Structure, aid: int) -> Tensor:
+  def _compute(
+      self, 
+      pos: Tensor,
+      at: Tensor,
+      nn: Tensor,
+      ni: Tensor,
+      aid: int,
+      emap: Dict,
+      dtype = None,
+      device = None,
+    ) -> Tensor:
     """
     Commute descriptor values of an input atom id for the given structure. 
     """
-    #x = structure.position           # tensor
-    at = structure.atype              # tensor
-    nn  = structure.neighbor.number   # tensor
-    ni = structure.neighbor.index     # tensor
-    emap= structure.element_map       # element map
-
     # A tensor for final descriptor values of a single atom
-    result = torch.zeros(self.n_descriptor, dtype=structure.dtype, device=structure.device)
+    result = torch.zeros(self.n_descriptor, dtype=dtype, device=device)
 
     # Check aid atom type match the central element
     if not emap[self.element] == at[aid]:
-      logger.error(f"Inconsistent central element ('{self.element}'): input aid={aid} ('{emap[int(at[aid])]}')",
+      logger.error(f"Inconsistent central element ('{self.element}'): input aid={aid} (atype='{int(at[aid])}')",
                     exception=AssertionError)
         
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    
     # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
-    dis_, diff_ = structure.calculate_distance(aid, neighbors=ni_, difference=True) # self-count excluded, PBC applied
+    dis_, diff_ = Structure._calculate_distance(pos, aid, neighbors=ni_, return_diff=True) # self-count excluded, PBC applied
     # Get the corresponding neighboring atom types and position
     at_ = at[ni_]   # at_ refers to the array atom type of only neighbors
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
@@ -97,7 +113,7 @@ class AtomicSymmetryFunction(Descriptor):
     for radial_index, radial in enumerate(self._radial):
       # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
       ni_rc__ = ( dis_ <= radial[0].r_cutoff ).detach() # a logical array
-      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap(radial[2]) ), as_tuple=True )[0]
+      ni_rc_at_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == emap[radial[2]] ), as_tuple=True )[0]
       # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
       # print(aid.numpy(), radial[1], radial[2],
       #   radial[0].kernel(dis_[ni_rc_at_]).detach().numpy(),
@@ -109,7 +125,7 @@ class AtomicSymmetryFunction(Descriptor):
       # Find neighboring atom indices that match the given ASF cutoff radius
       ni_rc__ = (dis_ <= angular[0].r_cutoff ).detach() # a logical array
       # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
-      at_j, at_k = emap(angular[2]), emap(angular[3])
+      at_j, at_k = emap[angular[2]], emap[angular[3]]
       ni_rc_at_j_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_j), as_tuple=True )[0]  # local index
       ni_rc_at_k_ = torch.nonzero( torch.logical_and(ni_rc__, at_ == at_k), as_tuple=True )[0]  # local index
       # print("j", ni_[ni_rc_at_j_].detach().numpy())
@@ -132,8 +148,8 @@ class AtomicSymmetryFunction(Descriptor):
         Rij = diff_[j] #x[aid] - x[ni_j_]                             # shape=(3)
         Rik = diff_[k] #x[aid] - x[ni_k_]                             # shape=(*, 3)
         # ---
-        rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)    # shape=(*)
-        #Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])               # shape=(*, 3)
+        rjk = Structure._calculate_distance(pos, ni_j_, neighbors=ni_k_)    # shape=(*)
+        #Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])                     # shape=(*, 3)
         # ---
         # Cosine of angle between k--<i>--j atoms
         # TODO: move cosine calculation to structure
@@ -143,7 +159,7 @@ class AtomicSymmetryFunction(Descriptor):
         # Broadcasting computation (avoiding to use the in-place add() because of autograd)
         result[angular_index] = result[angular_index] + torch.sum(angular[0].kernel(rij, rik, rjk, cost), dim=0)  
 
-        # Debugging --------------------------------------------
+        # ================ Debugging ===============
         # ni_j_ = ni_[j] # atom index i
         # rij = dis_[j]  
         # Rij = structure.apply_pbc(x[aid] - x[ni_j_])
@@ -181,6 +197,19 @@ class AtomicSymmetryFunction(Descriptor):
       # print(f"result[{angular_i}]={result[angular_i].detach().numpy()}")
 
     return result
+  
+  def compute(self, structure:Structure, aid: int) -> Tensor:
+    """
+    Compute descriptor values of an input atom id for the given structure. 
+    """
+    return self._compute(structure.position, 
+                         structure.atype, 
+                         structure.neighbor.number, 
+                         structure.neighbor.index, 
+                         aid, 
+                         emap=structure.element_map.element_to_atype, 
+                         dtype=structure.dtype, 
+                         device=structure.device)
 
   @property
   def n_radial(self) -> int:
