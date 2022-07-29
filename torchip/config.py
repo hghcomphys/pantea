@@ -1,7 +1,8 @@
 from .logger import logger
 from typing import Any
 import torch
-
+import numpy
+    
 
 class _CFG:
   """
@@ -44,6 +45,7 @@ class DataType(_CFG):
     "UINT"   : torch.long,
     "INDEX"  : torch.long,
   }
+dtype = DataType()  # create global dtype config
 
 
 class Device(_CFG):
@@ -56,13 +58,27 @@ class Device(_CFG):
     "GPU" : torch.device('cuda'),
     "DEVICE" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
   }
+device = Device()  # create global device config
   
 
-# from dask.distributed import Client
-# class TaskClient:
-#   client = Client(memory_limit='3GB', n_workers=4, processes=True, threads_per_worker=1, dashboard_address=':8791')
+from dask.distributed import Client
+class TaskClient:
+  client =  None
+  # client = Client(memory_limit='4GB', n_workers=2, processes=False, threads_per_worker=1, dashboard_address=':8791')
 
 
-# Create dtype and device configurations
-dtype = DataType()
-device = Device()
+def manual_seed(seed: int) -> None:
+  """
+  Set the seed for generating random numbers.
+
+  :param seed: random seed
+  :type seed: int
+  """  
+  logger.debug("Setting the global random seed to {seed}")
+  numpy.random.seed(seed)
+  torch.manual_seed(seed)
+
+
+
+
+
