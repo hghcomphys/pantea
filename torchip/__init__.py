@@ -12,8 +12,9 @@ provides two high-level features including optimized tensor computation and auto
 differentiation.
 """
 
-from .logger import logger
+from .logger import *
 from .config import *
+
 
 
 __version__ = "0.5.1"

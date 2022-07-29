@@ -87,6 +87,16 @@ class Logger:
     if exception is not None:
       raise exception(msg)
 
-
 # Create the global logger object
 logger = Logger() # filename="debug.log"
+
+
+def set_logging_level(level: int) -> None:
+  """
+  Set the global logging level
+
+  :param level: INFO, WARNING, ERROR, and DEBUG 
+  :type level: int (logging)
+  """
+  logger.set_level(level)
+  
