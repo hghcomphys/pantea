@@ -6,7 +6,7 @@ from ..utils.gradient import get_value
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box
-from typing import List, Dict
+from typing import List, Dict, Tuple, Union
 from torch import Tensor
 import torch
 # import structure_cpp
@@ -146,7 +146,6 @@ class Structure:
     """
     logger.debug("Allocating tensors for structure")
     self.tensors = {}
-
     try:
       # Tensors for atomic attributes
       for atomic_attr in self._atomic_attributes:
@@ -157,26 +156,23 @@ class Structure:
           self.tensors[atomic_attr] = torch.tensor(data[atomic_attr], dtype=self.dtype, device=self.device)
       # A tensor for atomic type 
       self.tensors["atype"] = self._prepare_atype_tensor(data["element"])
-      
+
     except KeyError:
       logger.error(f"Cannot find expected atomic attribute {atomic_attr} in the input data dictionary", exception=KeyError)
 
     # Logging
     for attr, tensor in self.tensors.items():
-      logger.debug(
-        f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
-      )
+      logger.debug(f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
       
   def _tensors_to_data(self) -> Dict:
     """
     Cast the tensors to structure data.
     To be used for dumping structure into a file. 
     """
-    dict_ = {}
+    data = {}
     for name, tensor in self.tensors.items():
-      dict_[name] = get_value(tensor)
-
-    return dict_
+      data[name] = get_value(tensor)
+    return data
 
   def update_neighbor(self) -> None:
     """
@@ -195,52 +191,51 @@ class Structure:
     self.neighbor.reset_cutoff_radius(r_cutoff)
 
   @staticmethod
-  def _apply_pbc(dx: Tensor, l: float) -> Tensor:
+  def _calculate_distance(
+      pos: Tensor,
+      aid: int, 
+      lat: Tensor = None,
+      detach: bool = False, 
+      neighbors = None, 
+      return_diff: bool = False
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
-    An utility and static method to apply PBC along a specific direction. 
-    """   
-    dx = torch.where(dx >  0.5E0*l, dx - l, dx)
-    dx = torch.where(dx < -0.5E0*l, dx + l, dx)
-    return dx
-    # return structure_cpp._apply_pbc(dx, l)
-
-  def apply_pbc(self, dx: Tensor) -> Tensor: 
-    """
-    This method applies PBC on the input array (assuming position difference).
-    """
-    # Apply PBC along x,y,and z directions
-    dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx) # x
-    dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly) # y
-    dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz) # z
-    # dx[..., 0] = structure_cpp._apply_pbc(dx[..., 0], self.box.lx) # x
-    # dx[..., 1] = structure_cpp._apply_pbc(dx[..., 1], self.box.ly) # y
-    # dx[..., 2] = structure_cpp._apply_pbc(dx[..., 2], self.box.lz) # z
-    return dx
-    # TODO: non-orthogonal box
-    # return structure_cpp.apply_pbc(dx, torch.diagonal(self.box.lattice)) 
-
-  def calculate_distance(self, aid: int, detach=False, neighbors=None, difference=False) -> Tensor: # TODO: also tuple?
-    """
-    This method calculates an array of distances of all atoms existing in the structure from an input atom. 
+    [Serializable Kernel]
+    Calculate a tensor of distances to all atoms existing in the structure from a specific atom. 
     TODO: input pbc flag, using default pbc from global configuration
     TODO: also see torch.cdist
-    """
-    x = self.position.detach() if detach else self.position
+    """   
+    if detach:
+      pos = pos.detach()
+      
+    x = pos
+    # x = pos.detach() if detach else pos
     x = x[neighbors] if neighbors is not None else x 
-    x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # for when neighbors index is only a number
-    dx = self.position[aid] - x
+    x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # when the neighbors index is a scalar
+    dx = pos[aid] - x  # FIXME: detach?
 
-    # Apply PBC along x,y,and z directions if lattice info is provided 
-    if self.box is not None:
-      # dx[..., 0] = self._apply_pbc(dx[..., 0], self.box.lx)
-      # dx[..., 1] = self._apply_pbc(dx[..., 1], self.box.ly)
-      # dx[..., 2] = self._apply_pbc(dx[..., 2], self.box.lz)
-      dx = self.apply_pbc(dx) # using broadcasting
+    # Apply PBC along x,y, and z directions if needed
+    if lat is not None:
+        dx = Box._apply_pbc(dx, lat) 
 
     # Calculate distance from dx tensor
-    distance = torch.linalg.vector_norm(dx, dim=1)
+    dis = torch.linalg.vector_norm(dx, dim=1)
 
-    return distance if not difference else (distance, dx)
+    # Return results
+    return dis if not return_diff else (dis, dx)
+
+  def calculate_distance(
+      self, 
+      aid: int, 
+      detach=False, 
+      neighbors=None, 
+      return_diff=False
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    """
+    Return a tensor of distances between a specific atom and all atoms existing in the structure. 
+    """
+    return Structure._calculate_distance(self.position, aid, lat=self.box.lattice if self.box else None,
+                                         detach=detach, neighbors=neighbors, return_diff=return_diff) 
 
   def select(self, element: str) -> Tensor:
     """
