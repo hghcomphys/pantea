@@ -7,42 +7,32 @@
 import sys
 sys.path.append('../')
 
-import torchip as tp
+import torchip
 from torchip.datasets import RunnerStructureDataset, ToStructure
 from torchip.potentials import NeuralNetworkPotential
 
 import torch
-import numpy as np
+import logging
 import pandas as pd
 from pathlib import Path
 
-np.random.seed(2022)
-torch.manual_seed(2022);
+# torchip.set_logging_level(logging.DEBUG)
+torchip.manual_seed(2022)
+torchip.device.DEVICE = torch.device("cpu")
 
-# logger.set_level(logging.DEBUG)
-
-# Set device eigher cpu or cuda (gpu)
-tp.device.DEVICE = "cpu"
-
-potdir = Path('./H2O')
-
+potdir = Path('./LJ')
 
 # Dataset
-structures = RunnerStructureDataset(Path(potdir, "input.data"), transform=ToStructure(), persist=False)
+structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
 
 # Potential
-pot = NeuralNetworkPotential(Path(potdir, "input.nn"))
+nnp = NeuralNetworkPotential(Path(potdir, "input.nn"))
 
-# pot.load_scaler()
-pot.fit_scaler(structures)
+# nnp.load_scaler()
+nnp.fit_scaler(structures)
 
-
-# # ### Model
-
-# # #### Training
-
-# # pot.load_model()
-# history = pot.fit_model(structures, epochs=5, validation_split=0.20)
+# nnp.load_model()
+history = nnp.fit_model(structures, epochs=1, validation_split=0.20)
 
 # df = pd.DataFrame(history)
 # print(df.tail())
