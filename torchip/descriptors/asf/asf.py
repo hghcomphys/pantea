@@ -70,27 +70,29 @@ class AtomicSymmetryFunction(Descriptor):
         'dtype' : structure.dtype, 
         'device': structure.device
       }
-      broadcasted_tensors = TaskClient.client.scatter(tensors, broadcast=True)
-      futures = [TaskClient.client.submit(self._compute, *broadcasted_tensors, aid_, **params) for aid_ in aids_]
+      scattered_tensors = TaskClient.client.scatter(tensors, broadcast=True)
+      futures = [TaskClient.client.submit(self._compute, *scattered_tensors, aid_, **params) for aid_ in aids_]
       results = TaskClient.client.gather(futures)
     # ===========================================================
 
     # Return descriptor values
     return torch.squeeze(torch.stack(results, dim=0))
    
+  # TODO: static method? 
   def _compute(
       self, 
-      pos: Tensor,
-      at: Tensor,
-      nn: Tensor,
+      pos: Tensor, 
+      at: Tensor, 
+      nn: Tensor, 
       ni: Tensor,
-      aid: int,
-      emap: Dict,
-      dtype = None,
-      device = None,
+      aid: int, 
+      emap: Dict[str, int], 
+      dtype=None, 
+      device=None
     ) -> Tensor:
     """
-    Commute descriptor values of an input atom id for the given structure. 
+    [Kernel]
+    Compute descriptor values of an input atom id for the given structure tensors. 
     """
     # A tensor for final descriptor values of a single atom
     result = torch.zeros(self.n_descriptor, dtype=dtype, device=device)
@@ -198,18 +200,13 @@ class AtomicSymmetryFunction(Descriptor):
 
     return result
   
-  def compute(self, structure:Structure, aid: int) -> Tensor:
+  def compute(self, structure: Structure, aid: int) -> Tensor:
     """
     Compute descriptor values of an input atom id for the given structure. 
     """
-    return self._compute(structure.position, 
-                         structure.atype, 
-                         structure.neighbor.number, 
-                         structure.neighbor.index, 
-                         aid, 
-                         emap=structure.element_map.element_to_atype, 
-                         dtype=structure.dtype, 
-                         device=structure.device)
+    return self._compute(structure.position, structure.atype, structure.neighbor.number, 
+                         structure.neighbor.index, aid, emap=structure.element_map.element_to_atype, 
+                         dtype=structure.dtype, device=structure.device)
 
   @property
   def n_radial(self) -> int:

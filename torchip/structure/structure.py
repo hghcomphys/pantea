@@ -192,27 +192,22 @@ class Structure:
 
   @staticmethod
   def _calculate_distance(
-      pos: Tensor,
+      pos: Tensor, 
       aid: int, 
-      lat: Tensor = None,
-      detach: bool = False, 
+      lat: Tensor = None, 
       neighbors = None, 
       return_diff: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
-    [Serializable Kernel]
+    [Kernel]
     Calculate a tensor of distances to all atoms existing in the structure from a specific atom. 
     TODO: input pbc flag, using default pbc from global configuration
     TODO: also see torch.cdist
     """   
-    if detach:
-      pos = pos.detach()
-      
     x = pos
-    # x = pos.detach() if detach else pos
     x = x[neighbors] if neighbors is not None else x 
     x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x  # when the neighbors index is a scalar
-    dx = pos[aid] - x  # FIXME: detach?
+    dx = pos[aid] - x  
 
     # Apply PBC along x,y, and z directions if needed
     if lat is not None:
@@ -224,18 +219,12 @@ class Structure:
     # Return results
     return dis if not return_diff else (dis, dx)
 
-  def calculate_distance(
-      self, 
-      aid: int, 
-      detach=False, 
-      neighbors=None, 
-      return_diff=False
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+  def calculate_distance(self, aid: int, neighbors=None, return_diff=False) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
     Return a tensor of distances between a specific atom and all atoms existing in the structure. 
     """
-    return Structure._calculate_distance(self.position, aid, lat=self.box.lattice if self.box else None,
-                                         detach=detach, neighbors=neighbors, return_diff=return_diff) 
+    lat = self.box.lattice if self.box else None
+    return Structure._calculate_distance(self.position, aid, lat=lat, neighbors=neighbors, return_diff=return_diff) 
 
   def select(self, element: str) -> Tensor:
     """

@@ -1,7 +1,6 @@
 from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
-from ..datasets.transformer import ToStructure
 from ..utils.gradient import gradient
 from collections import defaultdict
 from typing import Dict
@@ -10,7 +9,6 @@ from torch import nn
 from math import sqrt
 import numpy as np
 import torch
-
 
 
 class BasePotentialTrainer:
@@ -162,7 +160,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       # TODO: DRY training & validation 
 
       if valid_loader:
-
+        
         # Set potential models in evaluation status
         self.potential.eval()
 
