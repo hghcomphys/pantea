@@ -59,12 +59,6 @@ class Device(_CFG):
     "DEVICE" : torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
   }
 device = Device()  # create global device config
-  
-
-from dask.distributed import Client
-class TaskClient:
-  client =  None
-  # client = Client(memory_limit='4GB', n_workers=2, processes=False, threads_per_worker=1, dashboard_address=':8791')
 
 
 def manual_seed(seed: int) -> None:
@@ -77,6 +71,14 @@ def manual_seed(seed: int) -> None:
   logger.debug("Setting the global random seed to {seed}")
   numpy.random.seed(seed)
   torch.manual_seed(seed)
+
+
+class TaskClient:
+  client =  None
+  # from dask.distributed import Client
+  # client = Client(memory_limit='4GB', n_workers=2, processes=True, threads_per_worker=2, dashboard_address=':8791')
+  # FIXME: There is an issue in Dask where the pytorch graph history cannot be transferred to 
+  # the client workers when having multiple processes
 
 
 
