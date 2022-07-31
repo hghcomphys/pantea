@@ -86,18 +86,21 @@ class Neighbor:
 
     # ----------------------------------------
     logger.debug("Updating neighbor list")
-    
-    nn = self.number
-    ni = self.index
-    for aid in range(structure.natoms): # TODO: optimization: torch unbind or vmap
-      rij = structure.calculate_distance(aid, detach=False)
-      # Get atom indices within the cutoff radius
-      ni_ = torch.nonzero( rij < self.r_cutoff, as_tuple=True)[0]
-      # Remove self-counting atom index
-      ni_ = ni_[ni_ != aid] 
-      # Set neighbor list tensors
-      nn[aid] = ni_.shape[0]
-      ni[aid, :nn[aid]] = ni_ 
+
+    # TODO: define staticmethod _update()
+    # Tensors no need to be differentiable here
+    with torch.no_grad():  
+      nn = self.number
+      ni = self.index
+      for aid in range(structure.natoms): # TODO: optimization: torch unbind or vmap
+        rij = structure.calculate_distance(aid) 
+        # Get atom indices within the cutoff radius
+        ni_ = torch.nonzero( rij < self.r_cutoff, as_tuple=True)[0]
+        # Remove self-counting atom index
+        ni_ = ni_[ni_ != aid] 
+        # Set neighbor list tensors
+        nn[aid] = ni_.shape[0]
+        ni[aid, :nn[aid]] = ni_ 
 
     # Avoid updating the neighbor list the next time
     structure.requires_neighbor_update = False
