@@ -1,6 +1,6 @@
-from keyword import kwlist
 from ..logger import logger
-from ..config import dtype, device
+from ..config import dtype as _dtype
+from ..config import device as _device
 from typing import Tuple
 from torch import Tensor
 import torch
@@ -13,14 +13,9 @@ class Box:
   TODO: box variables as numpy or pytorch?
   TODO: triclinic lattice
   """
-  def __init__(
-    self, 
-    lattice,
-    dtype: torch.dtype = None,
-    device: torch.device = None,
-  ) -> None:
+  def __init__(self, lattice, dtype=None, device=None) -> None:
     """
-    Initialize the simulation box (super-cell).
+    Initialize simulation box (super-cell).
 
     :param lattice: Lattice matrix (3x3 array)
     :param dtype: Data type of internal tensors which represent structure, defaults to None
@@ -28,26 +23,29 @@ class Box:
     :param device: Device on which tensors are allocated, defaults to None
     :type device: torch.device, optional
     """    
-    self.lattice = torch.tensor(lattice, dtype=dtype, device=device)
+    self.dtype = dtype if dtype else _dtype.FLOATX
+    self.device = device if device else _device.DEVICE
 
-    # Check lattice dimension
+    # Create lattice tensor
+    self.lattice = torch.tensor(lattice, dtype=self.dtype, device=self.device)
+
     if self.lattice.shape != (3, 3):
       logger.error(f"Unexpected lattice dimension {self.lattice.shape}", exception=ValueError)
 
   @staticmethod
   def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
     """
-    [Serializable Kernel]
+    [Kernel]
     Apply the periodic boundary condition (PBC) along x,y, and z directions.
 
-    :param dx: Atomic position
+    :param dx: Position difference
     :type dx: Tensor
     :param lattice: lattice matrix
     :type lattice: Tensor
     :return: PBC applied position
     :rtype: Tensor
     """    
-    # TODO: using broadcasting for lattice?
+    # TODO: use broadcasting
     for i in range(3):
       l = lattice[i, i]
       dx[..., i] = torch.where(dx[..., i] >  0.5E0*l, dx[..., i] - l, dx[..., i])
@@ -67,15 +65,15 @@ class Box:
 
   @property
   def xlo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=dtype, device=device)
+    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
   @property
   def ylo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=dtype, device=device)
+    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
   @property
   def zlo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=dtype, device=device)
+    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
   @property
   def xhi(self) -> Tensor:
