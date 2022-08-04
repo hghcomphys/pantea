@@ -15,6 +15,7 @@ from ..structure.element import ElementMap
 from ..config import dtype, device
 from .base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
+from .metrics import MSE, RMSE, MSEpa, RMSEpa
 from collections import defaultdict
 from typing import List, Dict
 from torch.utils.data import DataLoader as TorchDataLoader
@@ -36,11 +37,12 @@ class NeuralNetworkPotential(Potential):
 
   # Default settings
   _default_settings = {
-    "symfunction_short": [],
-    "epochs": 1,
-    "updater_type": 0,
-    "gradient_type": 1, 
-    "weight_decay": 1.0e-5,
+    'symfunction_short': [],
+    'epochs'           : 1,
+    'updater_type'     : 0,
+    'gradient_type'    : 1, 
+    'weight_decay'     : 1.0e-5,
+    'main_error_metric': 'RMSE'
   }
   # Map cutoff type
   _map_cutoff_type = {  # TODO: poly 3 & 4
@@ -54,12 +56,19 @@ class NeuralNetworkPotential(Potential):
   }  
   # Map scaler type
   _map_scaler_type = {  
-    'center_symmetry_functions': 'center',
-    'scale_symmetry_functions': 'scale',
-    'scale_center_symmetry_functions': 'scale_center',
+    'center_symmetry_functions'            : 'center',
+    'scale_symmetry_functions'             : 'scale',
+    'scale_center_symmetry_functions'      : 'scale_center',
     'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
   }
-  # saving formats
+  # Metrics type
+  _map_error_metric = {
+    'MSE'   : MSE,
+    'RMSE'  : RMSE,
+    'MSEpa' : MSEpa,
+    'RMSEpa': RMSEpa,
+  }
+  # Saving formats
   _scaler_save_format = "scaling.{:03d}.data"
   _model_save_format = "weights.{:03d}.zip"
  
@@ -149,6 +158,8 @@ class NeuralNetworkPotential(Potential):
           self._settings[keyword] = float(tokens[0])
 
         # Trainer settings
+        elif keyword == "main_error_metric":
+          self._settings[keyword] = tokens[0]
         elif keyword == "epochs":
           self._settings[keyword] = int(tokens[0])
         elif keyword == "updater_type":
@@ -257,7 +268,6 @@ class NeuralNetworkPotential(Potential):
       self.model[element] = NeuralNetworkModel(**model_kwargs)
       self.model[element].to(device.DEVICE)
       
-
   def _init_trainer(self) -> None:
     """
     This method initializes a trainer instance including optimizer, loss function, criterion, etc from the settings.
@@ -265,9 +275,13 @@ class NeuralNetworkPotential(Potential):
     """
     logger.debug(f"[Setting trainer]")
     trainer_kwargs = {}
+
+    # General trainer parameters
+    trainer_kwargs["criterion"] = nn.MSELoss()
+    trainer_kwargs['error_metric'] = self._map_error_metric[self._settings["main_error_metric"]](reduction='mean')
+
     if self._settings["updater_type"] == 0:  # Gradient Descent
-      if self._settings["gradient_type"] == 1:  # Adam
-        trainer_kwargs["criterion"] = nn.MSELoss()
+      if self._settings["gradient_type"] == 1: # Adam
         trainer_kwargs["learning_rate"] = self._settings["gradient_adam_eta"] # TODO: defining learning_rate?
         trainer_kwargs["optimizer_func"] = torch.optim.Adam
         trainer_kwargs["optimizer_func_kwargs"] = {
@@ -277,7 +291,7 @@ class NeuralNetworkPotential(Potential):
           "weight_decay": self._settings["weight_decay"],
         }
       elif self._settings["gradient_type"] == 0:  # Fixed Step  
-        logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)
+        logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)  
 
     # Create trainer instance
     logger.debug(f"Trainer kwargs={trainer_kwargs}")
