@@ -2,6 +2,7 @@ from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
+from .metrics import MSE
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
@@ -38,6 +39,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     self.optimizer_func_kwargs = kwargs.get('optimizer_func_kwargs', {'lr': 0.001})
     self.criterion = kwargs.get('criterion', nn.MSELoss())
     self.save_best_model = kwargs.get('save_best_model', True)
+    self.error_metric=kwargs.get('error_metric', MSE())
 
     # The implementation can be either as a single or multiple optimizers.
     self.optimizer = self.optimizer_func(
@@ -109,6 +111,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       nbatch = 0
       train_eng_loss = 0.0
       train_frc_loss = 0.0
+      train_eng_error = 0.0
+      train_frc_error = 0.0
       # Loop over training structures
       for batch in train_loader:
 
@@ -128,6 +132,10 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         eng_loss = self.criterion(energy, structure.total_energy); 
         frc_loss = self.criterion(force, structure.force); 
         loss = eng_loss + frc_loss
+
+        # Error metrics
+        eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
+        frc_error = self.error_metric(force, structure.force)
         
         # Update weights
         if epoch > 0:
@@ -138,26 +146,34 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         train_eng_loss += eng_loss.data.item()
         train_frc_loss += frc_loss.data.item()
         train_loss = train_eng_loss + train_frc_loss
+
+        # Accumulate error metrics for each structure
+        train_eng_error += eng_error.data.item()
+        train_frc_error += frc_error.data.item()
+        
+        # Increment number of batches
         nbatch += 1
 
-        # FIXME: what if the loss criterion is other than MSE?
         logger.print("Training     " \
                     f"loss: {sqrt(train_loss / nbatch):<12.8E}, " \
-                    f"energy [rmse]: {sqrt(train_eng_loss / nbatch):<12.8E}, " \
-                    f"force [rmse]: {sqrt(train_frc_loss / nbatch):<12.8E}", end="\r")
+                    f"energy [{self.error_metric}]: {train_eng_error/nbatch:<12.8E}, " \
+                    f"force [{self.error_metric}]: {train_frc_error/nbatch:<12.8E}", end="\r")
 
       # Get mean training losses
       train_eng_loss /= nbatch
       train_frc_loss /= nbatch
       train_loss = train_eng_loss + train_frc_loss
+      train_eng_error /= nbatch
+      train_frc_error /= nbatch
+
       history['train_energy_loss'].append(train_eng_loss)
       history['train_force_loss'].append(train_frc_loss)
       history['train_loss'].append(train_loss)
-      history['train_energy_rmse'].append(sqrt(train_eng_loss))
-      history['train_force_rmse'].append(sqrt(train_frc_loss))
+      history[f'train_energy_{self.error_metric}'].append(train_eng_error)
+      history[f'train_force_{self.error_metric}'].append(train_frc_error)
 
       # ======================================================
-      # TODO: DRY training & validation 
+      # FIXME: DRY training & validation 
 
       if valid_loader:
         
@@ -167,6 +183,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         nbatch = 0
         valid_eng_loss = 0.0
         valid_frc_loss = 0.0
+        valid_eng_error = 0.0
+        valid_frc_error = 0.0
         # Loop over validation structures
         for batch in valid_loader:
           
@@ -184,27 +202,40 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
           frc_loss = self.criterion(force, structure.force); 
           loss = eng_loss + frc_loss
 
+          # Error metrics
+          eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
+          frc_error = self.error_metric(force, structure.force)
+
           # Accumulate energy and force loss values for each structure
           valid_eng_loss += eng_loss.data.item()
           valid_frc_loss += frc_loss.data.item()
           valid_loss = valid_eng_loss + valid_frc_loss
+
+          # Accumulate error metrics for each structure
+          valid_eng_error += eng_error.data.item()
+          valid_frc_error += frc_error.data.item()
+
+          # Increment number of batches
           nbatch += 1
 
         # Get mean validation losses
         valid_eng_loss /= nbatch
         valid_frc_loss /= nbatch
         valid_loss = valid_eng_loss + valid_frc_loss
+        valid_eng_error /= nbatch
+        valid_frc_error /= nbatch
+
         history['valid_energy_loss'].append(valid_eng_loss)
         history['valid_force_loss'].append(valid_frc_loss)
         history['valid_loss'].append(valid_loss)
-        history['valid_energy_rmse'].append(sqrt(valid_eng_loss))
-        history['valid_force_rmse'].append(sqrt(valid_frc_loss))
+        history[f'valid_energy_{self.error_metric}'].append(valid_eng_error)
+        history[f'valid_force_{self.error_metric}'].append(valid_frc_error)
 
         logger.print()
         logger.print("Validation   " \
                     f"loss: {sqrt(valid_loss):<12.8E}, " \
-                    f"energy [rmse]: {sqrt(valid_eng_loss):<12.8E}, " \
-                    f"force [rmse]: {sqrt(valid_frc_loss):<12.8E}")
+                    f"energy [{self.error_metric}]: {valid_eng_error:<12.8E}, " \
+                    f"force [{self.error_metric}]: {valid_frc_error:<12.8E}")
       
       logger.print()
 
