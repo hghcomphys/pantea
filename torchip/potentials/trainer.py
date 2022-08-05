@@ -7,7 +7,6 @@ from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch import nn
-from math import sqrt
 import numpy as np
 import torch
 
@@ -46,6 +45,87 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       [{'params': self.potential.model[element].parameters()} for element in self.potential.elements], 
       **self.optimizer_func_kwargs,
     )
+
+  def fit_one_epoch(
+    self, 
+    loader: TorchDataLoader,
+    epoch_index: int = None,
+    validation_mode: bool = False, 
+    history: Dict = None,
+  ) -> Dict[str, float]:
+    
+    if validation_mode:
+      self.potential.eval()  
+      prefix = 'valid'
+    else:
+      self.potential.train() 
+      prefix = 'train'
+    
+    nbatch = 0
+    state = defaultdict(float)
+    # Loop over training structures
+    for batch in loader:
+
+      # Reset optimizer
+      if not validation_mode:
+        self.optimizer.zero_grad(set_to_none=True)
+      
+      # TODO: what if batch size > 1
+      # TODO: spawn process
+      structure = batch[0]
+      structure.set_cutoff_radius(self.potential.r_cutoff)
+      
+      # Calculate energy and force
+      energy = self.potential(structure) # total energy
+      force = -gradient(energy, structure.position)
+
+      # Energy and force losses
+      eng_loss = self.criterion(energy, structure.total_energy); 
+      frc_loss = self.criterion(force, structure.force); 
+      loss = eng_loss + frc_loss
+
+      # Error metrics
+      eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
+      frc_error = self.error_metric(force, structure.force)
+      
+      # Update weights
+      if not validation_mode and (epoch_index is None or epoch_index > 0):
+        loss.backward(retain_graph=True)
+        self.optimizer.step()
+
+      # Accumulate energy and force loss and error values 
+      state[f'{prefix}_energy_loss' ] += eng_loss.item()
+      state[f'{prefix}_force_loss' ]  += frc_loss.item()
+      state[f'{prefix}_loss'     ]    += loss.item()
+      state[f'{prefix}_energy_error'] += eng_error.item()
+      state[f'{prefix}_force_error']  += frc_error.item()
+      
+      # Increment number of batches
+      nbatch += 1
+
+      if not validation_mode:
+        logger.print("Training     " \
+                    f"loss [{self.criterion.__class__.__name__}]: {state['train_loss']/nbatch :<12.8E}, " \
+                    f"energy [{self.error_metric}]: {state['train_energy_error']/nbatch :<12.8E}, " \
+                    f"force [{self.error_metric}]: {state['train_force_error']/nbatch :<12.8E}", end="\r")
+
+    if validation_mode:
+      logger.print("Validation   " \
+                    f"loss [{self.criterion.__class__.__name__}]: {state['valid_loss'] :<12.8E}, " \
+                    f"energy [{self.error_metric}]: {state['valid_energy_error']/nbatch :<12.8E}, " \
+                    f"force [{self.error_metric}]: {state['valid_force_error']/nbatch :<12.8E}")
+    logger.print()
+  
+    # Mean values of loss and errors.
+    for item in state:
+      state[item] /= nbatch
+
+    if history is not None:
+      for item, value in state.items():
+        history[item].append(value)
+
+    return state
+
 
   def fit(self, dataset: StructureDataset, **kwargs) -> Dict:
     """
@@ -101,144 +181,17 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
     logger.debug("Fitting energy models")
     history = defaultdict(list)
+
     for epoch in range(epochs+1):
       logger.print(f"[Epoch {epoch}/{epochs}]")
 
-      # ======================================================
-      # Set potential models in training status
-      self.potential.train()
+      # Train model for one epoch
+      self.fit_one_epoch(train_loader, epoch, history=history)
 
-      nbatch = 0
-      train_eng_loss = 0.0
-      train_frc_loss = 0.0
-      train_eng_error = 0.0
-      train_frc_error = 0.0
-      # Loop over training structures
-      for batch in train_loader:
-
-        # Reset optimizer
-        self.optimizer.zero_grad(set_to_none=True)
-        
-        # TODO: what if batch size > 1
-        # TODO: spawn process
-        structure = batch[0]
-        structure.set_cutoff_radius(self.potential.r_cutoff)
-        
-        # Calculate energy and force
-        energy = self.potential(structure) # total energy
-        force = -gradient(energy, structure.position)
-
-        # Energy and force losses
-        eng_loss = self.criterion(energy, structure.total_energy); 
-        frc_loss = self.criterion(force, structure.force); 
-        loss = eng_loss + frc_loss
-
-        # Error metrics
-        eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
-        frc_error = self.error_metric(force, structure.force)
-        
-        # Update weights
-        if epoch > 0:
-          loss.backward(retain_graph=True)
-          self.optimizer.step()
-
-        # Accumulate energy and force loss values for each structure
-        train_eng_loss += eng_loss.data.item()
-        train_frc_loss += frc_loss.data.item()
-        train_loss = train_eng_loss + train_frc_loss
-
-        # Accumulate error metrics for each structure
-        train_eng_error += eng_error.data.item()
-        train_frc_error += frc_error.data.item()
-        
-        # Increment number of batches
-        nbatch += 1
-
-        logger.print("Training     " \
-                    f"loss: {sqrt(train_loss / nbatch):<12.8E}, " \
-                    f"energy [{self.error_metric}]: {train_eng_error/nbatch:<12.8E}, " \
-                    f"force [{self.error_metric}]: {train_frc_error/nbatch:<12.8E}", end="\r")
-
-      # Get mean training losses
-      train_eng_loss /= nbatch
-      train_frc_loss /= nbatch
-      train_loss = train_eng_loss + train_frc_loss
-      train_eng_error /= nbatch
-      train_frc_error /= nbatch
-
-      history['train_energy_loss'].append(train_eng_loss)
-      history['train_force_loss'].append(train_frc_loss)
-      history['train_loss'].append(train_loss)
-      history[f'train_energy_{self.error_metric}'].append(train_eng_error)
-      history[f'train_force_{self.error_metric}'].append(train_frc_error)
-
-      # ======================================================
-      # FIXME: DRY training & validation 
-
-      if valid_loader:
-        
-        # Set potential models in evaluation status
-        self.potential.eval()
-
-        nbatch = 0
-        valid_eng_loss = 0.0
-        valid_frc_loss = 0.0
-        valid_eng_error = 0.0
-        valid_frc_error = 0.0
-        # Loop over validation structures
-        for batch in valid_loader:
-          
-          # TODO: what if batch size > 1
-          # TODO: spawn process
-          structure = batch[0]
-          structure.set_cutoff_radius(self.potential.r_cutoff)
-
-          # Calculate energy and force components
-          energy = self.potential(structure) # total energy
-          force = -gradient(energy, structure.position)
-
-          # Energy and force losses
-          eng_loss = self.criterion(energy, structure.total_energy); 
-          frc_loss = self.criterion(force, structure.force); 
-          loss = eng_loss + frc_loss
-
-          # Error metrics
-          eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
-          frc_error = self.error_metric(force, structure.force)
-
-          # Accumulate energy and force loss values for each structure
-          valid_eng_loss += eng_loss.data.item()
-          valid_frc_loss += frc_loss.data.item()
-          valid_loss = valid_eng_loss + valid_frc_loss
-
-          # Accumulate error metrics for each structure
-          valid_eng_error += eng_error.data.item()
-          valid_frc_error += frc_error.data.item()
-
-          # Increment number of batches
-          nbatch += 1
-
-        # Get mean validation losses
-        valid_eng_loss /= nbatch
-        valid_frc_loss /= nbatch
-        valid_loss = valid_eng_loss + valid_frc_loss
-        valid_eng_error /= nbatch
-        valid_frc_error /= nbatch
-
-        history['valid_energy_loss'].append(valid_eng_loss)
-        history['valid_force_loss'].append(valid_frc_loss)
-        history['valid_loss'].append(valid_loss)
-        history[f'valid_energy_{self.error_metric}'].append(valid_eng_error)
-        history[f'valid_force_{self.error_metric}'].append(valid_frc_error)
-
-        logger.print()
-        logger.print("Validation   " \
-                    f"loss: {sqrt(valid_loss):<12.8E}, " \
-                    f"energy [{self.error_metric}]: {valid_eng_error:<12.8E}, " \
-                    f"force [{self.error_metric}]: {valid_frc_error:<12.8E}")
-      
-      logger.print()
-
+      # Evaluate model on validation data
+      if valid_loader is not None:
+        self.fit_one_epoch(valid_loader, epoch, history=history, validation_mode=True)
+  
     #TODO: save the best model
     if self.save_best_model:
       self.potential.save_model()
