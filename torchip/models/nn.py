@@ -13,15 +13,27 @@ class NeuralNetworkModel(BaseModel):
   def __init__(self, 
       input_size: int, 
       hidden_layers: Tuple[Tuple[int, str]],  
-      output_layer:Tuple[int, str] = (1, 'l')
+      output_layer:Tuple[int, str] = (1, 'l'),
+      weights_range: Tuple[int, int] = None,
     ) -> None:
     super(NeuralNetworkModel, self).__init__()
     self.input_size = input_size
     self.hidden_layers = hidden_layers
     self.output_layer = output_layer
-
+    self.weights_range = weights_range
+    
     logger.debug(f"Initializing {self}")
     self._create_network()
+
+  def _create_layer(self, in_size: int, out_size: int) -> nn.Linear:
+    """
+    Create a neural network layer and initialize weights and bias.
+    """
+    layer = nn.Linear(in_size, out_size)
+    if self.weights_range is not None:
+      nn.init.uniform_(layer.weight.data, self.weights_range[0], self.weights_range[1])
+    # TODO: Add bias
+    return layer
     
   def _create_network(self) -> None:
     """
@@ -31,13 +43,14 @@ class NeuralNetworkModel(BaseModel):
     linear_stack = []
     in_size = self.input_size
     # Hidden layers
-    for out_size, af_type in self.hidden_layers:
-      linear_stack.append( nn.Linear(in_size, out_size) )
+    for out_size, af_type in self.hidden_layers:     
+      linear_stack.append( self._create_layer(in_size, out_size) )
       linear_stack.append( self._get_activation_function(af_type) )
       in_size = out_size
     # Output layer
-    linear_stack.append( nn.Linear(in_size, self.output_layer[0]) )
+    linear_stack.append( self._create_layer(in_size, self.output_layer[0]) )
     linear_stack.append( self._get_activation_function(self.output_layer[1]) )
+
     # Build a sequential model
     self.linear_stack = nn.Sequential(*linear_stack)
     # TODO: add logging
