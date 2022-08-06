@@ -2,18 +2,9 @@
 from ..logger import logger
 from ..config import dtype, device
 from torch import Tensor
-from typing import Dict
 from pathlib import Path
 import torch
 import numpy as np
-
-
-# def std_(data: Tensor, mean: Tensor) -> Tensor:
-#   """
-#   An utility function which is defined because of the difference observed when using torch.std function.
-#   This occurs for torch (numpy version is fine).
-#   """
-#   return torch.sqrt(torch.mean((data - mean)**2, dim=0))
 
 
 class DescriptorScaler:
@@ -60,7 +51,7 @@ class DescriptorScaler:
       self.nsamples = data.shape[0]
       self.dimension = data.shape[1]
       self.mean = torch.mean(data, dim=0)
-      self.sigma = torch.std(data, dim=0)
+      self.sigma = torch.std(data, dim=0, unbiased=False)
       self.max = torch.max(data, dim=0)[0]
       self.min = torch.min(data, dim=0)[0]
     else:
@@ -71,7 +62,7 @@ class DescriptorScaler:
 
       # New data (batch)
       new_mean = torch.mean(data, dim=0)
-      new_sigma = torch.std(data, dim=0)
+      new_sigma = torch.std(data, dim=0, unbiased=False)
       new_min = torch.min(data, dim=0)[0]
       new_max = torch.max(data, dim=0)[0]
       m, n = float(self.nsamples), data.shape[0]
