@@ -42,7 +42,9 @@ class NeuralNetworkPotential(Potential):
     'updater_type'     : 0,
     'gradient_type'    : 1, 
     'weight_decay'     : 1.0e-5,
-    'main_error_metric': 'RMSE'
+    'main_error_metric': 'RMSE',
+    'weights_min'      : 0.0,
+    'weights_max'      : 1.0,
   }
   # Map cutoff type
   _map_cutoff_type = {  # TODO: poly 3 & 4
@@ -142,6 +144,10 @@ class NeuralNetworkPotential(Potential):
           self._settings["global_nodes_short"] = [int(t) for t in tokens]
         elif keyword == "global_activation_short":
           self._settings["global_activation_short"] = [t for t in tokens]
+        elif keyword == "weights_min":
+          self._settings["weights_min"] = float(tokens[0])
+        elif keyword == "weights_max":
+          self._settings["weights_max"] = float(tokens[0])   
         
         # Symmetry function settings
         elif keyword == "center_symmetry_functions":
@@ -264,6 +270,7 @@ class NeuralNetworkPotential(Potential):
         "input_size": input_size,
         "hidden_layers": tuple([(n, t) for n, t in hidden_layers]),
         "output_layer": output_layer,
+        "weights_range": (self._settings["weights_min"], self._settings["weights_max"]),
       }
       self.model[element] = NeuralNetworkModel(**model_kwargs)
       self.model[element].to(device.DEVICE)
