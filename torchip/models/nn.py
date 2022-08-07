@@ -23,7 +23,7 @@ class NeuralNetworkModel(BaseModel):
     self.weights_range = weights_range
     
     logger.debug(f"Initializing {self}")
-    self._create_network()
+    self.network = self._create_network()
 
   def _create_layer(self, in_size: int, out_size: int) -> nn.Linear:
     """
@@ -32,34 +32,35 @@ class NeuralNetworkModel(BaseModel):
     layer = nn.Linear(in_size, out_size)
     if self.weights_range is not None:
       nn.init.uniform_(layer.weight.data, self.weights_range[0], self.weights_range[1])
-    # TODO: Add bias
+    layer.bias.data.zero_()  # TODO: add bias as input argument
     return layer
     
-  def _create_network(self) -> None:
+  def _create_network(self) -> nn.Sequential:
     """
     Create a network using provided parameters.
     """
-     # Prepare stack of layers
-    linear_stack = []
+    # TODO: add logging
+    # Prepare stack of layers
+    layers = []
     in_size = self.input_size
     # Hidden layers
     for out_size, af_type in self.hidden_layers:     
-      linear_stack.append( self._create_layer(in_size, out_size) )
-      linear_stack.append( self._get_activation_function(af_type) )
+      layers.append( self._create_layer(in_size, out_size) )
+      layers.append( self._get_activation_function(af_type) )
       in_size = out_size
     # Output layer
-    linear_stack.append( self._create_layer(in_size, self.output_layer[0]) )
-    linear_stack.append( self._get_activation_function(self.output_layer[1]) )
+    layers.append( self._create_layer(in_size, self.output_layer[0]) )
+    layers.append( self._get_activation_function(self.output_layer[1]) )
 
     # Build a sequential model
-    self.linear_stack = nn.Sequential(*linear_stack)
-    # TODO: add logging
-
+    return nn.Sequential(*layers)
+   
   def _get_activation_function(self, type_: str):
     """
     Return the corresponding activation function. 
     See here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
     """
+    # TODO: use dict map instead
     if type_ == "t":
       return nn.Tanh()
     elif type_ == "l":
@@ -68,7 +69,7 @@ class NeuralNetworkModel(BaseModel):
       logger.error(f"Unknown activation function type '{type_}'", exception=ValueError)
 
   def forward(self, x):
-    return self.linear_stack(x)
+    return self.network(x)
 
   def save(self, filename: Path) -> None:
     """
