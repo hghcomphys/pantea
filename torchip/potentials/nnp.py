@@ -15,7 +15,7 @@ from ..structure.element import ElementMap
 from ..config import dtype, device
 from .base import Potential
 from .trainer import NeuralNetworkPotentialTrainer
-from .metrics import MSE, RMSE, MSEpa, RMSEpa
+from .metric import create_error_metric
 from collections import defaultdict
 from typing import List, Dict
 from torch.utils.data import DataLoader as TorchDataLoader
@@ -63,13 +63,6 @@ class NeuralNetworkPotential(Potential):
     'scale_center_symmetry_functions'      : 'scale_center',
     'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
   }
-  # Metrics type
-  _map_error_metric = {
-    'MSE'   : MSE,
-    'RMSE'  : RMSE,
-    'MSEpa' : MSEpa,
-    'RMSEpa': RMSEpa,
-  }
   # Saving formats
   _scaler_save_format = "scaling.{:03d}.data"
   _model_save_format = "weights.{:03d}.zip"
@@ -91,7 +84,7 @@ class NeuralNetworkPotential(Potential):
     self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
     self.trainer = None
 
-    logger.debug(f"Initializing {self.__class__.__name__}(potfile={self.potfile})")
+    logger.debug(f"Initializing {self}")
     self._read_settings()
     self._init_descriptor()
     self._init_scaler()
@@ -285,7 +278,7 @@ class NeuralNetworkPotential(Potential):
 
     # General trainer parameters
     trainer_kwargs["criterion"] = nn.MSELoss()
-    trainer_kwargs['error_metric'] = self._map_error_metric[self._settings["main_error_metric"]](reduction='mean')
+    trainer_kwargs['error_metric'] = create_error_metric(self._settings["main_error_metric"], reduction='mean')
 
     if self._settings["updater_type"] == 0:  # Gradient Descent
       if self._settings["gradient_type"] == 1: # Adam
@@ -305,9 +298,11 @@ class NeuralNetworkPotential(Potential):
     self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   # @Profiler.profile
+  torch.no_grad()
   def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
     """
     Fit scaler parameters for each element using the input structure data.
+    No gradient history is required here.
 
     Args:
         structures (RunnerStructureDataset): Structure dataset
@@ -323,6 +318,7 @@ class NeuralNetworkPotential(Potential):
 
     logger.info("Fitting descriptor scalers")
     for index, batch in enumerate(loader): 
+
       # TODO: spawn processes
       structure = batch[0]
       structure.set_cutoff_radius(self.r_cutoff)  
@@ -330,11 +326,10 @@ class NeuralNetworkPotential(Potential):
       # For each element in the structure
       for element in structure.elements:
         aids = structure.select(element).detach()
-        for aids_batch in create_batch(aids, batch_size):  # TODO: replace with future (client.submit)
+        for aids_batch in create_batch(aids, batch_size): # because of large memory usage
           logger.debug(f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})")
-          with torch.no_grad():  # TODO: add torch.no_grad() as decorator?
-            x = self.descriptor[element](structure, aids_batch) # kernel
-            self.scaler[element].fit(x)
+          dsc_val = self.descriptor[element](structure, aids_batch) # kernel
+          self.scaler[element].fit(dsc_val)
     logger.debug("Finished scaler fitting.")
 
     # Save scaler data into file  
@@ -482,3 +477,6 @@ class NeuralNetworkPotential(Potential):
     Return the maximum cutoff radius found between all descriptors.
     """
     return max([dsc.r_cutoff for dsc in self.descriptor.values()])
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(potfile='{self.potfile}')"
