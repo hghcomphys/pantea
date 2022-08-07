@@ -252,8 +252,8 @@ class NeuralNetworkPotential(Potential):
     self.model = {}
 
     # Instantiate neural network model for each element 
-    hidden_layers= zip(self._settings["global_nodes_short"], self._settings["global_activation_short"][1:])
-    output_layer = (1, self._settings["global_activation_short"][0])
+    hidden_layers= zip(self._settings["global_nodes_short"], self._settings["global_activation_short"][:-1])
+    output_layer = (1, self._settings["global_activation_short"][-1])
     # TODO: what if we want to have a different model architecture for each element
     
     for element in self._settings["elements"]:
