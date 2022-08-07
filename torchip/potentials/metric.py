@@ -1,3 +1,4 @@
+from ..logger import logger
 import torch
 from torch import Tensor
 
@@ -56,3 +57,25 @@ class RMSEpa(RMSE):
   @torch.no_grad()
   def __call__(self, prediction: Tensor, target: Tensor, factor: int = 1) -> Tensor:
     return torch.sqrt(self._mse_metric(prediction, target))/factor
+
+
+def create_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
+  """
+  An utility function to create a given type of error metric.
+
+  :param metric_type: MSE, RMSE, MSEpa, EMSEpa
+  :type metric_type: str
+  :return: An instance of desired error metric
+  :rtype: ErrorMetric
+  """
+  _map_error_metric = {
+    'MSE'   : MSE,
+    'RMSE'  : RMSE,
+    'MSEpa' : MSEpa,
+    'RMSEpa': RMSEpa,
+    # Any new defined metrics must be added here.
+  }
+  try:
+    return _map_error_metric[metric_type](**kwargs)
+  except KeyError:
+    logger.error(f"Unknown error metric '{metric_type}'", exception=KeyError)
