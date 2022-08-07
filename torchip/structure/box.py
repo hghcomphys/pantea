@@ -23,7 +23,7 @@ class Box:
     :param device: Device on which tensors are allocated, defaults to None
     :type device: torch.device, optional
     """    
-    self.dtype = dtype if dtype else _dtype.FLOATX
+    self.dtype = dtype if dtype else _dtype.FLOAT
     self.device = device if device else _device.DEVICE
 
     # Create lattice tensor

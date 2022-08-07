@@ -22,7 +22,7 @@ class AtomicSymmetryFunction(Descriptor):
     self._radial = []            # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
     self._angular = []           # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
     # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate 
-    logger.debug(f"Initializing {self.__class__.__name__} with central element ('{self.element}')")
+    logger.debug(f"Initializing {self}")
 
   def register(self, 
                 symmetry_function: Union[RadialSymmetryFunction,  AngularSymmetryFunction],
@@ -228,6 +228,9 @@ class AtomicSymmetryFunction(Descriptor):
     return max([ \
       cfn[0].r_cutoff for cfn in itertools.chain(*[self._radial, self._angular])
     ])
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}('{self.element}')"
 
 # Define ASF alias
 ASF = AtomicSymmetryFunction

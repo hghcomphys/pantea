@@ -40,7 +40,7 @@ class DataType(_CFG):
   A configuration class for the tensors' data type.
   """
   _conf = {
-    "FLOATX" : torch.float,
+    "FLOAT" : torch.float,
     "INT"    : torch.long,
     "UINT"   : torch.long,
     "INDEX"  : torch.long,

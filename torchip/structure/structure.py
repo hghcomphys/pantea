@@ -46,12 +46,12 @@ class Structure:
   ]
 
   def __init__(self, 
-      data: Dict = None,          
+      data: Dict = None,       
+      r_cutoff: float = None,   
       dtype: torch.dtype = None,
       device: torch.device = None,
-      r_cutoff: float = None,
       requires_grad: bool = True,
-      **kwargs
+      **kwargs,
     ) -> None: 
     """
     Initialize a structure including tensors, neighbor list atoms, simulation box, etc.
@@ -67,11 +67,11 @@ class Structure:
     :param position_grad: whether the position tensor is differentiable or not, defaults to True
     :type position_grad: bool, optional
     """
-    self.dtype = dtype if dtype else _dtype.FLOATX
+    self.dtype = dtype if dtype else _dtype.FLOAT
     self.device = device if device else _device.DEVICE
     self.requires_grad = requires_grad
     self.requires_neighbor_update = True
-
+    # Additional input arguments
     self.element_map = kwargs.get("element_map", None)  # an instance of element map
     self.tensors = kwargs.get("tensors", None)          # tensors including position, energy, etc.
     self.box = kwargs.get("box", None)                  # an instance of simulation box

@@ -30,4 +30,4 @@ def cast_to_tensor(x) -> Tensor:
   Returns:
       Tensor: casted input to a tensor
   """  
-  return torch.tensor(x, dtype=dtype.FLOATX, device=device.DEVICE) 
+  return torch.tensor(x, dtype=dtype.FLOAT, device=device.DEVICE) 

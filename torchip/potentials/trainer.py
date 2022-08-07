@@ -2,7 +2,7 @@ from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
-from .metrics import MSE
+from .metric import MSE
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
@@ -46,6 +46,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       **self.optimizer_func_kwargs,
     )
 
+    logger.debug(f"Initializing {self}")
+    
   def fit_one_epoch(
     self, 
     loader: TorchDataLoader,
@@ -105,13 +107,13 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
       if not validation_mode:
         logger.print("Training     " \
-                    f"loss [{self.criterion.__class__.__name__}]: {state['train_loss']/nbatch :<12.8E}, " \
+                    f"loss: {state['train_loss']/nbatch :<12.8E}, " \
                     f"energy [{self.error_metric}]: {state['train_energy_error']/nbatch :<12.8E}, " \
                     f"force [{self.error_metric}]: {state['train_force_error']/nbatch :<12.8E}", end="\r")
 
     if validation_mode:
       logger.print("Validation   " \
-                    f"loss [{self.criterion.__class__.__name__}]: {state['valid_loss'] :<12.8E}, " \
+                    f"loss: {state['valid_loss'] :<12.8E}, " \
                     f"energy [{self.error_metric}]: {state['valid_energy_error']/nbatch :<12.8E}, " \
                     f"force [{self.error_metric}]: {state['valid_force_error']/nbatch :<12.8E}")
     logger.print()
@@ -197,3 +199,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       self.potential.save_model()
 
     return history
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(optimizer={self.optimizer}, "\
+           f"criterion={self.criterion}, error_metric={self.error_metric})"

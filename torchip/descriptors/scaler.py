@@ -1,6 +1,7 @@
 
 from ..logger import logger
-from ..config import dtype, device
+from ..config import dtype as _dtype
+from ..config import device as _device
 from torch import Tensor
 from pathlib import Path
 import torch
@@ -17,6 +18,8 @@ class DescriptorScaler:
       scale_type: str = 'scale_center', 
       scale_min: float = 0.0,
       scale_max: float = 1.0,
+      dtype: torch.dtype = None,
+      device: torch.device = None,
       ) -> None:
     """
     Initialize scaler including scaler type and min/max values.
@@ -25,7 +28,9 @@ class DescriptorScaler:
     self.scale_type = scale_type
     self.scale_min = scale_min
     self.scale_max = scale_max
-    logger.debug(f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})")
+    self.dtype = dtype if dtype else _dtype.FLOAT
+    self.device = device if device else _device.DEVICE
+    logger.debug(f"Initializing {self}")
 
     # Statistical parameters
     self.nsamples = 0       # number of samples
@@ -120,8 +125,11 @@ class DescriptorScaler:
     data = np.loadtxt(str(filename))
     self.nsamples = 1
     self.dimension = data.shape[1]
-    kwargs = {"dtype": dtype.FLOATX, "device":device.DEVICE}
+    kwargs = {"dtype": self.dtype, "device":self.device}
     self.min   = torch.tensor(data[:, 0], **kwargs) 
     self.max   = torch.tensor(data[:, 1], **kwargs)
     self.mean  = torch.tensor(data[:, 2], **kwargs)
     self.sigma = torch.tensor(data[:, 3], **kwargs)
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})"
