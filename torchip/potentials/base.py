@@ -1,4 +1,5 @@
-
+from collections import defaultdict
+from typing import Dict
 
 class Potential:
   """
@@ -8,3 +9,14 @@ class Potential:
   """
   pass
 
+
+class Settings:
+  """
+  A base class for potential settings.
+  Each potential contains several parameters and settings that can be handled using the derived setting classes.
+  """
+  def __init__(self, default = Dict) -> None:
+    self._settings = defaultdict(None)
+    self._settings.update(default)
+
+   
