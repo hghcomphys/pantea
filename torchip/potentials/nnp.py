@@ -1,3 +1,4 @@
+from torchip.descriptors.base import Descriptor
 from ..logger import logger
 from ..structure import Structure
 from ..datasets.transformer import ToStructure
@@ -8,12 +9,12 @@ from ..descriptors.scaler import DescriptorScaler
 from ..descriptors.asf.radial import G1, G2
 from ..descriptors.asf.angular import G3, G9
 from ..models.nn import NeuralNetworkModel
-from ..utils.tokenize import tokenize
 from ..utils.batch import create_batch
 from ..utils.profiler import Profiler
 from ..structure.element import ElementMap
 from ..config import dtype, device
 from .base import Potential
+from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
 from .metric import create_error_metric
 from collections import defaultdict
@@ -35,34 +36,6 @@ class NeuralNetworkPotential(Potential):
   # TODO: implement structure dumper/writer
   # TODO: split structure from the potential model (in design)
 
-  # Default settings
-  _default_settings = {
-    'symfunction_short': [],
-    'epochs'           : 1,
-    'updater_type'     : 0,
-    'gradient_type'    : 1, 
-    'weight_decay'     : 1.0e-5,
-    'main_error_metric': 'RMSE',
-    'weights_min'      : 0.0,
-    'weights_max'      : 1.0,
-  }
-  # Map cutoff type
-  _map_cutoff_type = {  # TODO: poly 3 & 4
-    '0': 'hard',
-    '1': 'cos',
-    '2': 'tanhu',
-    '3': 'tanh',
-    '4': 'exp',
-    '5': 'poly1',
-    '6': 'poly2',
-  }  
-  # Map scaler type
-  _map_scaler_type = {  
-    'center_symmetry_functions'            : 'center',
-    'scale_symmetry_functions'             : 'scale',
-    'scale_center_symmetry_functions'      : 'scale_center',
-    'scale_center_symmetry_functions_sigma': 'scale_center_sigma',
-  }
   # Saving formats
   _scaler_save_format = "scaling.{:03d}.data"
   _model_save_format = "weights.{:03d}.zip"
@@ -75,200 +48,116 @@ class NeuralNetworkPotential(Potential):
     Args:
         potfile (Path): A file path to potential file.
     """
-
-    # Initialization
-    self.potfile = Path(potfile)
-    self._settings = None    # A dictionary representation of the NNP settgins including descriptor, scaler, and model
-    self.descriptor = None   # A dictionary of {element: Descriptor}   # TODO: short and long descriptors
-    self.scaler = None       # A dictionary of {element: Scaler}       # TODO: short and long scalers
-    self.model = None        # A dictionary of {element: Model}        # TODO: short and long models
-    self.trainer = None
+    self.potfile  = Path(potfile)
+    self.settings = NeuralNetworkPotentialSettings()    
 
     logger.debug(f"Initializing {self}")
-    self._read_settings()
-    self._init_descriptor()
-    self._init_scaler()
-    self._init_model()
-    self._init_trainer()
-
-  def _read_settings(self) -> None:
-    """
-    This method reads all NNP settings from the file including elements, cutoff type, 
-    symmetry functions, neural network, training parameters, etc. 
-    See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
-    """
-    self._settings = defaultdict(None)
-    self._settings.update(self._default_settings)
-
-    # Read settings from file
-    logger.debug(f"[Reading settings]")
-    logger.debug(f"Potential file:'{self.potfile}'")
-    with open(str(self.potfile), 'r') as file:
-
-      while True:
-        # Read the next line
-        line = file.readline()
-        if not line:
-          break
+    self.settings.read(self.potfile)
+    
+    self.descriptor = self._init_descriptor()
+    self.scaler     = self._init_scaler()
+    self.model      = self._init_model()
+    self.trainer    = self._init_trainer()
         
-        # Read keyword and values
-        keyword, tokens = tokenize(line, comment='#')
-        if keyword is not None:
-          logger.debug(f"keyword:'{keyword}', values:{tokens}")
-        
-        # General settings  
-        if keyword == "number_of_elements":
-          self._settings[keyword] = int(tokens[0])
-        elif keyword == "elements":
-          self._settings[keyword] = sorted(set([t for t in tokens]), key=ElementMap.get_atomic_number)
-        elif keyword == "cutoff_type":
-          self._settings[keyword] = self._map_cutoff_type[tokens[0]]
-        elif keyword == "symfunction_short":
-          try:
-            asf_ = (tokens[0], int(tokens[1]), tokens[2]) + tuple([float(t) for t in tokens[3:]])
-          except ValueError:
-            asf_ = (tokens[0], int(tokens[1]), tokens[2], tokens[3]) + tuple([float(t) for t in tokens[4:]])
-          self._settings[keyword].append(asf_)     
-
-        # Neural network
-        elif keyword == "global_hidden_layers_short":
-          self._settings["global_hidden_layers_short"] = tokens[0]
-        elif keyword == "global_nodes_short":
-          self._settings["global_nodes_short"] = [int(t) for t in tokens]
-        elif keyword == "global_activation_short":
-          self._settings["global_activation_short"] = [t for t in tokens]
-        elif keyword == "weights_min":
-          self._settings["weights_min"] = float(tokens[0])
-        elif keyword == "weights_max":
-          self._settings["weights_max"] = float(tokens[0])   
-        
-        # Symmetry function settings
-        elif keyword == "center_symmetry_functions":
-          self._settings["scale_type"] = self._map_scaler_type[keyword]
-        elif keyword == "scale_symmetry_functions":
-          self._settings["scale_type"] = self._map_scaler_type[keyword]
-        elif keyword == "scale_center_symmetry_functions":
-          self._settings["scale_type"] = self._map_scaler_type[keyword]
-        elif keyword == "scale_center_symmetry_functions_sigma":
-          self._settings["scale_type"] = self._map_scaler_type[keyword]
-        elif keyword == "scale_min_short":
-          self._settings[keyword] = float(tokens[0])
-        elif keyword == "scale_max_short":
-          self._settings[keyword] = float(tokens[0])
-
-        # Trainer settings
-        elif keyword == "main_error_metric":
-          self._settings[keyword] = tokens[0]
-        elif keyword == "epochs":
-          self._settings[keyword] = int(tokens[0])
-        elif keyword == "updater_type":
-          self._settings[keyword] = int(tokens[0])
-        elif keyword == "gradient_type":
-          self._settings[keyword] = int(tokens[0])
-        elif keyword == "gradient_eta":
-          self._settings[keyword] = float(tokens[0])
-        elif keyword == "gradient_adam_eta":
-          self._settings[keyword] = float(tokens[0])
-        elif keyword == "gradient_adam_beta1":
-          self._settings[keyword] = float(tokens[0])
-        elif keyword == "gradient_adam_beta2":
-          self._settings[keyword] = float(tokens[0])
-        elif keyword == "gradient_adam_epsilon":
-          self._settings[keyword] = float(tokens[0])
-        
-  def _init_descriptor(self) -> None:
+  def _init_descriptor(self) -> Dict[str, Descriptor]:
     """
     Initialize a **descriptor** for each element and add the relevant radial and angular 
     symmetry functions from the potential settings.
     """
-    # TODO: add logging 
+    # TODO: add logging
     logger.debug(f"[Setting descriptors]")
-    self.descriptor = {}
+    descriptor = {}
 
     # Elements
-    logger.info(f"Number of elements: {len(self._settings['elements'])}")
-    for element in self._settings["elements"]:
+    logger.info(f"Number of elements: {len(self.settings['elements'])}")
+    for element in self.settings["elements"]:
       logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})") 
 
     # Instantiate ASF for each element 
-    for element in self._settings["elements"]:
-      self.descriptor[element] = ASF(element)
+    for element in self.settings["elements"]:
+      descriptor[element] = ASF(element)
 
     # Add symmetry functions
     logger.debug(f"Registering symmetry functions (radial and angular)") # TODO: move logging inside .add() method
-    for cfg in self._settings["symfunction_short"]:
+    for cfg in self.settings["symfunction_short"]:
       if cfg[1] == 1:
-        self.descriptor[cfg[0]].register(
-          symmetry_function = G1(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"])), 
+        descriptor[cfg[0]].register(
+          symmetry_function = G1(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self.settings["cutoff_type"])), 
           neighbor_element1 = cfg[2]
         ) 
       elif cfg[1] == 2:
-        self.descriptor[cfg[0]].register(
-          symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self._settings["cutoff_type"]), 
+        descriptor[cfg[0]].register(
+          symmetry_function = G2(CutoffFunction(r_cutoff=cfg[5], cutoff_type=self.settings["cutoff_type"]), 
             eta=cfg[3], r_shift=cfg[4]), 
           neighbor_element1 = cfg[2]
         )
       elif cfg[1] == 3:
-        self.descriptor[cfg[0]].register(
-          symmetry_function = G3(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
+        descriptor[cfg[0]].register(
+          symmetry_function = G3(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self.settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6],  lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],
           neighbor_element2 = cfg[3]
         ) 
       elif cfg[1] == 9:
-        self.descriptor[cfg[0]].register(
-          symmetry_function = G9(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self._settings["cutoff_type"]), 
+        descriptor[cfg[0]].register(
+          symmetry_function = G9(CutoffFunction(r_cutoff=cfg[7], cutoff_type=self.settings["cutoff_type"]), 
             eta=cfg[4], zeta=cfg[6], lambda0=cfg[5], r_shift=0.0), # TODO: add r_shift!
           neighbor_element1 = cfg[2],
           neighbor_element2 = cfg[3]
         ) 
 
-  def _init_scaler(self) -> None:
+    return descriptor
+
+  def _init_scaler(self) -> dict[str, DescriptorScaler]:
     """
     Initialize a descriptor scaler for each element from the potential settings.
     """
     logger.debug(f"[Setting scalers]")
-    self.scaler = {}
+    scaler = {}
 
     # Prepare scaler input argument if exist in settings
-    scaler_kwargs = { first: self._settings[second] \
+    scaler_kwargs = { first: self.settings[second] \
       for first, second in { 
           'scale_type': 'scale_type', 
           'scale_min': 'scale_min_short',
           'scale_max': 'scale_max_short',
-        }.items() if second in self._settings
+      }.items() if second in self.settings.keywords
     }
     logger.debug(f"Scaler kwargs={scaler_kwargs}")
 
     # Assign an ASF scaler to each element
-    for element in self._settings["elements"]:
-      self.scaler[element] = DescriptorScaler(**scaler_kwargs) 
+    for element in self.settings["elements"]:
+      scaler[element] = DescriptorScaler(**scaler_kwargs) 
+    
+    return scaler
 
-  def _init_model(self) -> None:
+  def _init_model(self) -> Dict[str, NeuralNetworkModel]:
     """
     Initialize a neural network for each element using a dictionary representation of potential settings.
     """
     logger.debug(f"[Setting models]")
-    self.model = {}
+    model = {}
 
     # Instantiate neural network model for each element 
-    hidden_layers= zip(self._settings["global_nodes_short"], self._settings["global_activation_short"][:-1])
-    output_layer = (1, self._settings["global_activation_short"][-1])
+    hidden_layers= zip(self.settings["global_nodes_short"], self.settings["global_activation_short"][:-1])
+    output_layer = (1, self.settings["global_activation_short"][-1])
     # TODO: what if we want to have a different model architecture for each element
     
-    for element in self._settings["elements"]:
+    for element in self.settings["elements"]:
       logger.debug(f"Element: {element}")
       input_size = self.descriptor[element].n_descriptor
       model_kwargs = {
         "input_size": input_size,
         "hidden_layers": tuple([(n, t) for n, t in hidden_layers]),
         "output_layer": output_layer,
-        "weights_range": (self._settings["weights_min"], self._settings["weights_max"]),
+        "weights_range": (self.settings["weights_min"], self.settings["weights_max"]),
       }
-      self.model[element] = NeuralNetworkModel(**model_kwargs)
-      self.model[element].to(device.DEVICE)
+      model[element] = NeuralNetworkModel(**model_kwargs)
+      model[element].to(device.DEVICE)
+
+    return model
       
-  def _init_trainer(self) -> None:
+  def _init_trainer(self) -> NeuralNetworkPotentialTrainer:
     """
     This method initializes a trainer instance including optimizer, loss function, criterion, etc from the settings.
     The trainer is used later for fitting the energy models. 
@@ -278,24 +167,24 @@ class NeuralNetworkPotential(Potential):
 
     # General trainer parameters
     trainer_kwargs["criterion"] = nn.MSELoss()
-    trainer_kwargs['error_metric'] = create_error_metric(self._settings["main_error_metric"], reduction='mean')
+    trainer_kwargs['error_metric'] = create_error_metric(self.settings["main_error_metric"], reduction='mean')
 
-    if self._settings["updater_type"] == 0:  # Gradient Descent
-      if self._settings["gradient_type"] == 1: # Adam
-        trainer_kwargs["learning_rate"] = self._settings["gradient_adam_eta"] # TODO: defining learning_rate?
+    if self.settings["updater_type"] == 0:  # Gradient Descent
+      if self.settings["gradient_type"] == 1: # Adam
+        trainer_kwargs["learning_rate"] = self.settings["gradient_adam_eta"] # TODO: defining learning_rate?
         trainer_kwargs["optimizer_func"] = torch.optim.Adam
         trainer_kwargs["optimizer_func_kwargs"] = {
-          "lr": self._settings["gradient_adam_eta"],
-          "betas": (self._settings["gradient_adam_beta1"], self._settings["gradient_adam_beta2"]),
-          "eps": self._settings["gradient_adam_epsilon"],
-          "weight_decay": self._settings["weight_decay"],
+          "lr": self.settings["gradient_adam_eta"],
+          "betas": (self.settings["gradient_adam_beta1"], self.settings["gradient_adam_beta2"]),
+          "eps": self.settings["gradient_adam_epsilon"],
+          "weight_decay": self.settings["weight_decay"],
         }
-      elif self._settings["gradient_type"] == 0:  # Fixed Step  
+      elif self.settings["gradient_type"] == 0:  # Fixed Step  
         logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)  
 
     # Create trainer instance
     logger.debug(f"Trainer kwargs={trainer_kwargs}")
-    self.trainer = NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
+    return  NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   # @Profiler.profile
   torch.no_grad()
@@ -424,13 +313,13 @@ class NeuralNetworkPotential(Potential):
     """
     pass
 
-  def train(self) -> None:
+  def train(self, mode: bool = True) -> None:
     """
     Set pytorch models in training mode. 
     This is because layers like dropout, batch normalization etc. behave differently on the train and test procedures.
     """
     for element in self.elements:
-        self.model[element].train()
+        self.model[element].train(mode)
 
   def eval(self) -> None:
     """
@@ -469,7 +358,7 @@ class NeuralNetworkPotential(Potential):
 
   @property
   def elements(self) -> List[str]:
-    return self._settings['elements']
+    return self.settings['elements']
 
   @property
   def r_cutoff(self) -> float:
