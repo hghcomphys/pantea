@@ -108,7 +108,7 @@ class NeuralNetworkPotential(Potential):
 
     return descriptor
 
-  def _init_scaler(self) -> dict[str, DescriptorScaler]:
+  def _init_scaler(self) -> Dict[str, DescriptorScaler]:
     """
     Initialize a descriptor scaler for each element from the potential settings.
     """
