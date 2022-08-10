@@ -79,6 +79,7 @@ class NeuralNetworkPotential(Potential):
 
     # Add symmetry functions
     logger.debug(f"Registering symmetry functions (radial and angular)") # TODO: move logging inside .add() method
+    
     for cfg in self.settings["symfunction_short"]:
       if cfg[1] == 1:
         descriptor[cfg[0]].register(
@@ -368,4 +369,4 @@ class NeuralNetworkPotential(Potential):
     return max([dsc.r_cutoff for dsc in self.descriptor.values()])
 
   def __repr__(self) -> str:
-    return f"{self.__class__.__name__}(potfile='{self.potfile}')"
+    return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
