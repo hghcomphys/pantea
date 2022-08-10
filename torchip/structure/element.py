@@ -78,6 +78,17 @@ class ElementMap:
     """    
     return _KNOWN_ELEMENTS_DICT[element]
 
+  @staticmethod
+  def get_element(atomic_number: int) -> str:
+    """
+    Return element name of the given atomic number. 
+
+    :type atomic_number: int
+    :return: element name
+    :rtype: str
+    """       
+    return _KNOWN_ELEMENTS_LIST[atomic_number-1]
+
   @property
   def atype_to_element(self) -> Dict[int, str]:
     """
