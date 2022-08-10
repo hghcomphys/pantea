@@ -96,6 +96,7 @@ $ make html
 - https://github.com/torchmd/mdgrad
 - https://github.com/deepmodeling/deepmd-kit
 - https://github.com/SINGROUP/dscribe
+- https://github.com/Teoroo-CMC/PiNN
 
 ### YouTube
 - https://youtu.be/1xfwB6cNeMA

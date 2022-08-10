@@ -32,19 +32,19 @@ $ pip install torchip
 ## Usage
 ### Atomic Descriptor
 ```python
-from torchip.dataset import RunnerStructureDataset
-from torchip.descriptors import AtomicSymmetryFunction  # ASF
+from torchip.datasets import RunnerStructureDataset
+from torchip.descriptors import AtomicSymmetryFunction  
 from torchip.descriptors import CutoffFunction, G2, G3
 
 # Read atomic structure data
-structures = RunnerStructureDataset("input.data")
+structures = RunnerStructureDataset('input.data')
 structure = structures[0]
 
-# Define descriptor
-descriptor = AtomicSymmetryFunction(element="H")
-cfn = CutoffFunction(r_cutoff=12.0, cutoff_type="tanh")
-descriptor.register( G2(cfn, eta=0.5, r_shift=0.0), "H" )
-descriptor.register( G3(cfn, eta=0.0010, zeta=2.0, lambda0=1.0, r_shift=12.0), "H", "O" )
+# Define descriptor and adding radial and angular terms
+descriptor = AtomicSymmetryFunction(element='H')
+cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
+descriptor.register( G2(cfn, eta=0.5, r_shift=0.0), 'H' )
+descriptor.register( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O' )
 
 # Calculate descriptor values
 results = descriptor(structure)
@@ -52,7 +52,7 @@ results = descriptor(structure)
 
 ### Potential
 ```python
-from torchip.dataset import RunnerStructureDataset
+from torchip.datasets import RunnerStructureDataset
 from torchip.potentials import NeuralNetworkPotential
 from torchip.utils import gradient
 
