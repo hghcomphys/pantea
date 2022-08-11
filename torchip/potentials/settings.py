@@ -6,14 +6,15 @@ from pathlib import Path
 
 nnp_default_settings = \
 {
-  'symfunction_short'     : [],
-  'epochs'                : 1,
-  'updater_type'          : 0,
-  'gradient_type'         : 1, 
-  'weight_decay'          : 1.0e-5,
-  'main_error_metric'     : 'RMSE',
-  'weights_min'           : 0.0,
-  'weights_max'           : 1.0,
+  'symfunction_short'      : [],
+  'epochs'                 : 1,
+  'updater_type'           : 0,
+  'gradient_type'          : 1, 
+  'weight_decay'           : 1.0e-5,
+  'main_error_metric'      : 'RMSE',
+  'weights_min'            : 0.0,
+  'weights_max'            : 1.0,
+  'force_loss_coefficient' : 1.0,
   # TODO: add all default values
 }
 
@@ -125,7 +126,9 @@ class  NeuralNetworkPotentialSettings(Settings):
         elif keyword == "gradient_adam_beta2":
           self._settings[keyword] = float(tokens[0])
         elif keyword == "gradient_adam_epsilon":
-          self._settings[keyword] = float(tokens[0])
+          self._settings[keyword] = float(tokens[0])  
+        elif keyword == "force_loss_coefficient":
+          self._settings[keyword] = float(tokens[0]) 
 
   def __getitem__(self, keyword: str):
     return self._settings[keyword]

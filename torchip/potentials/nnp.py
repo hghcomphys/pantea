@@ -169,6 +169,7 @@ class NeuralNetworkPotential(Potential):
     # General trainer parameters
     trainer_kwargs["criterion"] = nn.MSELoss()
     trainer_kwargs['error_metric'] = create_error_metric(self.settings["main_error_metric"], reduction='mean')
+    trainer_kwargs["force_loss_coefficient"] = self.settings["force_loss_coefficient"]
 
     if self.settings["updater_type"] == 0:  # Gradient Descent
       if self.settings["gradient_type"] == 1: # Adam

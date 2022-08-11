@@ -39,6 +39,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     self.criterion = kwargs.get('criterion', nn.MSELoss())
     self.save_best_model = kwargs.get('save_best_model', True)
     self.error_metric=kwargs.get('error_metric', MSE())
+    self.force_loss_coefficient = kwargs.get('force_loss_coefficient', 1.0)
 
     # The implementation can be either as a single or multiple optimizers.
     self.optimizer = self.optimizer_func(
@@ -82,9 +83,9 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       force = -gradient(energy, structure.position)
 
       # Energy and force losses
-      eng_loss = self.criterion(energy, structure.total_energy); 
+      eng_loss = self.criterion(energy, structure.total_energy)/structure.natoms; 
       frc_loss = self.criterion(force, structure.force); 
-      loss = eng_loss + frc_loss
+      loss = eng_loss + self.force_loss_coefficient * frc_loss
 
       # Error metrics
       eng_error = self.error_metric(energy, structure.total_energy, structure.natoms)
@@ -135,7 +136,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     """
     # TODO: more arguments to have better control on training
     epochs = kwargs.get("epochs", 1)
-    validation_split = kwargs.get("validation_split", None)
+    validation_split = kwargs.get("validation_split", None)  # TODO: add validation split from potential settings
     validation_dataset = kwargs.get("validation_dataset", None)
 
     # Prepare structure dataset and loader for training elemental models
