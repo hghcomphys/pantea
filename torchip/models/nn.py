@@ -28,6 +28,7 @@ class NeuralNetworkModel(BaseModel):
   def _create_layer(self, in_size: int, out_size: int) -> nn.Linear:
     """
     Create a neural network layer and initialize weights and bias.
+    See https://aiqm.github.io/torchani/examples/nnp_training.html#training-example
     """
     layer = nn.Linear(in_size, out_size)
     if self.weights_range is not None:

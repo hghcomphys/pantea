@@ -83,7 +83,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       force = -gradient(energy, structure.position)
 
       # Energy and force losses
-      eng_loss = self.criterion(energy, structure.total_energy)/structure.natoms; 
+      eng_loss = self.criterion(energy, structure.total_energy) / structure.natoms; 
       frc_loss = self.criterion(force, structure.force); 
       loss = eng_loss + self.force_loss_coefficient * frc_loss
 
