@@ -14,7 +14,8 @@ nnp_default_settings = \
   'main_error_metric'      : 'RMSE',
   'weights_min'            : 0.0,
   'weights_max'            : 1.0,
-  'force_loss_coefficient' : 1.0,
+  'test_fraction'          : 0.1,
+  'force_weight'           : 1.0,
   # TODO: add all default values
 }
 
@@ -113,6 +114,8 @@ class  NeuralNetworkPotentialSettings(Settings):
           self._settings[keyword] = tokens[0]
         elif keyword == "epochs":
           self._settings[keyword] = int(tokens[0])
+        elif keyword == "test_fraction":
+          self._settings[keyword] = float(tokens[0])
         elif keyword == "updater_type":
           self._settings[keyword] = int(tokens[0])
         elif keyword == "gradient_type":
@@ -129,7 +132,7 @@ class  NeuralNetworkPotentialSettings(Settings):
           self._settings[keyword] = float(tokens[0])  
         elif keyword == "gradient_weight_decay":
           self._settings[keyword] = float(tokens[0])  
-        elif keyword == "force_loss_coefficient":
+        elif keyword == "force_weight   ":
           self._settings[keyword] = float(tokens[0]) 
 
   def __getitem__(self, keyword: str):

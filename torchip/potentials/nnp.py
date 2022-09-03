@@ -169,7 +169,7 @@ class NeuralNetworkPotential(Potential):
     # General trainer parameters
     trainer_kwargs["criterion"] = nn.MSELoss()
     trainer_kwargs['error_metric'] = create_error_metric(self.settings["main_error_metric"], reduction='mean')
-    trainer_kwargs["force_loss_coefficient"] = self.settings["force_loss_coefficient"]
+    trainer_kwargs["force_weight"] = self.settings["force_weight"]
 
     if self.settings["updater_type"] == 0:  # Gradient Descent
       if self.settings["gradient_type"] == 1: # Adam
@@ -286,6 +286,8 @@ class NeuralNetworkPotential(Potential):
     # TODO: descriptor element should be the same atom type as the aid
     # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
     # TODO: add validation output (MSE separate for force and energy)
+    kwargs['validation_split'] = kwargs.get('validation_split', self.settings['test_fraction'])
+    kwargs['epochs'] = kwargs.get('epochs', self.settings['epochs'])
     return self.trainer.fit(dataset, **kwargs)
 
   def save_model(self):
