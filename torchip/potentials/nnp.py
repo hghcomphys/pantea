@@ -179,7 +179,7 @@ class NeuralNetworkPotential(Potential):
           "lr": self.settings["gradient_adam_eta"],
           "betas": (self.settings["gradient_adam_beta1"], self.settings["gradient_adam_beta2"]),
           "eps": self.settings["gradient_adam_epsilon"],
-          "weight_decay": self.settings["weight_decay"],
+          "weight_decay": self.settings["gradient_weight_decay"],
         }
       elif self.settings["gradient_type"] == 0:  # Fixed Step  
         logger.error("Gradient descent type fixed step is not implemented yet", exception=NotImplementedError)  

@@ -10,7 +10,7 @@ nnp_default_settings = \
   'epochs'                 : 1,
   'updater_type'           : 0,
   'gradient_type'          : 1, 
-  'weight_decay'           : 1.0e-5,
+  'gradient_weight_decay'  : 1.0e-5,
   'main_error_metric'      : 'RMSE',
   'weights_min'            : 0.0,
   'weights_max'            : 1.0,
@@ -126,6 +126,8 @@ class  NeuralNetworkPotentialSettings(Settings):
         elif keyword == "gradient_adam_beta2":
           self._settings[keyword] = float(tokens[0])
         elif keyword == "gradient_adam_epsilon":
+          self._settings[keyword] = float(tokens[0])  
+        elif keyword == "gradient_weight_decay":
           self._settings[keyword] = float(tokens[0])  
         elif keyword == "force_loss_coefficient":
           self._settings[keyword] = float(tokens[0]) 
