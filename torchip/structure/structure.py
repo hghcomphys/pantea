@@ -194,7 +194,7 @@ class Structure:
   def _calculate_distance(
       pos: Tensor, 
       aid: int, 
-      lat: Tensor = None, 
+      lattice: Tensor = None, 
       neighbors = None, 
       return_diff: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
@@ -210,8 +210,8 @@ class Structure:
     dx = pos[aid] - x  
 
     # Apply PBC along x,y, and z directions if needed
-    if lat is not None:
-        dx = Box._apply_pbc(dx, lat) 
+    if lattice is not None:
+        dx = Box._apply_pbc(dx, lattice) 
 
     # Calculate distance from dx tensor
     dis = torch.linalg.vector_norm(dx, dim=1)
@@ -223,8 +223,12 @@ class Structure:
     """
     Return a tensor of distances between a specific atom and all atoms existing in the structure. 
     """
-    lat = self.box.lattice if self.box else None
-    return Structure._calculate_distance(self.position, aid, lat=lat, neighbors=neighbors, return_diff=return_diff) 
+    return Structure._calculate_distance(
+        pos = self.position, 
+        aid = aid, 
+        lattice = self.box.lattice if self.box else None, # TODO: DRY
+        neighbors = neighbors, return_diff=return_diff
+      ) 
 
   def select(self, element: str) -> Tensor:
     """

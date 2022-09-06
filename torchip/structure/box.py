@@ -48,8 +48,8 @@ class Box:
     # TODO: use broadcasting
     for i in range(3):
       l = lattice[i, i]
-      dx[..., i] = torch.where(dx[..., i] >  0.5E0*l, dx[..., i] - l, dx[..., i])
-      dx[..., i] = torch.where(dx[..., i] < -0.5E0*l, dx[..., i] + l, dx[..., i])
+      dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i >  0.5E0*l, dx_i - l, dx_i)
+      dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i < -0.5E0*l, dx_i + l, dx_i)
     return dx
 
   def apply_pbc(self, dx: Tensor) -> Tensor:
