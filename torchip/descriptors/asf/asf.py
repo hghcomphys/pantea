@@ -66,9 +66,10 @@ class AtomicSymmetryFunction(Descriptor):
         structure.neighbor.index
       ]
       params = {
-        'emap'  : structure.element_map.element_to_atype, 
-        'dtype' : structure.dtype, 
-        'device': structure.device
+        'lattice' : structure.box.lattice if structure.box else None, # TODO: DRY
+        'emap'    : structure.element_map.element_to_atype, 
+        'dtype'   : structure.dtype, 
+        'device'  : structure.device
       }
       scattered_tensors = TaskClient.client.scatter(tensors, broadcast=True)
       futures = [TaskClient.client.submit(self._compute, *scattered_tensors, aid_, **params) for aid_ in aids_]
@@ -76,7 +77,7 @@ class AtomicSymmetryFunction(Descriptor):
     # ===========================================================
 
     # Return descriptor values
-    return torch.squeeze(torch.stack(results, dim=0))
+    return torch.stack(results, dim=0)
    
   # TODO: static method? 
   def _compute(
@@ -86,6 +87,7 @@ class AtomicSymmetryFunction(Descriptor):
       nn: Tensor, 
       ni: Tensor,
       aid: int, 
+      lattice: Tensor,
       emap: Dict[str, int], 
       dtype=None, 
       device=None
@@ -105,7 +107,7 @@ class AtomicSymmetryFunction(Descriptor):
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    
     # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
-    dis_, diff_ = Structure._calculate_distance(pos, aid, neighbors=ni_, return_diff=True) # self-count excluded, PBC applied
+    dis_, diff_ = Structure._calculate_distance(pos, aid, lattice=lattice, neighbors=ni_, return_diff=True) # self-count excluded, PBC applied
     # Get the corresponding neighboring atom types and position
     at_ = at[ni_]   # at_ refers to the array atom type of only neighbors
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
@@ -150,8 +152,8 @@ class AtomicSymmetryFunction(Descriptor):
         Rij = diff_[j] #x[aid] - x[ni_j_]                             # shape=(3)
         Rik = diff_[k] #x[aid] - x[ni_k_]                             # shape=(*, 3)
         # ---
-        rjk = Structure._calculate_distance(pos, ni_j_, neighbors=ni_k_)    # shape=(*)
-        #Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])                     # shape=(*, 3)
+        rjk = Structure._calculate_distance(pos, ni_j_, lattice=lattice, neighbors=ni_k_)    # shape=(*)
+        #Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])                                      # shape=(*, 3)
         # ---
         # Cosine of angle between k--<i>--j atoms
         # TODO: move cosine calculation to structure
@@ -178,7 +180,7 @@ class AtomicSymmetryFunction(Descriptor):
         #       continue
         #     pass
 
-        #   rjk = structure.calculate_distance(ni_j_, neighbors=ni_k_)[0]
+        #   rjk = structure.calculate_distance(ni_j_, lattice=lattice, neighbors=ni_k_)[0]
         #   # if rjk > angular[0].r_cutoff: 
         #   #   continue
 
@@ -204,9 +206,17 @@ class AtomicSymmetryFunction(Descriptor):
     """
     Compute descriptor values of an input atom id for the given structure. 
     """
-    return self._compute(structure.position, structure.atype, structure.neighbor.number, 
-                         structure.neighbor.index, aid, emap=structure.element_map.element_to_atype, 
-                         dtype=structure.dtype, device=structure.device)
+    return self._compute(
+        pos = structure.position, 
+        at = structure.atype, 
+        nn = structure.neighbor.number, 
+        ni = structure.neighbor.index, 
+        aid = aid, 
+        lattice = structure.box.lattice if structure.box else None, # TODO: DRY
+        emap = structure.element_map.element_to_atype,                   
+        dtype =structure.dtype, 
+        device=structure.device,
+      )
 
   @property
   def n_radial(self) -> int:
