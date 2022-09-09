@@ -2,16 +2,18 @@ from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
+from ..base import BaseTorchipClass
 from .metric import MSE
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch import nn
+from torch.autograd import grad
 import numpy as np
 import torch
 
 
-class BasePotentialTrainer:
+class BasePotentialTrainer (BaseTorchipClass):
   """
   A trainer class for fitting a generic potential.
   This class must be independent of the type of the potential.
@@ -82,6 +84,15 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       # Calculate energy and force
       energy = self.potential(structure) # total energy
       force = -gradient(energy, structure.position)
+
+      # TODO: further investigation of possible input arguments to optimize grad calculations
+      # torch._C._debug_only_display_vmap_fallback_warnings(True)
+      # force = grad(energy, [structure.position], 
+      #             #grad_outputs = torch.ones_like(structure.position), 
+      #             # is_grads_batched = True, 
+      #             # create_graph = True,
+      #             retain_graph=True,
+      #   )[0]
 
       # Energy and force losses
       eng_loss = self.criterion(energy, structure.total_energy) / structure.natoms; 

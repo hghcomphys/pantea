@@ -239,8 +239,8 @@ class AtomicSymmetryFunction(Descriptor):
       cfn[0].r_cutoff for cfn in itertools.chain(*[self._radial, self._angular])
     ])
 
-  def __repr__(self) -> str:
-    return f"{self.__class__.__name__}('{self.element}')"
+  # def __repr__(self) -> str:
+  #   return f"{self.__class__.__name__}('{self.element}')"
 
 # Define ASF alias
 ASF = AtomicSymmetryFunction

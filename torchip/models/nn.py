@@ -85,9 +85,9 @@ class NeuralNetworkModel(BaseModel):
     self.load_state_dict(torch.load(str(filename)))
     self.eval()
 
-  def __repr__(self) -> str:
-    return f"{self.__class__.__name__}(input_size={self.input_size}" \
-           f", hidden_layers={self.hidden_layers}, output_layer={self.output_layer})"
+  # def __repr__(self) -> str:
+  #   return f"{self.__class__.__name__}(input_size={self.input_size}" \
+  #          f", hidden_layers={self.hidden_layers}, output_layer={self.output_layer})"
 
 
     
