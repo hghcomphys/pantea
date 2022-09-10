@@ -1,4 +1,5 @@
 from ..logger import logger
+from ..base import BaseTorchipClass
 from ..config import dtype as _dtype
 from ..config import device as _device
 from ..utils.attribute import set_as_attribute
@@ -12,7 +13,7 @@ import torch
 # import structure_cpp
 
 
-class Structure:
+class Structure(BaseTorchipClass):
   """
   Structure class contains arrays of atomic information including position, forces, energy, cell, and  more) 
   for a collection of atoms in a simulation box.   

@@ -1,11 +1,12 @@
 from ...logger import logger
+from ...base import BaseTorchipClass
 from torch import Tensor
 import math
 import torch
 # import cutoff_cpp
 
 
-class CutoffFunction:
+class CutoffFunction(BaseTorchipClass):
   # """
   # This class contains different cutoff function used for ASF descriptor.
   # TODO: optimization

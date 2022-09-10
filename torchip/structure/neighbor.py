@@ -1,11 +1,12 @@
 from ..logger import logger
+from ..base import BaseTorchipClass
 from ..config import dtype
 from ..utils.attribute import set_as_attribute
 # from .structure import Structure  # TODO: circular import error
 import torch
 
 
-class Neighbor:
+class Neighbor(BaseTorchipClass):
   """
   Neighbor class creates a neighbor list of atom for the input structure.
   Neighbor is teated as a buffer which classes are responsible to prepare it before using.  
@@ -23,7 +24,7 @@ class Neighbor:
     self.r_cutoff = r_cutoff
     self.r_cutoff_updated = False
     self.tensors = None
-    logger.debug(f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})")
+    logger.debug(self)
 
   def set_cutoff_radius(self, r_cutoff: float) -> None:
     """
@@ -105,5 +106,8 @@ class Neighbor:
     # Avoid updating the neighbor list the next time
     structure.requires_neighbor_update = False
     self.r_cutoff_updated = False
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
 
  
