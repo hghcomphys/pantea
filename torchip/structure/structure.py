@@ -212,7 +212,7 @@ class Structure(BaseTorchipClass):
 
     # Apply PBC along x,y, and z directions if needed
     if lattice is not None:
-        dx = Box._apply_pbc(dx, lattice) 
+      dx = Box._apply_pbc(dx, lattice) 
 
     # Calculate distance from dx tensor
     dis = torch.linalg.vector_norm(dx, dim=1)
@@ -228,7 +228,8 @@ class Structure(BaseTorchipClass):
         pos = self.position, 
         aid = aid, 
         lattice = self.box.lattice if self.box else None, # TODO: DRY
-        neighbors = neighbors, return_diff=return_diff
+        neighbors = neighbors, 
+        return_diff = return_diff,
       ) 
 
   def select(self, element: str) -> Tensor:

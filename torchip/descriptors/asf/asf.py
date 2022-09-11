@@ -89,8 +89,8 @@ class AtomicSymmetryFunction(Descriptor):
       aid: int, 
       lattice: Tensor,
       emap: Dict[str, int], 
-      dtype=None, 
-      device=None
+      dtype, 
+      device,
     ) -> Tensor:
     """
     [Kernel]
@@ -206,13 +206,17 @@ class AtomicSymmetryFunction(Descriptor):
     """
     Compute descriptor values of an input atom id for the given structure. 
     """
+    lattice = None
+    if structure.box is not None:
+      lattice = structure.box.lattice
+
     return self._compute(
         pos = structure.position, 
         at = structure.atype, 
         nn = structure.neighbor.number, 
         ni = structure.neighbor.index, 
         aid = aid, 
-        lattice = structure.box.lattice if structure.box else None, # TODO: DRY
+        lattice = lattice,
         emap = structure.element_map.element_to_atype,                   
         dtype =structure.dtype, 
         device=structure.device,
