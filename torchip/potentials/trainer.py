@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 
-class BasePotentialTrainer (BaseTorchipClass):
+class BasePotentialTrainer(BaseTorchipClass):
   """
   A trainer class for fitting a generic potential.
   This class must be independent of the type of the potential.

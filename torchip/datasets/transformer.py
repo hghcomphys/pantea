@@ -3,7 +3,7 @@ from ..structure.structure import Structure
 from typing import Dict
 
 
-class Transformer (BaseTorchipClass):
+class Transformer(BaseTorchipClass):
   """
   A base transformer class which applies on the structure dataset.
   """
@@ -11,7 +11,7 @@ class Transformer (BaseTorchipClass):
     return f"{self.__class__.__name__}()"
 
 
-class ToStructure (Transformer):
+class ToStructure(Transformer):
   """
   An utility transformer that converts a structure dataset (dictionary) into to a **Structure** instance. 
   """

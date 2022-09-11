@@ -2,7 +2,8 @@ from ..base import BaseTorchipClass
 from collections import defaultdict
 from typing import Dict
 
-class Potential (BaseTorchipClass):
+
+class Potential(BaseTorchipClass):
   """
   A base class that contains all required data and operations to train a ML-based potential 
   including structures, descriptors, models, etc. 
@@ -11,7 +12,7 @@ class Potential (BaseTorchipClass):
   pass
 
 
-class Settings (BaseTorchipClass):
+class Settings(BaseTorchipClass):
   """
   A base class for potential settings.
   Each potential contains several parameters and settings that can be handled using the derived setting classes.
