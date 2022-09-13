@@ -77,7 +77,7 @@ class AtomicSymmetryFunction(Descriptor):
     # ===========================================================
 
     # Return descriptor values
-    return torch.stack(results, dim=0)
+    return torch.stack(results, dim=0) # torch.squeeze(torch.stack(results, dim=0))
    
   # TODO: static method? 
   def _compute(

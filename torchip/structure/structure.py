@@ -254,7 +254,7 @@ class Structure(BaseTorchipClass):
   def __repr__(self) -> str:
     return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
 
-  def get_ase_atoms(self) -> AseAtoms:
+  def to_ase_atoms(self) -> AseAtoms:
     """
     This method returns an ASE representation (atoms) of the structure. 
     The returned object can be used to visualize or modify the structure using the ASE package.
@@ -263,7 +263,7 @@ class Structure(BaseTorchipClass):
     return AseAtoms(
         symbols=[self.element_map(int(at)) for at in self.atype], 
         positions=[BOHR_TO_ANGSTROM*pos.detach().cpu().numpy() for pos in self.position], 
-        cell=[BOHR_TO_ANGSTROM*float(l) for l in self.box.length] if self.box else None  #FIXME: works only for orthogonal
+        cell=[BOHR_TO_ANGSTROM*float(l) for l in self.box.length] if self.box else None  #FIXME: works only for orthogonal cells
       )
 
   # def _copy_tensors(self) -> Dict[str, Tensor]:
