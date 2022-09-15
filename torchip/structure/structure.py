@@ -93,6 +93,8 @@ class Structure(BaseTorchipClass):
     if self.tensors:
       set_as_attribute(self, self.tensors)
 
+    super().__init__()
+
   def _init_neighbor(self, r_cutoff) -> None:
     """
     Initialize a neighbor list instance for a given cutoff radius. 
@@ -103,12 +105,13 @@ class Structure(BaseTorchipClass):
     It is the task of those classes to prepare the buffer neighbor for their own usage.  
     """
     if not self.neighbor:
+      logger.debug(f"Creating a neighbor list with cutoff radius of {r_cutoff}")
       self.neighbor = Neighbor(r_cutoff)
       self.requires_neighbor_update = True 
       return
 
     if self.r_cutoff and self.r_cutoff == r_cutoff: 
-      logger.debug(f"Skipping updating the neighbor list (cutoff radius): "
+      logger.info(f"Skipping updating the neighbor list (cutoff radius): "
                    f"{self.r_cutoff} vs {r_cutoff} (new)")
       return
 
@@ -259,6 +262,7 @@ class Structure(BaseTorchipClass):
     This method returns an ASE representation (atoms) of the structure. 
     The returned object can be used to visualize or modify the structure using the ASE package.
     """
+    logger.info(f"Creating a representation of the structure in form of ASE atoms")
     BOHR_TO_ANGSTROM = 0.529177  # TODO: define Unit class
     return AseAtoms(
         symbols=[self.element_map(int(at)) for at in self.atype], 
