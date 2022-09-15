@@ -16,14 +16,15 @@ class NeuralNetworkModel(BaseModel):
       output_layer:Tuple[int, str] = (1, 'l'),
       weights_range: Tuple[int, int] = None,
     ) -> None:
-    super(NeuralNetworkModel, self).__init__()
+    super().__init__() # FIXME: logging not working because of multiple inheritance
+
     self.input_size = input_size
     self.hidden_layers = hidden_layers
     self.output_layer = output_layer
     self.weights_range = weights_range
-    
-    logger.debug(f"Initializing {self}")
+
     self.network = self._create_network()
+
 
   def _create_layer(self, in_size: int, out_size: int) -> nn.Linear:
     """

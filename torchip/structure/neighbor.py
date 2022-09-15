@@ -24,14 +24,14 @@ class Neighbor(BaseTorchipClass):
     self.r_cutoff = r_cutoff
     self.r_cutoff_updated = False
     self.tensors = None
-    logger.debug(self)
+    super().__init__()
 
   def set_cutoff_radius(self, r_cutoff: float) -> None:
     """
     :param r_cutoff: A new cutoff radius
     :type r_cutoff: float
     """
-    logger.debug(f"Re-setting Neighbor cutoff radius from {self.r_cutoff} to {r_cutoff}")
+    logger.debug(f"Resetting Neighbor cutoff radius from {self.r_cutoff} to {r_cutoff}")
     self.r_cutoff = r_cutoff
     self.r_cutoff_updated = True
     

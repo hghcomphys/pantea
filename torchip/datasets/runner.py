@@ -39,7 +39,7 @@ class RunnerStructureDataset(StructureDataset):
     self.persist = persist          # enabling caching
     self._cached_structures = {}    # a dictionary of cached structures
     self._current_index = 0         # used only for direct iteration
-    logger.debug(f"Initializing {self.__class__.__name__}(structure_file='{self.structure_file.name}')")
+    super().__init__()
 
   def __len__(self) -> int:
     """

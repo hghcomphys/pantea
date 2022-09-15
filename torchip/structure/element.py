@@ -30,6 +30,7 @@ class ElementMap(BaseTorchipClass):
     if elements is not None:
       self.unique_elements = set(elements)
       self.create_maps()
+    super().__init__()
 
   def insert(self, element: str) -> None:
     self.unique_elements.add( element )

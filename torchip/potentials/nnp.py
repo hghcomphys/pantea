@@ -50,8 +50,8 @@ class NeuralNetworkPotential(Potential):
     """
     self.potfile  = Path(potfile)
     self.settings = NeuralNetworkPotentialSettings()    
+    super().__init__()
 
-    logger.debug(f"Initializing {self}")
     self.settings.read(self.potfile)
     
     self.descriptor = self._init_descriptor()

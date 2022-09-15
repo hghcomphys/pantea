@@ -33,6 +33,8 @@ class Box(BaseTorchipClass):
     if self.lattice.shape != (3, 3):
       logger.error(f"Unexpected lattice dimension {self.lattice.shape}", exception=ValueError)
 
+    super().__init__()
+
   @staticmethod
   def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
     """
