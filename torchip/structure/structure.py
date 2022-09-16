@@ -270,6 +270,49 @@ class Structure(BaseTorchipClass):
         cell=[BOHR_TO_ANGSTROM*float(l) for l in self.box.length] if self.box else None  #FIXME: works only for orthogonal cells
       )
 
+  def compare(self, other, errors=['RMSEpa'], return_diff=False) -> Dict:
+    """
+    Compare force and total energy values between two structures and return desired errors metrics. 
+    
+    :param other: other structure
+    :type other: Structure
+    :param error: a list of error metrics including 'RMSE', 'RMSEpa', 'MSE', and 'MSEpa'. Defaults to ['RMSEpa']
+    :type errors: list, optional
+    :type return_diff: bool, optional
+    :return: whether return energy and force tensor differences or not, defaults to False
+    :return: a dictionary of error metrics.
+    :rtype: Dict
+    """
+    # TODO: add charge, total_charge
+    res = {}
+    print(f"Comparing two structures, error metrics: {', '.join(errors)}")
+
+    frc_diff = self.force - other.force
+    eng_diff = self.total_energy - other.total_energy
+    errors = [x.lower() for x in errors]
+
+    if 'rmse' in errors:
+      res['frc_rmse'] = torch.sqrt(torch.mean(frc_diff**2))
+      res['eng_rmse'] = torch.sqrt(torch.mean(eng_diff**2))
+
+    if 'rmsepa' in errors:
+      res['frc_rmsepa'] = torch.sqrt(torch.mean(frc_diff**2))
+      res['eng_rmsepa'] = torch.sqrt(torch.mean(eng_diff**2)) / self.natoms
+
+    if 'mse' in errors:
+      res['frc_mse'] = torch.mean(frc_diff**2)
+      res['eng_mse'] = torch.mean(eng_diff**2)
+
+    if 'msepa' in errors:
+      res['frc_msepa'] = torch.mean(frc_diff**2)
+      res['eng_msepa'] = torch.mean(eng_diff**2) / self.natoms
+
+    if return_diff:
+      res['frc_diff'] = frc_diff
+      res['eng_diff'] = eng_diff
+
+    return res    
+
   # def _copy_tensors(self) -> Dict[str, Tensor]:
   #   """
   #   Return a shallow copy of all tensors.
