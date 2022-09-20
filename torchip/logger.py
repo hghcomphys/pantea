@@ -99,4 +99,24 @@ def set_logging_level(level: int) -> None:
   :type level: int (logging)
   """
   logger.set_level(level)
-  
+
+
+
+class LoggingContextManager:
+  """
+  This utility class allows to monitor logging messages with different level (e.g. INFO or DEBUG) 
+  for a desired section of the scripts. 
+  """
+  def __init__(self, level):
+    self.level = level
+    self.current_level = None
+
+  def __enter__(self) -> Logger:
+    global logger
+    self.current_level = logger.level
+    logger.set_level(self.level)
+    return logger
+
+  def __exit__(self, type, value, traceback) -> None:
+    global logger
+    logger.set_level(self.current_level)
