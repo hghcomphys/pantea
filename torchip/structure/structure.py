@@ -286,11 +286,12 @@ class Structure(BaseTorchipClass):
     """
     # TODO: add charge, total_charge
     res = {}
-    logger.info(f"Comparing two structures, error metrics: {', '.join(errors)}")
-
+  
     frc_diff = self.force - other.force
     eng_diff = self.total_energy - other.total_energy
+    
     errors = [errors] if isinstance(errors, str) else errors
+    logger.info(f"Comparing two structures, error metrics: {', '.join(errors)}")
     errors = [x.lower() for x in errors]
 
     # TODO: use metric classes
