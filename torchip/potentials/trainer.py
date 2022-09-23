@@ -95,8 +95,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
       #   )[0]
 
       # Energy and force losses
-      eng_loss = self.criterion(energy, structure.total_energy) / structure.natoms; 
-      frc_loss = self.criterion(force, structure.force); 
+      eng_loss = self.criterion(energy / structure.natoms, structure.total_energy / structure.natoms) # TODO: optimize division
+      frc_loss = self.criterion(force, structure.force)
       loss = eng_loss + self.force_weight * frc_loss
 
       # Error metrics
