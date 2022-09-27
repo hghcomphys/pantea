@@ -97,6 +97,7 @@ $ make html
 - https://github.com/deepmodeling/deepmd-kit
 - https://github.com/SINGROUP/dscribe
 - https://github.com/Teoroo-CMC/PiNN
+- https://github.com/pyiron/pyiron
 
 ### YouTube
 - https://youtu.be/1xfwB6cNeMA
