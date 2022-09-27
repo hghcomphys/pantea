@@ -13,28 +13,34 @@
 <!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 
 <!-- ## What is it? -->
-TorchIP is a __generic__ and __GPU-accelerated__ software _framework_ written to facilitate the development of emerging machine learning interatomic potentials. 
-It is intended to help researchers to quickly construct ML-based potentials and allowing them to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
+TorchIP is a software _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to quickly construct their ML-based potentials and allowing to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
 
-The core implementation of TorchIP relies on [PyTorch](https://github.com/pytorch/pytorch) which provides two high-level features including _optimized tensor computation_ and _automatic differentiation_.
+
+<!-- ### Main features -->
+- Generic and flexible design which allows defining different atomic descriptors and potentials
+- Support GPU-accelerated computing which can speed up potential training
+- Based on [PyTorch](https://github.com/pytorch/pytorch) which provides two high-level features including _optimized tensor computation_ and _automatic differentiation_.
+- not a molecular dynamics (MD) simulation package but a framework to develop ML-based potentials used for the large-scale MD simulators (e.g. [LAMMPS](https://github.com/lammps/lammps)).
 
 <!--  -->
-TorchIP is NOT a molecular dynamics (MD) simulation package but a framework to develop ML-based potentials used for the large-scale MD simulators (e.g. [LAMMPS](https://github.com/lammps/lammps)).
-
-<!--  -->
-This repository is currently under heavy development and the focus is on the implementation of _high-dimensional neural network potential (HDNNP)_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
+This repository is currently under heavy development and the main focus is on the implementation of _high-dimensional neural network potential (HDNNP)_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
 
 ## Installation
-### Dependencies
-- [PyTorch](https://github.com/pytorch/pytorch)
-- [ASE](https://wiki.fysik.dtu.dk/ase/#)
+### Requirements
+The following packages have to be installed beforehand:   
+- [PyTorch](https://github.com/pytorch/pytorch) (> 1.12.0)
+- [ASE](https://wiki.fysik.dtu.dk/ase/#) (> 3.22.1)
 
+You can install `TorchIP` using:
 ```bash
 $ pip install torchip
 ```
 
-## Usage
+## Examples
 ### Defining atomic descriptors
+The below example shows how to define a vector of Atomic-centered Symmetry Functions 
+([ASF](https://aip.scitation.org/doi/10.1063/1.3553717)) for an element. 
+The defined descriptor can be calculated on a given structure and the evaluated vector of descriptor values are eventually used for constructing ML potentials. 
 ```python
 from torchip.datasets import RunnerStructureDataset
 from torchip.descriptors import AtomicSymmetryFunction  
@@ -55,6 +61,7 @@ results = descriptor(structure)
 ```
 
 ### Training a potential
+This example shows hwo to quickly create a high-dimensional neural network potential ([HDNNP](https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868)) and training on the input structures. The energy and force components can be evaluated for (new) structures from the trained potential.
 ```python
 from torchip.datasets import RunnerStructureDataset
 from torchip.potentials import NeuralNetworkPotential
