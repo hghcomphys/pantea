@@ -189,7 +189,7 @@ class NeuralNetworkPotential(Potential):
     return  NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
 
   # @Profiler.profile
-  torch.no_grad()
+  @torch.no_grad()
   def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
     """
     Fit scaler parameters for each element using the input structure data.
