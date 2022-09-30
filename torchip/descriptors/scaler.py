@@ -1,4 +1,5 @@
 
+from multiprocessing.connection import wait
 from ..logger import logger
 from ..config import dtype as _dtype
 from ..config import device as _device
@@ -9,7 +10,7 @@ import torch
 import numpy as np
 
 
-class DescriptorScaler (BaseTorchipClass):
+class DescriptorScaler(BaseTorchipClass):
   """
   Scale descriptor values.
   TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
@@ -21,6 +22,7 @@ class DescriptorScaler (BaseTorchipClass):
       scale_max: float = 1.0,
       dtype: torch.dtype = None,
       device: torch.device = None,
+      max_number_of_warnings = 100,
       ) -> None:
     """
     Initialize scaler including scaler type and min/max values.
@@ -40,6 +42,9 @@ class DescriptorScaler (BaseTorchipClass):
     self.sigma = None       # standard deviation
     self.min =  None        # minimum
     self.max =  None        # maximum
+
+    self.number_of_warnings = 0
+    self.max_number_of_warnings = max_number_of_warnings
 
     # Set scaler type function     
     self._transform = getattr(self, f'_{self.scale_type}')    
@@ -81,7 +86,7 @@ class DescriptorScaler (BaseTorchipClass):
       self.min = torch.minimum(self.min, new_min)
       self.nsamples += n
 
-  def __call__(self, x: Tensor) -> Tensor:
+  def __call__(self, x: Tensor, warnings: bool = False) -> Tensor:
     """
     Transform the input descriptor values base on the selected scaler type.
     This merhod has to be called when fit method is called ``batch-wise`` over all descriptor values, 
@@ -89,11 +94,34 @@ class DescriptorScaler (BaseTorchipClass):
 
     Args:
         x (Tensor): input 
+        warnings (bool): input 
 
     Returns:
         Tensor: scaled input
     """    
-    return self._transform(x)
+    scaled_x = self._transform(x)
+    if warnings:
+      self._check_warnings(scaled_x)
+    
+    return scaled_x 
+
+  @torch.no_grad()
+  def _check_warnings(self, x: Tensor) -> None:
+    """
+    Check whether the output scaler values exceed the predefined min/max range values or not.
+    if so, it keeps counting the number of warnings and raises an error if it exceeds the maximum number.
+    out of range descriptor values is an indication of descriptor extrapolation which has to be avoided.  
+
+    :param val: scaled values of descriptor
+    :type val: Tensor
+    """    
+    gt = torch.gt(x, self.max).detach()
+    lt = torch.gt(self.min, x).detach()
+    self.number_of_warnings += int(torch.sum(torch.logical_or(gt, lt)))
+
+    if self.number_of_warnings >= self.max_number_of_warnings:
+      logger.error(f"Exceeded the maximum number of scaler warnings ({self.max_number_of_warnings})", 
+                   exception=ValueError)
 
   def _center(self, x: Tensor) -> Tensor:
     """
