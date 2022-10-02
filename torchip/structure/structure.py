@@ -47,14 +47,15 @@ class Structure(BaseTorchipClass):
     #'charge, '      # TODO: for lang range interaction using charge models
   ]
 
-  def __init__(self, 
-      data: Dict = None,       
-      r_cutoff: float = None,   
-      dtype: torch.dtype = None,
-      device: torch.device = None,
-      requires_grad: bool = True,
-      **kwargs,
-    ) -> None: 
+  def __init__(
+    self, 
+    data: Dict = None,       
+    r_cutoff: float = None,   
+    dtype: torch.dtype = None,
+    device: torch.device = None,
+    requires_grad: bool = True,
+    **kwargs,
+  ) -> None: 
     """
     Initialize a structure including tensors, neighbor list atoms, simulation box, etc.
 
@@ -93,9 +94,14 @@ class Structure(BaseTorchipClass):
     if self.tensors:
       set_as_attribute(self, self.tensors)
 
+    # TODO: test beforehand
+    # if self.box:
+    #   logger.print("Reposition atoms inside the PBC box")
+    #   self.position = self.box.pbc_shift_atoms(self.position)
+
     super().__init__()
 
-  def _init_neighbor(self, r_cutoff) -> None:
+  def _init_neighbor(self, r_cutoff: float) -> None:
     """
     Initialize a neighbor list instance for a given cutoff radius. 
     
@@ -128,7 +134,7 @@ class Structure(BaseTorchipClass):
     """    
     self._init_neighbor(r_cutoff)
 
-  def _init_box(self, lattice) -> None:
+  def _init_box(self, lattice: Tensor) -> None:
     """
     Create a simulation box object using provided lattice tensor.
     """
@@ -136,13 +142,14 @@ class Structure(BaseTorchipClass):
       self.box = Box(lattice)  
     else:
       logger.debug("No lattice info were found in the structure")
-
-  def _prepare_atype_tensor(self, elements: List) -> Tensor:
+      self.box = Box(lattice=None)
+      
+  def _prepare_atype_tensor(self, elements: List[str]) -> Tensor:
     """
     Set atom types using the element map
     """
     return torch.tensor([self.element_map(elem) for elem in elements], \
-                          dtype=_dtype.INDEX, device=self.device)
+                          dtype=_dtype.INDEX, device=self.device) 
     
   def _init_tensors(self, data: Dict) -> None:
     """
@@ -197,12 +204,12 @@ class Structure(BaseTorchipClass):
 
   @staticmethod
   def _calculate_distance(
-      pos: Tensor, 
-      aid: int, 
-      lattice: Tensor = None, 
-      neighbors = None, 
-      return_diff: bool = False
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    pos: Tensor, 
+    aid: int, 
+    lattice: Tensor = None, 
+    neighbors = None, 
+    return_difference: bool = False
+  ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
     [Kernel]
     Calculate a tensor of distances to all atoms existing in the structure from a specific atom. 
@@ -222,18 +229,23 @@ class Structure(BaseTorchipClass):
     dis = torch.linalg.vector_norm(dx, dim=1)
 
     # Return results
-    return dis if not return_diff else (dis, dx)
+    return dis if not return_difference else (dis, dx)
 
-  def calculate_distance(self, aid: int, neighbors=None, return_diff=False) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+  def calculate_distance(
+    self, 
+    aid: int, 
+    neighbors=None, 
+    return_difference=False
+  ) -> Tensor:
     """
     Return a tensor of distances between a specific atom and all atoms existing in the structure. 
     """
     return Structure._calculate_distance(
         pos = self.position, 
         aid = aid, 
-        lattice = self.box.lattice if self.box else None, # TODO: DRY
+        lattice = self.box.lattice,
         neighbors = neighbors, 
-        return_diff = return_diff,
+        return_difference = return_difference,
       ) 
 
   def select(self, element: str) -> Tensor:
@@ -265,13 +277,18 @@ class Structure(BaseTorchipClass):
     logger.info(f"Creating a representation of the structure in form of ASE atoms")
     BOHR_TO_ANGSTROM = 0.529177  # TODO: define Unit class
     return AseAtoms(
-        symbols=[self.element_map(int(at)) for at in self.atype], 
-        positions=[BOHR_TO_ANGSTROM*pos.detach().cpu().numpy() for pos in self.position], 
-        cell=[BOHR_TO_ANGSTROM*float(l) for l in self.box.length] if self.box else None  #FIXME: works only for orthogonal cells
-      )
+          symbols=[self.element_map(int(at)) for at in self.atype], 
+          positions=[BOHR_TO_ANGSTROM*pos.detach().cpu().numpy() for pos in self.position], 
+          cell=[BOHR_TO_ANGSTROM*float(l) for l in self.box.length] if self.box.lattice else None  #FIXME: works only for orthogonal cells
+          )
 
   @torch.no_grad()
-  def compare(self, other, errors: Union[str, List] = 'RMSEpa', return_diff: bool = False) -> Dict:
+  def compare(
+    self, 
+    other, 
+    errors: Union[str, List] = 'RMSEpa', 
+    return_difference: bool = False
+  ) -> Dict:
     """
     Compare force and total energy values between two structures and return desired errors metrics. 
     
@@ -279,14 +296,14 @@ class Structure(BaseTorchipClass):
     :type other: Structure
     :param error: a list of error metrics including 'RMSE', 'RMSEpa', 'MSE', and 'MSEpa'. Defaults to ['RMSEpa']
     :type errors: list, optional
-    :type return_diff: bool, optional
+    :type return_difference: bool, optional
     :return: whether return energy and force tensor differences or not, defaults to False
     :return: a dictionary of error metrics.
     :rtype: Dict
     """
     # TODO: add charge, total_charge
-    res = {}
-  
+    result = {}
+    
     frc_diff = self.force - other.force
     eng_diff = self.total_energy - other.total_energy
     
@@ -296,53 +313,19 @@ class Structure(BaseTorchipClass):
 
     # TODO: use metric classes
     if 'rmse' in errors:
-      res['force_RMSE'] = torch.sqrt(torch.mean(frc_diff**2))
-      res['energy_RMSE'] = torch.sqrt(torch.mean(eng_diff**2))
+      result['force_RMSE'] = torch.sqrt(torch.mean(frc_diff**2))
+      result['energy_RMSE'] = torch.sqrt(torch.mean(eng_diff**2))
     if 'rmsepa' in errors:
-      res['force_RMSEpa'] = torch.sqrt(torch.mean(frc_diff**2))
-      res['energy_RMSEpa'] = torch.sqrt(torch.mean(eng_diff**2)) / self.natoms
+      result['force_RMSEpa'] = torch.sqrt(torch.mean(frc_diff**2))
+      result['energy_RMSEpa'] = torch.sqrt(torch.mean(eng_diff**2)) / self.natoms
     if 'mse' in errors:
-      res['force_MSE'] = torch.mean(frc_diff**2)
-      res['energy_MSE'] = torch.mean(eng_diff**2)
+      result['force_MSE'] = torch.mean(frc_diff**2)
+      result['energy_MSE'] = torch.mean(eng_diff**2)
     if 'msepa' in errors:
-      res['force_MSEpa'] = torch.mean(frc_diff**2)
-      res['energy_MSEpa'] = torch.mean(eng_diff**2) / self.natoms
-    if return_diff:
-      res['frc_diff'] = frc_diff
-      res['eng_diff'] = eng_diff
+      result['force_MSEpa'] = torch.mean(frc_diff**2)
+      result['energy_MSEpa'] = torch.mean(eng_diff**2) / self.natoms
+    if return_difference:
+      result['frc_diff'] = frc_diff
+      result['eng_diff'] = eng_diff
 
-    return res    
-
-  # def _copy_tensors(self) -> Dict[str, Tensor]:
-  #   """
-  #   Return a shallow copy of all tensors.
-  #   :return: A dictionary of tensors for atomic data including position, energy, etc.
-  #   :rtype: Dict[Tensors]
-  #   """
-  #   tensors_ = {}
-  #   for attr, tensor in self.tensors.items():
-  #     if attr in self._differentiable_atomic_attributes and self.requires_grad:
-  #       tensors_[attr] = tensor #.detach().requires_grad_() # torch.clone
-  #     else:
-  #       tensors_[attr] = tensor #.detach() # torch.clone
-  #   return tensors_
-
-  # def copy(self, **kwargs):
-  #   """
-  #   Return a shallow copy of the structure (the tensors are not actually copied) with some adjusted settings
-  #   possible from the input arguments. 
-  #   """
-  #   init_kwargs = {
-  #     'r_cutoff'      : self.r_cutoff,
-  #     'device'        : self.device,    
-  #     'dtype'         : self.dtype,     
-  #     'requires_grad' : self.requires_grad,              
-  #     'element_map'   : self.element_map,
-  #     'tensors'       : self._copy_tensors(),          
-  #     'neighbor'      : self.neighbor,
-  #     'box'           : self.box,
-  #   }
-  #   init_kwargs.update(kwargs)  # override the defaults
-  #   structure_ = Structure(data=None, **init_kwargs)
-  #   structure_.requires_neighbor_update = self.requires_neighbor_update
-  #   return structure_
+    return result    
