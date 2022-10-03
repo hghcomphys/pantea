@@ -38,7 +38,7 @@ class Structure(BaseTorchipClass):
     'force',         # per-atom force components x, y, and z
     #'charge',       # per-atom electric charge
     'energy',        # per-atom energy
-    'lattice',       # vectors of supercell 3x3 matrix
+    'lattice',       # vectors of super cell 3x3 matrix
     'total_energy',  # total energy of atoms in simulation box
     #'total_charger' # total charge of atoms in simulation box
   ]
@@ -111,7 +111,6 @@ class Structure(BaseTorchipClass):
     It is the task of those classes to prepare the buffer neighbor for their own usage.  
     """
     if not self.neighbor:
-      logger.debug(f"Creating a neighbor list with cutoff radius of {r_cutoff}")
       self.neighbor = Neighbor(r_cutoff)
       self.requires_neighbor_update = True 
       return
@@ -141,7 +140,7 @@ class Structure(BaseTorchipClass):
     if len(lattice) > 0:
       self.box = Box(lattice)  
     else:
-      logger.debug("No lattice info were found in the structure")
+      logger.debug("No lattice info were found in structure")
       self.box = Box(lattice=None)
       
   def _prepare_atype_tensor(self, elements: List[str]) -> Tensor:
@@ -156,7 +155,7 @@ class Structure(BaseTorchipClass):
     Create tensors (allocate memory) from the input dictionary of structure data.
     It convert element (string) to atom type (integer) because of computational efficiency.
     """
-    logger.debug("Allocating tensors for structure")
+    logger.debug("Allocating tensors for the structure:")
     self.tensors = {}
     try:
       # Tensors for atomic attributes
@@ -175,16 +174,6 @@ class Structure(BaseTorchipClass):
     # Logging
     for attr, tensor in self.tensors.items():
       logger.debug(f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')")
-      
-  def _tensors_to_data(self) -> Dict:
-    """
-    Cast the tensors to structure data.
-    To be used for dumping structure into a file. 
-    """
-    data = {}
-    for name, tensor in self.tensors.items():
-      data[name] = get_value(tensor)
-    return data
 
   def update_neighbor(self) -> None:
     """
@@ -236,7 +225,7 @@ class Structure(BaseTorchipClass):
     aid: int, 
     neighbors=None, 
     return_difference=False
-  ) -> Tensor:
+  ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
     Return a tensor of distances between a specific atom and all atoms existing in the structure. 
     """
@@ -268,6 +257,16 @@ class Structure(BaseTorchipClass):
 
   def __repr__(self) -> str:
     return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
+
+  def to_dict(self) -> Dict:
+    """
+    Cast the tensors to structure data.
+    To be used for dumping structure into a file. 
+    """
+    data = {}
+    for name, tensor in self.tensors.items():
+      data[name] = get_value(tensor)
+    return data
 
   def to_ase_atoms(self) -> AseAtoms:
     """
