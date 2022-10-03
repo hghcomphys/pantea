@@ -13,7 +13,12 @@ class Box(BaseTorchipClass):
   TODO: box variables as numpy or pytorch?
   TODO: triclinic lattice
   """
-  def __init__(self, lattice, dtype=None, device=None) -> None:
+  def __init__(
+    self, 
+    lattice: Tensor, 
+    dtype = None, 
+    device = None
+  ) -> None:
     """
     Initialize simulation box (super-cell).
 
@@ -26,11 +31,13 @@ class Box(BaseTorchipClass):
     self.dtype = dtype if dtype else _dtype.FLOAT
     self.device = device if device else _device.DEVICE
 
-    # Create lattice tensor
-    self.lattice = torch.tensor(lattice, dtype=self.dtype, device=self.device)
-
-    if self.lattice.shape != (3, 3):
-      logger.error(f"Unexpected lattice dimension {self.lattice.shape}", exception=ValueError)
+    if lattice is None:
+      self.lattice = lattice
+    else:
+      try:
+        self.lattice = torch.tensor(lattice, dtype=self.dtype, device=self.device).reshape(3, 3)
+      except RuntimeError:
+        logger.error(f"Unexpected lattice matrix type or dimension", exception=ValueError)
 
     super().__init__()
 
