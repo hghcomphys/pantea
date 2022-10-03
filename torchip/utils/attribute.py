@@ -5,7 +5,12 @@ from torch import Tensor
 import torch
 
 
-def set_as_attribute(obj: Any, items: Dict[str, Tensor]) -> None:
+def set_as_attribute(
+  obj: Any, 
+  items: Dict[str, Tensor], 
+  prefix: str = '',
+  postfix: str = '',
+) -> None:
   """
   An utility function to set an input dictionary of items as the class attributes.
 
@@ -13,10 +18,11 @@ def set_as_attribute(obj: Any, items: Dict[str, Tensor]) -> None:
       obj (Any): an instance
       tensors (Dict): a dictionary of items
   """  
-  logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__}"
-              f" attributes: {', '.join(items.keys())}")
+  logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__} attributes:")
   for name, item in items.items():
-    setattr(obj, name, item)
+    attr_name = f"{prefix}{name}{postfix}"
+    logger.debug(f"-> {obj.__class__.__name__}.{attr_name}")
+    setattr(obj, attr_name, item)
 
 
 def cast_to_tensor(x) -> Tensor:
