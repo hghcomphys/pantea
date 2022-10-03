@@ -66,7 +66,7 @@ class AtomicSymmetryFunction(Descriptor):
         structure.neighbor.index
       ]
       params = {
-        'lattice' : structure.box.lattice if structure.box else None, # TODO: DRY
+        'lattice' : structure.box.lattice,
         'emap'    : structure.element_map.element_to_atype, 
         'dtype'   : structure.dtype, 
         'device'  : structure.device
@@ -107,7 +107,7 @@ class AtomicSymmetryFunction(Descriptor):
     # Get the list of neighboring atom indices
     ni_ = ni[aid, :nn[aid]]                                                    
     # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
-    dis_, diff_ = Structure._calculate_distance(pos, aid, lattice=lattice, neighbors=ni_, return_diff=True) # self-count excluded, PBC applied
+    dis_, diff_ = Structure._calculate_distance(pos, aid, lattice=lattice, neighbors=ni_, return_difference=True) # self-count excluded, PBC applied
     # Get the corresponding neighboring atom types and position
     at_ = at[ni_]   # at_ refers to the array atom type of only neighbors
     #x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
@@ -206,17 +206,13 @@ class AtomicSymmetryFunction(Descriptor):
     """
     Compute descriptor values of an input atom id for the given structure. 
     """
-    lattice = None
-    if structure.box is not None:
-      lattice = structure.box.lattice
-
     return self._compute(
         pos = structure.position, 
         at = structure.atype, 
         nn = structure.neighbor.number, 
         ni = structure.neighbor.index, 
         aid = aid, 
-        lattice = lattice,
+        lattice = structure.box.lattice,
         emap = structure.element_map.element_to_atype,                   
         dtype =structure.dtype, 
         device=structure.device,

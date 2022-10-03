@@ -196,7 +196,7 @@ class RunnerStructureDataset(StructureDataset):
     """
     This method reads the i-th structure and then applying the transformation.
     """   
-    logger.debug(f"Reading structure {index}")
+    logger.debug(f"Reading structure[{index}]")
     with open(str(self.structure_file), "r") as file:
       for _ in range(index):
         self.ignore(file) 
