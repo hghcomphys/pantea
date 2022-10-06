@@ -10,203 +10,205 @@ import torch
 
 
 class RunnerStructureDataset(StructureDataset):
-  """
-  Structure dataset for RuNNer file format.
-  The input structure file contains snapshots of atoms located in the simulation box.
-  Each snapshot includes per-atom and collective properties.
-  The per-atom properties are element name, coordinates, energy, charge, and force components.
-  the collective properties are lattice info, total energy, and total charge.
-
-  See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
-  """
-  # TODO: Dataset training and validation split method/utils function
-  # TODO: logging
-
-  def __init__(self, 
-      structure_file: Path, 
-      transform: Transformer = ToStructure(), 
-      persist: bool= False
-    ):   
     """
-    Args:
-        structure_file (Path): Path to the RuNNer structure file.
-        transform (Transformer, optional): Optional transform to be applied on a structure. Defaults to None.
-        persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
-        Also it avoids unnecessary data transfer between CPU and GPU. 
+    Structure dataset for RuNNer file format.
+    The input structure file contains snapshots of atoms located in the simulation box.
+    Each snapshot includes per-atom and collective properties.
+    The per-atom properties are element name, coordinates, energy, charge, and force components.
+    the collective properties are lattice info, total energy, and total charge.
+
+    See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
     """
-    self.structure_file = Path(structure_file)
-    self.transform = transform      # transform after loading each sample
-    self.persist = persist          # enabling caching
-    self._cached_structures = {}    # a dictionary of cached structures
-    self._current_index = 0         # used only for direct iteration
-    super().__init__()
 
-  def __len__(self) -> int:
-    """
-    This method opens the structure file and return the number of structures.
-    """
-    n_structures = 0
-    with open(str(self.structure_file), "r") as file:
-      while self.ignore(file):
-        n_structures += 1
-    return n_structures
+    # TODO: Dataset training and validation split method/utils function
+    # TODO: logging
 
-  def __getitem__(self, index: int) -> Dict:
-    """
-    Return i-th structure form the.
-    This is a lazy load. Data is read from the file only if this method is called.
-    Multiple-indexing with some limitations is possible. 
-    
-    This method is used by Torch Dataloader to create mini-batch of data in a most efficient way 
-    (multiple workers, pinned memory, shuffling, batching, etc).
+    def __init__(
+        self,
+        structure_file: Path,
+        transform: Transformer = ToStructure(),
+        persist: bool = False,
+    ):
+        """
+        Args:
+            structure_file (Path): Path to the RuNNer structure file.
+            transform (Transformer, optional): Optional transform to be applied on a structure. Defaults to None.
+            persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
+            Also it avoids unnecessary data transfer between CPU and GPU.
+        """
+        self.structure_file = Path(structure_file)
+        self.transform = transform  # transform after loading each sample
+        self.persist = persist  # enabling caching
+        self._cached_structures = {}  # a dictionary of cached structures
+        self._current_index = 0  # used only for direct iteration
+        super().__init__()
 
-    Args:
-        index (int): Index of structure.
+    def __len__(self) -> int:
+        """
+        This method opens the structure file and return the number of structures.
+        """
+        n_structures = 0
+        with open(str(self.structure_file), "r") as file:
+            while self.ignore(file):
+                n_structures += 1
+        return n_structures
 
-    Returns:
-        Dict: Data structure
-    """
-    # TODO: assert range of index
+    def __getitem__(self, index: int) -> Dict:
+        """
+        Return i-th structure form the.
+        This is a lazy load. Data is read from the file only if this method is called.
+        Multiple-indexing with some limitations is possible.
 
-    if torch.is_tensor(index):
-      # TODO: what if indices are on GPU?
-      index = index.tolist()  
-    
-    # TODO: start and stop has to be explicitly given
-    if isinstance(index, slice):
-      if index.step is None:
-          index = list(range(index.start, index.stop))
-      else:
-          index = list(range(index.start, index.stop, index.step))
-   
-    if isinstance(index, list):
-      return [self._read_cache(idx) for idx in index] 
+        This method is used by Torch Dataloader to create mini-batch of data in a most efficient way
+        (multiple workers, pinned memory, shuffling, batching, etc).
 
-    return self._read_cache(index)
+        Args:
+            index (int): Index of structure.
 
-  def __next__(self):
-    """
-    This method is used for iterating directly over the dataset instance.
-    Due to its slow performance, lack of shuffling, and no parallel loading, 
-    it's better to be only used for testing and debugging. 
+        Returns:
+            Dict: Data structure
+        """
+        # TODO: assert range of index
 
-    :raises StopIteration: stop iteration
-    :return: Return next structure
-    :rtype: Transformed structure
-    """
-    if self._current_index < len(self):
-      sample = self[self._current_index]
-      self._current_index += 1
-      return sample
-    self._current_index = 0
-    raise StopIteration
+        if torch.is_tensor(index):
+            # TODO: what if indices are on GPU?
+            index = index.tolist()
 
-  def __iter__(self):
-    return self
+        # TODO: start and stop has to be explicitly given
+        if isinstance(index, slice):
+            if index.step is None:
+                index = list(range(index.start, index.stop))
+            else:
+                index = list(range(index.start, index.stop, index.step))
 
-  def copy(self) -> RunnerStructureDataset:
-    """
-    Create a copy of the object.
-    No structure data is loaded into the memory. 
-    """
-    return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
+        if isinstance(index, list):
+            return [self._read_cache(idx) for idx in index]
 
-  def ignore(self, file: TextIO) -> bool:
-    """
-    This method ignores the next structure.
-    It reduces the spent time while reading a range of structures.
+        return self._read_cache(index)
 
-    Args:
-        file (TextIO): Input structure file handler
+    def __next__(self):
+        """
+        This method is used for iterating directly over the dataset instance.
+        Due to its slow performance, lack of shuffling, and no parallel loading,
+        it's better to be only used for testing and debugging.
 
-    Returns:
-        bool: whether ignoring the next structure was successful or not
-    """
-    # Read next structure
-    while True:
-      # Read one line from file
-      line = file.readline()
-      if not line:
-        return False
+        :raises StopIteration: stop iteration
+        :return: Return next structure
+        :rtype: Transformed structure
+        """
+        if self._current_index < len(self):
+            sample = self[self._current_index]
+            self._current_index += 1
+            return sample
+        self._current_index = 0
+        raise StopIteration
 
-      keyword, tokens = tokenize(line)
-      # TODO: check begin keyword
-      if keyword == "end": 
-        break
+    def __iter__(self):
+        return self
 
-    return True
+    def copy(self) -> RunnerStructureDataset:
+        """
+        Create a copy of the object.
+        No structure data is loaded into the memory.
+        """
+        return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
 
-  def read(self, file: TextIO) -> Dict:
-    """
-    This method reads the next structure from the input file.
+    def ignore(self, file: TextIO) -> bool:
+        """
+        This method ignores the next structure.
+        It reduces the spent time while reading a range of structures.
 
-    Args:
-        file (TextIO): Input structure file handler
+        Args:
+            file (TextIO): Input structure file handler
 
-    Returns:
-        Dict: Sample of dataset.
-    """
-    sample = defaultdict(list)
-    # Read next structure
-    while True:
-      # Read one line from file handler
-      line = file.readline()
-      if not line:
-        return False
+        Returns:
+            bool: whether ignoring the next structure was successful or not
+        """
+        # Read next structure
+        while True:
+            # Read one line from file
+            line = file.readline()
+            if not line:
+                return False
 
-      # Read keyword and values
-      keyword, tokens = tokenize(line)
-      # TODO: check begin keyword
-      if keyword == "atom":
-        sample["position"].append( [float(t) for t in tokens[:3]] )
-        sample["element"].append( tokens[3] )
-        sample["charge"].append( float(tokens[4]) )
-        sample["energy"].append( float(tokens[5]) )
-        sample["force"].append( [float(t) for t in tokens[6:9]] )
-      elif keyword == "lattice":
-        sample["lattice"].append( [float(t) for t in tokens[:3]] )
-      elif keyword == "energy":
-        sample["total_energy"].append( float(tokens[0]) )
-      elif keyword == "charge":
-        sample["total_charge"].append( float(tokens[0]) )
-      elif keyword == "comment":
-        sample["comment"].append(' '.join(line.split()[1:]) )
-      elif keyword == "end": 
-        break
+            keyword, tokens = tokenize(line)
+            # TODO: check begin keyword
+            if keyword == "end":
+                break
 
-    return sample
+        return True
 
-  def _read_cache(self, index):
-    """
-    This method reads cached structure if persist flag is True.
-    """
-    if not self.persist:
-      return self._read_and_transform(index)
+    def read(self, file: TextIO) -> Dict:
+        """
+        This method reads the next structure from the input file.
 
-    if index not in self._cached_structures:
-      sample = self._read_and_transform(index)
-      self._cached_structures[index] = sample    
-    else:
-      #logger.debug(f"Using cached structure {index}")
-      sample = self._cached_structures[index]
+        Args:
+            file (TextIO): Input structure file handler
 
-    return sample
+        Returns:
+            Dict: Sample of dataset.
+        """
+        sample = defaultdict(list)
+        # Read next structure
+        while True:
+            # Read one line from file handler
+            line = file.readline()
+            if not line:
+                return False
 
-  def _read_and_transform(self, index):
-    """
-    This method reads the i-th structure and then applying the transformation.
-    """   
-    logger.debug(f"Reading structure[{index}]")
-    with open(str(self.structure_file), "r") as file:
-      for _ in range(index):
-        self.ignore(file) 
-      sample = self.read(file)
+            # Read keyword and values
+            keyword, tokens = tokenize(line)
+            # TODO: check begin keyword
+            if keyword == "atom":
+                sample["position"].append([float(t) for t in tokens[:3]])
+                sample["element"].append(tokens[3])
+                sample["charge"].append(float(tokens[4]))
+                sample["energy"].append(float(tokens[5]))
+                sample["force"].append([float(t) for t in tokens[6:9]])
+            elif keyword == "lattice":
+                sample["lattice"].append([float(t) for t in tokens[:3]])
+            elif keyword == "energy":
+                sample["total_energy"].append(float(tokens[0]))
+            elif keyword == "charge":
+                sample["total_charge"].append(float(tokens[0]))
+            elif keyword == "comment":
+                sample["comment"].append(" ".join(line.split()[1:]))
+            elif keyword == "end":
+                break
 
-      if self.transform:
-        sample = self.transform(sample)
+        return sample
 
-    return sample
+    def _read_cache(self, index):
+        """
+        This method reads cached structure if persist flag is True.
+        """
+        if not self.persist:
+            return self._read_and_transform(index)
 
-  # def __repr__(self) -> str:
-  #   return f"{self.__class__.__name__}(structure_file='{self.structure_file.name}'" \
-  #           f", transformer={self.transform}, persist={self.persist})"
+        if index not in self._cached_structures:
+            sample = self._read_and_transform(index)
+            self._cached_structures[index] = sample
+        else:
+            # logger.debug(f"Using cached structure {index}")
+            sample = self._cached_structures[index]
+
+        return sample
+
+    def _read_and_transform(self, index):
+        """
+        This method reads the i-th structure and then applying the transformation.
+        """
+        logger.debug(f"Reading structure[{index}]")
+        with open(str(self.structure_file), "r") as file:
+            for _ in range(index):
+                self.ignore(file)
+            sample = self.read(file)
+
+            if self.transform:
+                sample = self.transform(sample)
+
+        return sample
+
+    # def __repr__(self) -> str:
+    #   return f"{self.__class__.__name__}(structure_file='{self.structure_file.name}'" \
+    #           f", transformer={self.transform}, persist={self.persist})"

@@ -7,129 +7,129 @@ import torch
 
 
 class Box(BaseTorchipClass):
-  """
-  Box class extract Box info from the lattice matrix.
-  Currently, it only works for orthogonal lattice.
-  TODO: box variables as numpy or pytorch?
-  TODO: triclinic lattice
-  """
-  def __init__(
-    self, 
-    lattice: Tensor, 
-    dtype = None, 
-    device = None
-  ) -> None:
     """
-    Initialize simulation box (super-cell).
-
-    :param lattice: Lattice matrix (3x3 array)
-    :param dtype: Data type of internal tensors which represent structure, defaults to None
-    :type dtype: torch.dtype, optional
-    :param device: Device on which tensors are allocated, defaults to None
-    :type device: torch.device, optional
-    """    
-    self.dtype = dtype if dtype else _dtype.FLOAT
-    self.device = device if device else _device.DEVICE
-
-    if lattice is None:
-      self.lattice = lattice
-    else:
-      try:
-        self.lattice = torch.tensor(lattice, dtype=self.dtype, device=self.device).reshape(3, 3)
-      except RuntimeError:
-        logger.error(f"Unexpected lattice matrix type or dimension", exception=ValueError)
-
-    super().__init__()
-
-  @staticmethod
-  def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
+    Box class extract Box info from the lattice matrix.
+    Currently, it only works for orthogonal lattice.
+    TODO: box variables as numpy or pytorch?
+    TODO: triclinic lattice
     """
-    [Kernel]
-    Apply periodic boundary condition (PBC) along x,y, and z directions.
 
-    :param dx: Position difference
-    :type dx: Tensor
-    :param lattice: lattice matrix
-    :type lattice: Tensor
-    :return: PBC applied position
-    :rtype: Tensor
-    """    
-    # for i in range(3): # without broadcasting
-    #   l = lattice[i, i]
-    #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i >  0.5E0*l, dx_i - l, dx_i)
-    #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i < -0.5E0*l, dx_i + l, dx_i)
+    def __init__(self, lattice: Tensor, dtype=None, device=None) -> None:
+        """
+        Initialize simulation box (super-cell).
 
-    l = lattice.diagonal()
-    dx = torch.where(dx >  0.5E0*l, dx - l, dx) 
-    dx = torch.where(dx < -0.5E0*l, dx + l, dx) 
+        :param lattice: Lattice matrix (3x3 array)
+        :param dtype: Data type of internal tensors which represent structure, defaults to None
+        :type dtype: torch.dtype, optional
+        :param device: Device on which tensors are allocated, defaults to None
+        :type device: torch.device, optional
+        """
+        self.dtype = dtype if dtype else _dtype.FLOAT
+        self.device = device if device else _device.DEVICE
 
-    return dx
+        if lattice is None:
+            self.lattice = lattice
+        else:
+            try:
+                self.lattice = torch.tensor(
+                    lattice, dtype=self.dtype, device=self.device
+                ).reshape(3, 3)
+            except RuntimeError:
+                logger.error(
+                    f"Unexpected lattice matrix type or dimension", exception=ValueError
+                )
 
-  def apply_pbc(self, dx: Tensor) -> Tensor:
-    """
-    Apply the periodic boundary condition (PBC) on input tensor.
+        super().__init__()
 
-    :param dx: Position difference
-    :type dx: Tensor
-    :return: PBC applied position difference
-    :rtype: Tensor
-    """    
-    return Box._apply_pbc(dx, self.lattice)
+    @staticmethod
+    def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
+        """
+        [Kernel]
+        Apply periodic boundary condition (PBC) along x,y, and z directions.
 
-  def pbc_shift_atoms(self, x: Tensor) -> Tensor:
-    """
-    Shift atom coordinates inside the PBC box. 
+        :param dx: Position difference
+        :type dx: Tensor
+        :param lattice: lattice matrix
+        :type lattice: Tensor
+        :return: PBC applied position
+        :rtype: Tensor
+        """
+        # for i in range(3): # without broadcasting
+        #   l = lattice[i, i]
+        #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i >  0.5E0*l, dx_i - l, dx_i)
+        #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i < -0.5E0*l, dx_i + l, dx_i)
 
-    :param x: atom position
-    :type x: Tensor
-    :return: moved atom position
-    :rtype: Tensor
-    """
-    l = self.length # using broadcasting
-    x = torch.where(x > l  , x - l, x)
-    x = torch.where(x < 0.0, x + l, x)
+        l = lattice.diagonal()
+        dx = torch.where(dx > 0.5e0 * l, dx - l, dx)
+        dx = torch.where(dx < -0.5e0 * l, dx + l, dx)
 
-    if torch.any(x > l) or torch.any(x < 0.0):
-      x = self._pbc_shift_atoms(x) # recursive shift
-    else: 
-      return x   
+        return dx
 
-  @property
-  def xlo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
+    def apply_pbc(self, dx: Tensor) -> Tensor:
+        """
+        Apply the periodic boundary condition (PBC) on input tensor.
 
-  @property
-  def ylo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        :param dx: Position difference
+        :type dx: Tensor
+        :return: PBC applied position difference
+        :rtype: Tensor
+        """
+        return Box._apply_pbc(dx, self.lattice)
 
-  @property
-  def zlo(self) -> Tensor:
-    return torch.tensor(0.0, dtype=self.dtype, device=self.device)
+    def pbc_shift_atoms(self, x: Tensor) -> Tensor:
+        """
+        Shift atom coordinates inside the PBC box.
 
-  @property
-  def xhi(self) -> Tensor:
-    return self.lattice[0, 0]
+        :param x: atom position
+        :type x: Tensor
+        :return: moved atom position
+        :rtype: Tensor
+        """
+        l = self.length  # using broadcasting
+        x = torch.where(x > l, x - l, x)
+        x = torch.where(x < 0.0, x + l, x)
 
-  @property
-  def yhi(self) -> Tensor:
-    return self.lattice[1, 1]
+        if torch.any(x > l) or torch.any(x < 0.0):
+            x = self._pbc_shift_atoms(x)  # recursive shift
+        else:
+            return x
 
-  @property
-  def zhi(self) -> Tensor:
-    return self.lattice[2, 2]
+    @property
+    def xlo(self) -> Tensor:
+        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
-  @property
-  def lx(self) -> Tensor:
-    return self.xhi - self.xlo
+    @property
+    def ylo(self) -> Tensor:
+        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
-  @property
-  def ly(self) -> Tensor:
-    return self.yhi - self.ylo
+    @property
+    def zlo(self) -> Tensor:
+        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
-  @property
-  def lz(self) -> Tensor:
-    return self.zhi - self.zlo
+    @property
+    def xhi(self) -> Tensor:
+        return self.lattice[0, 0]
 
-  @property
-  def length(self) -> Tensor:
-    return self.lattice.diagonal()
+    @property
+    def yhi(self) -> Tensor:
+        return self.lattice[1, 1]
+
+    @property
+    def zhi(self) -> Tensor:
+        return self.lattice[2, 2]
+
+    @property
+    def lx(self) -> Tensor:
+        return self.xhi - self.xlo
+
+    @property
+    def ly(self) -> Tensor:
+        return self.yhi - self.ylo
+
+    @property
+    def lz(self) -> Tensor:
+        return self.zhi - self.zlo
+
+    @property
+    def length(self) -> Tensor:
+        return self.lattice.diagonal()
