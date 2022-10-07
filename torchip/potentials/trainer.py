@@ -44,7 +44,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         self.save_best_model = kwargs.get("save_best_model", True)
         self.error_metric = kwargs.get("error_metric", MSE())
         self.force_weight = kwargs.get("force_weight", 1.0)
-        # TODO: remove defining members from kwargs.get() and directly using kwargs (rename e.g. param)
+        self.atom_energy = kwargs.get("atom_energy", None)
+        # TODO: remove defining members from kwargs.get() and directly using kwargs (rename to params)
 
         # The implementation can be either as a single or multiple optimizers.
         self.optimizer = self.optimizer_func(
@@ -84,9 +85,12 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             # TODO: what if batch size > 1
             # TODO: spawn process
             structure = batch[0]
+            # ---
             structure.set_cutoff_radius(self.potential.r_cutoff)
+            if self.atom_energy:
+                structure.remove_energy_offset(self.atom_energy)
 
-            # Calculate energy and force
+            # Predict energy and force
             energy = self.potential(structure)  # total energy
             force = -gradient(energy, structure.position)
 
@@ -111,6 +115,10 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 energy, structure.total_energy, structure.natoms
             )
             frc_error = self.error_metric(force, structure.force)
+
+            # ---
+            if self.atom_energy:
+                structure.add_energy_offset(self.atom_energy)
 
             # Update weights
             if not validation_mode and (epoch_index is None or epoch_index > 0):

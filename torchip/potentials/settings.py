@@ -1,11 +1,12 @@
+from typing import Mapping, Any
 from ..logger import logger
 from ..utils.tokenize import tokenize
 from ..structure.element import ElementMap
 from .base import Settings
 from pathlib import Path
 
-nnp_default_settings = {
-    "symfunction_short": [],
+nnp_default_settings: Mapping[str, Any] = {
+    "symfunction_short": list(),
     "epochs": 1,
     "updater_type": 0,
     "gradient_type": 1,
@@ -15,6 +16,7 @@ nnp_default_settings = {
     "weights_max": 1.0,
     "test_fraction": 0.1,
     "force_weight": 1.0,
+    "atom_energy": dict(),
     # TODO: add all default values
 }
 
@@ -25,7 +27,7 @@ class NeuralNetworkPotentialSettings(Settings):
     It's in fact a dictionary representation of the NNP settgins including descriptor, scaler, and model.
     """
 
-    cutoff_function_map = {
+    cutoff_function_map: Mapping[str, str] = {
         "0": "hard",
         "1": "cos",
         "2": "tanhu",
@@ -35,7 +37,7 @@ class NeuralNetworkPotentialSettings(Settings):
         "6": "poly2",
         # TODO: poly 3 & 4
     }
-    scaler_type_map = {
+    scaler_type_map: Mapping[str, str] = {
         "center_symmetry_functions": "center",
         "scale_symmetry_functions": "scale",
         "scale_center_symmetry_functions": "scale_center",
@@ -77,6 +79,8 @@ class NeuralNetworkPotentialSettings(Settings):
                     self._settings[keyword] = sorted(
                         set([t for t in tokens]), key=ElementMap.get_atomic_number
                     )
+                elif keyword == "atom_energy":
+                    self._settings[keyword].update({tokens[0]: float(tokens[1])})
                 elif keyword == "cutoff_type":
                     self._settings[keyword] = self.cutoff_function_map[tokens[0]]
                 elif keyword == "symfunction_short":

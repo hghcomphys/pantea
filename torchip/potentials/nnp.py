@@ -206,6 +206,7 @@ class NeuralNetworkPotential(Potential):
             self.settings["main_error_metric"], reduction="mean"
         )
         trainer_kwargs["force_weight"] = self.settings["force_weight"]
+        trainer_kwargs["atom_energy"] = self.settings["atom_energy"]
 
         if self.settings["updater_type"] == 0:  # Gradient Descent
             if self.settings["gradient_type"] == 1:  # Adam
