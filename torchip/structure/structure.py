@@ -20,7 +20,7 @@ class Structure(BaseTorchipClass):
     """
     Structure class contains arrays of atomic information including position, forces, energy, cell, and  more)
     for a collection of atoms in a simulation box.
-    An instance of the Structure class is an unit of atomic data which being used to calculate the (atomic) descreptors.
+    An instance of the Structure class is an unit of atomic data which being used to calculate the (atomic) descriptors.
     For computational reasons, vectors, more precisely tensors, of atomic data are used instead of defining
     individual atoms as a unit of the atomic data.
 
@@ -36,7 +36,7 @@ class Structure(BaseTorchipClass):
     Some methods are intoduced here to avoid gradient whenever it's possible.
     """
 
-    _atomic_attributes = [
+    _atomic_attributes: Tuple[str] = (
         "position",  # per-atom position x, y, and z
         "force",  # per-atom force components x, y, and z
         #'charge',       # per-atom electric charge
@@ -44,11 +44,11 @@ class Structure(BaseTorchipClass):
         "lattice",  # vectors of super cell 3x3 matrix
         "total_energy",  # total energy of atoms in simulation box
         #'total_charger' # total charge of atoms in simulation box
-    ]
-    _differentiable_atomic_attributes = [
+    )
+    _differentiable_atomic_attributes: Tuple[str] = (
         "position",  # force = -gradient(energy, position)
-        #'charge, '      # TODO: for lang range interaction using charge models
-    ]
+        #'charge, '  # TODO: for lang range interaction using charge models
+    )
 
     def __init__(
         self,
@@ -60,7 +60,7 @@ class Structure(BaseTorchipClass):
         **kwargs,
     ) -> None:
         """
-        Initialize a structure including tensors, neighbor list atoms, simulation box, etc.
+        Initialize structure including tensors, neighbor list atoms, simulation box, etc.
 
         :param data: A dictionary representation of atomic data including position, charge, energy, etc.
         :type data: Dict
@@ -247,7 +247,10 @@ class Structure(BaseTorchipClass):
         return dis if not return_difference else (dis, dx)
 
     def calculate_distance(
-        self, aid: int, neighbors=None, return_difference=False
+        self,
+        aid: int,
+        neighbors=None,
+        return_difference=False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
         Return a tensor of distances between a specific atom and all atoms existing in the structure.
@@ -357,3 +360,39 @@ class Structure(BaseTorchipClass):
             result["eng_diff"] = eng_diff
 
         return result
+
+    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Tensor:
+        """
+        Return a tensor of energy offset.
+
+        :param atom_energy: atom reference energy
+        :type atom_energy: Dict[str, float]
+        :return: energy offset
+        :rtype: Tensor
+        """
+        energy_offset: Tensor = torch.empty_like(self.energy)
+        for element in self.elements:
+            energy_offset[self.select(element)] = atom_energy[element]
+        return energy_offset
+
+    def remove_energy_offset(self, atom_energy: Dict[str, float]) -> None:
+        """
+        Remove the given atom reference energies from the per-atom and total energy.
+
+        :param atom_energy: atom reference energy
+        :type atom_energy: Dict[str, float]
+        """
+        energy_offset = self._get_energy_offset(atom_energy)
+        self.energy -= energy_offset
+        self.total_energy -= energy_offset.sum()
+
+    def add_energy_offset(self, atom_energy: Dict[str, float]) -> None:
+        """
+        Add the given atom reference energies from the per-atom and total energy.
+
+        :param atom_energy: atom reference energy
+        :type atom_energy: Dict[str, float]
+        """
+        energy_offset = self._get_energy_offset(atom_energy)
+        self.energy += energy_offset
+        self.total_energy += energy_offset.sum()
