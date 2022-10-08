@@ -42,7 +42,7 @@ class DataType(_CFG):
     """
 
     _conf = {
-        "FLOAT": torch.float,
+        "FLOATX": torch.float,
         "INT": torch.long,
         "UINT": torch.long,
         "INDEX": torch.long,

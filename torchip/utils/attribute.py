@@ -12,7 +12,7 @@ def set_as_attribute(
     postfix: str = "",
 ) -> None:
     """
-    An utility function to set an input dictionary of items as the class attributes.
+    An utility function to set an input dictionary of items as the given object attributes.
 
     Args:
         obj (Any): an instance
@@ -27,7 +27,7 @@ def set_as_attribute(
 
 def cast_to_tensor(x) -> Tensor:
     """
-    An utility function to cast input variable (scaler, array, etc)
+    An utility function to cast input variable (scalar, array, etc)
     to torch tensor with predefined data and device types.
 
     Args:
@@ -36,4 +36,4 @@ def cast_to_tensor(x) -> Tensor:
     Returns:
         Tensor: casted input to a tensor
     """
-    return torch.tensor(x, dtype=dtype.FLOAT, device=device.DEVICE)
+    return torch.tensor(x, dtype=dtype.FLOATX, device=device.DEVICE)

@@ -1,9 +1,9 @@
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from ..structure.structure import Structure
 from typing import Dict
 
 
-class Transformer(BaseTorchipClass):
+class Transformer(BaseTorchip):
     """
     A base transformer class which applies on the structure dataset.
     """

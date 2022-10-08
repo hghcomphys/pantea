@@ -1,8 +1,8 @@
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from torch.utils.data import Dataset
 
 
-class StructureDataset(BaseTorchipClass, Dataset):
+class StructureDataset(BaseTorchip, Dataset):
     """
     A base class for atomic data structure in a lazy mode.
     All future atomic datasets must be derived from this class.

@@ -2,14 +2,14 @@ from multiprocessing.connection import wait
 from ..logger import logger
 from ..config import dtype as _dtype
 from ..config import device as _device
-from .base import BaseTorchipClass
+from .base import BaseTorchip
 from torch import Tensor
 from pathlib import Path
 import torch
 import numpy as np
 
 
-class DescriptorScaler(BaseTorchipClass):
+class DescriptorScaler(BaseTorchip):
     """
     Scale descriptor values.
     TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
@@ -32,7 +32,7 @@ class DescriptorScaler(BaseTorchipClass):
         self.scale_type = scale_type
         self.scale_min = scale_min
         self.scale_max = scale_max
-        self.dtype = dtype if dtype else _dtype.FLOAT
+        self.dtype = dtype if dtype else _dtype.FLOATX
         self.device = device if device else _device.DEVICE
         logger.debug(f"Initializing {self}")
 

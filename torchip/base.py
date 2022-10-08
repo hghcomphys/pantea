@@ -1,7 +1,7 @@
 from .logger import logger
 
 
-class BaseTorchipClass:
+class BaseTorchip:
     """
     A base class which all other classes have to be derived from this one.
     It's basically intended to be used for setting the global properties or methods
