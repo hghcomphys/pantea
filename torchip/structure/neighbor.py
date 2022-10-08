@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from ..config import dtype
 from ..utils.attribute import set_as_attribute
 
@@ -7,9 +7,9 @@ from ..utils.attribute import set_as_attribute
 import torch
 
 
-class Neighbor(BaseTorchipClass):
+class Neighbor(BaseTorchip):
     """
-    Neighbor class creates a neighbor list of atom for the input structure.
+    Neighbor creates a neighbor list of atoms for an input structure.
     Neighbor is teated as a buffer which classes are responsible to prepare it before using.
 
     It is designed to be independent of the input structure.
@@ -46,7 +46,7 @@ class Neighbor(BaseTorchipClass):
         :param structure: An instance of Structure
         :type structure: Dict[Tensor]
         """
-        # TODO: reduce natoms*natoms tensor size!
+        # FIXME: reduce natoms*natoms tensor size!
         # TODO: define max_num_neighbor to avoid extra memory allocation!
 
         # Avoid re-allocating structure with the same size
@@ -63,7 +63,9 @@ class Neighbor(BaseTorchipClass):
 
         # Neighbor atoms numbers and indices
         self.tensors["number"] = torch.empty(
-            structure.natoms, dtype=dtype.UINT, device=structure.device
+            structure.natoms,
+            dtype=dtype.UINT,
+            device=structure.device,
         )
         self.tensors["index"] = torch.empty(
             structure.natoms,
@@ -82,8 +84,8 @@ class Neighbor(BaseTorchipClass):
 
     def update(self, structure) -> None:
         """
-        This method updates the neighbor atom tensors including the number of neighbor and neighbor atom indices
-        within the input structure.
+        This method updates the neighbor atom tensors including the number of neighbor and neighbor atom
+        indices for the input structure.
         """
         # TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
         if not self.r_cutoff:
@@ -104,9 +106,8 @@ class Neighbor(BaseTorchipClass):
         with torch.no_grad():
             nn = self.number
             ni = self.index
-            for aid in range(
-                structure.natoms
-            ):  # TODO: optimization: torch unbind or vmap
+            # TODO: optimization: torch unbind or vmap
+            for aid in range(structure.natoms):
                 rij = structure.calculate_distance(aid)
                 # Get atom indices within the cutoff radius
                 ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]

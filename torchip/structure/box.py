@@ -1,12 +1,12 @@
 from ..logger import logger
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from ..config import dtype as _dtype
 from ..config import device as _device
 from torch import Tensor
 import torch
 
 
-class Box(BaseTorchipClass):
+class Box(BaseTorchip):
     """
     Box class extract Box info from the lattice matrix.
     Currently, it only works for orthogonal lattice.
@@ -14,7 +14,12 @@ class Box(BaseTorchipClass):
     TODO: triclinic lattice
     """
 
-    def __init__(self, lattice: Tensor, dtype=None, device=None) -> None:
+    def __init__(
+        self,
+        lattice: Tensor,
+        dtype=None,
+        device=None,
+    ) -> None:
         """
         Initialize simulation box (super-cell).
 
@@ -24,7 +29,7 @@ class Box(BaseTorchipClass):
         :param device: Device on which tensors are allocated, defaults to None
         :type device: torch.device, optional
         """
-        self.dtype = dtype if dtype else _dtype.FLOAT
+        self.dtype = dtype if dtype else _dtype.FLOATX
         self.device = device if device else _device.DEVICE
 
         if lattice is None:
@@ -95,40 +100,16 @@ class Box(BaseTorchipClass):
             return x
 
     @property
-    def xlo(self) -> Tensor:
-        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
-
-    @property
-    def ylo(self) -> Tensor:
-        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
-
-    @property
-    def zlo(self) -> Tensor:
-        return torch.tensor(0.0, dtype=self.dtype, device=self.device)
-
-    @property
-    def xhi(self) -> Tensor:
+    def lx(self) -> Tensor:
         return self.lattice[0, 0]
 
     @property
-    def yhi(self) -> Tensor:
+    def ly(self) -> Tensor:
         return self.lattice[1, 1]
 
     @property
-    def zhi(self) -> Tensor:
-        return self.lattice[2, 2]
-
-    @property
-    def lx(self) -> Tensor:
-        return self.xhi - self.xlo
-
-    @property
-    def ly(self) -> Tensor:
-        return self.yhi - self.ylo
-
-    @property
     def lz(self) -> Tensor:
-        return self.zhi - self.zlo
+        return self.lattice[2, 2]
 
     @property
     def length(self) -> Tensor:

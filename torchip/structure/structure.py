@@ -1,5 +1,6 @@
+from __future__ import annotations
 from ..logger import logger
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from ..config import dtype as _dtype
 from ..config import device as _device
 from ..utils.attribute import set_as_attribute
@@ -16,24 +17,26 @@ import numpy as np
 # import structure_cpp
 
 
-class Structure(BaseTorchipClass):
+class Structure(BaseTorchip):
     """
-    Structure class contains arrays of atomic information including position, forces, energy, cell, and  more)
-    for a collection of atoms in a simulation box.
-    An instance of the Structure class is an unit of atomic data which being used to calculate the (atomic) descriptors.
-    For computational reasons, vectors, more precisely tensors, of atomic data are used instead of defining
+    A structure tensors of atomic information including positions, forces, per-atom and total energy,
+    cell matrix, and  more) for a collection of atoms in the simulation box.
+    An instance of the Structure class is a defined unit of the atomic data that
+    is used to calculate the (atomic) descriptors.
+    For computational reasons tensors of atomic data are used instead of defining
     individual atoms as a unit of the atomic data.
 
-    The most computationally expensive section of this class is when calculating the neighbor list.
-    This task is done by giving an instance of Structure to the Neighbor class which is responsible
+    The most computationally expensive section of a structure is utilized for calculating the neighbor list.
+    This is done by giving an instance of Structure to the Neighbor class which is responsible
     for updating the neighbor lists.
 
-    For the MPI implementation, this class can be considered as one domain in domain decomposition method (see miniMD code).
+    For the MPI implementation, this class can be considered as one domain
+    in domain decomposition method (see miniMD code).
     An C++ implementation might be required for MD simulation but not necessarily developing ML potential.
 
-    Also tensor for atomic positions (and probably atomic change in future) has to be differentiable and this requires
-    keeping track of all operations in the computational graph that can lead ot to large memory usage.
-    Some methods are intoduced here to avoid gradient whenever it's possible.
+    Tensors assigned to atomic positions and charges must be differentiable and this requires
+    keeping track of all operations in the (PyTorch) computational graph that can lead to large memory usage.
+    Some methods are intoduced here to avoid gradient whenever it's possible, e.g. torch.no_grad().
     """
 
     _atomic_attributes: Tuple[str] = (
@@ -73,17 +76,15 @@ class Structure(BaseTorchipClass):
         :param position_grad: whether the position tensor is differentiable or not, defaults to True
         :type position_grad: bool, optional
         """
-        self.dtype = dtype if dtype else _dtype.FLOAT
+        self.dtype = dtype if dtype else _dtype.FLOATX
         self.device = device if device else _device.DEVICE
         self.requires_grad = requires_grad
         self.requires_neighbor_update = True
-        # Additional input arguments
-        self.element_map = kwargs.get("element_map", None)  # an instance of element map
-        self.tensors = kwargs.get(
-            "tensors", None
-        )  # tensors including position, energy, etc.
-        self.box = kwargs.get("box", None)  # an instance of simulation box
-        self.neighbor = kwargs.get("neighbor", None)  # an instance of Neighbor atoms
+
+        self.element_map: ElementMap = kwargs.get("element_map", None)
+        self.tensors: Dict[str, Tensor] = kwargs.get("tensors", None)
+        self.box: Box = kwargs.get("box", None)
+        self.neighbor: Neighbor = kwargs.get("neighbor", None)
 
         if data:
             try:
@@ -92,20 +93,19 @@ class Structure(BaseTorchipClass):
                 self._init_box(data["lattice"])
             except KeyError:
                 logger.error(
-                    f"Cannot find one of the expected atomic attributes in input data:"
+                    f"Cannot find at least one of the expected atomic attributes in the input data:"
                     f"{''.join(self._atomic_attributes)}",
                     exception=KeyError,
                 )
-
         self._init_neighbor(r_cutoff)
 
         if self.tensors:
             set_as_attribute(self, self.tensors)
 
-        # TODO: test beforehand
-        # if self.box:
-        #   logger.print("Reposition atoms inside the PBC box")
-        #   self.position = self.box.pbc_shift_atoms(self.position)
+        # TODO: test
+        if self.box.lattice:
+            logger.print("Reposition atoms inside the PBC simulation box")
+            self.position = self.box.pbc_shift_atoms(self.position)
 
         super().__init__()
 
@@ -138,14 +138,17 @@ class Structure(BaseTorchipClass):
         Set cutoff radius of the structure.
         This method is useful when having a potential with different cutoff radius.
 
-        :param r_cutoff: New cutoff radius
+        :param r_cutoff: new cutoff radius
         :type r_cutoff: float
         """
         self._init_neighbor(r_cutoff)
 
     def _init_box(self, lattice: Tensor) -> None:
         """
-        Create a simulation box object using provided lattice tensor.
+        Create a simulation box object using the provided lattice tensor.
+
+        :param lattice: 3x3 lattice matrix
+        :type lattice: Tensor
         """
         if len(lattice) > 0:
             self.box = Box(lattice)
@@ -201,26 +204,17 @@ class Structure(BaseTorchipClass):
 
     def update_neighbor(self) -> None:
         """
-        update neighbor list.
-        This is a computationally expensive method.
+        Update the neighbor list of the structure.
+        This can be computationally expensive.
         """
         self.neighbor.update(self)
-
-    def reset_cutoff_radius(self, r_cutoff: float) -> None:
-        """
-        Reset cutoff radius of the neighbor list instance.
-
-        :param r_cutoff: New cutoff radius
-        :type r_cutoff: float
-        """
-        self.neighbor.reset_cutoff_radius(r_cutoff)
 
     @staticmethod
     def _calculate_distance(
         pos: Tensor,
         aid: int,
         lattice: Tensor = None,
-        neighbors=None,
+        neighbors: Tensor = None,  # index
         return_difference: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
@@ -231,25 +225,22 @@ class Structure(BaseTorchipClass):
         """
         x = pos
         x = x[neighbors] if neighbors is not None else x
-        x = (
-            torch.unsqueeze(x, dim=0) if x.ndim == 1 else x
-        )  # when the neighbors index is a scalar
+        x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x
         dx = pos[aid] - x
 
         # Apply PBC along x,y, and z directions if needed
         if lattice is not None:
             dx = Box._apply_pbc(dx, lattice)
 
-        # Calculate distance from dx tensor
-        dis = torch.linalg.vector_norm(dx, dim=1)
+        distance: Tensor = torch.linalg.vector_norm(dx, dim=1)
 
         # Return results
-        return dis if not return_difference else (dis, dx)
+        return distance if not return_difference else (distance, dx)
 
     def calculate_distance(
         self,
         aid: int,
-        neighbors=None,
+        neighbors: Tensor = None,  # index
         return_difference=False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
@@ -266,6 +257,11 @@ class Structure(BaseTorchipClass):
     def select(self, element: str) -> Tensor:
         """
         Return all atom ids with atom type same as the input element.
+
+        :param element: element
+        :type element: str
+        :return: atom indices
+        :rtype: Tensor
         """
         return torch.nonzero(self.atype == self.element_map[element], as_tuple=True)[0]
 
@@ -314,10 +310,10 @@ class Structure(BaseTorchipClass):
     @torch.no_grad()
     def compare(
         self,
-        other,
+        other: Structure,
         errors: Union[str, List] = "RMSEpa",
         return_difference: bool = False,
-    ) -> Dict:
+    ) -> Dict[str, float]:
         """
         Compare force and total energy values between two structures and return desired errors metrics.
 
@@ -331,11 +327,9 @@ class Structure(BaseTorchipClass):
         :rtype: Dict
         """
         # TODO: add charge, total_charge
-        result = {}
-
+        result = dict()
         frc_diff = self.force - other.force
         eng_diff = self.total_energy - other.total_energy
-
         errors = [errors] if isinstance(errors, str) else errors
         logger.info(f"Comparing two structures, error metrics: {', '.join(errors)}")
         errors = [x.lower() for x in errors]

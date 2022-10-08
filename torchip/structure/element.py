@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..base import BaseTorchipClass
+from ..base import BaseTorchip
 from typing import Union, List, Dict
 
 
@@ -113,7 +113,7 @@ _KNOWN_ELEMENTS_DICT = {
 }
 
 
-class ElementMap(BaseTorchipClass):
+class ElementMap(BaseTorchip):
     """
     This class maps elements to atomic number end vice versa.
     It also assigns an atomic type to each element which allows efficient tensor processing (e.g. applying conditions) using
