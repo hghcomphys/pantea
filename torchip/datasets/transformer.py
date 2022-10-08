@@ -17,7 +17,7 @@ class ToStructure(Transformer):
     An utility transformer that converts a structure dataset (dictionary) into to a **Structure** instance.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
 
     def __call__(self, data: Dict) -> Structure:

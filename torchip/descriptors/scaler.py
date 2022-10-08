@@ -1,4 +1,3 @@
-from multiprocessing.connection import wait
 from ..logger import logger
 from ..config import dtype as _dtype
 from ..config import device as _device
@@ -23,7 +22,7 @@ class DescriptorScaler(BaseTorchip):
         scale_max: float = 1.0,
         dtype: torch.dtype = None,
         device: torch.device = None,
-        max_number_of_warnings=100,
+        max_number_of_warnings: int = 100,
     ) -> None:
         """
         Initialize scaler including scaler type and min/max values.
@@ -37,14 +36,14 @@ class DescriptorScaler(BaseTorchip):
         logger.debug(f"Initializing {self}")
 
         # Statistical parameters
-        self.nsamples = 0  # number of samples
-        self.dimension = None  # dimension of each sample
-        self.mean = None  # mean array of all fitted descriptor values
-        self.sigma = None  # standard deviation
-        self.min = None  # minimum
-        self.max = None  # maximum
+        self.nsamples: int = 0  # number of samples
+        self.dimension: int = None  # dimension of each sample
+        self.mean: Tensor = None  # mean array of all fitted descriptor values
+        self.sigma: Tensor = None  # standard deviation
+        self.min: Tensor = None  # minimum
+        self.max: Tensor = None  # maximum
 
-        self.number_of_warnings = 0
+        self.number_of_warnings: int = 0
         self.max_number_of_warnings = max_number_of_warnings
 
         # Set scaler type function
@@ -181,4 +180,7 @@ class DescriptorScaler(BaseTorchip):
         self.sigma = torch.tensor(data[:, 3], **kwargs)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(scale_type='{self.scale_type}', scale_min={self.scale_min}, scale_max={self.scale_max})"
+        return (
+            f"{self.__class__.__name__}(scale_type='{self.scale_type}',"
+            f"scale_min={self.scale_min}, scale_max={self.scale_max})"
+        )

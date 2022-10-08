@@ -1,8 +1,8 @@
 from ..logger import logger
 from .base import BaseModel
-from typing import Tuple
+from typing import Tuple, List
 from pathlib import Path
-from torch import nn
+from torch import nn, Tensor
 import torch
 
 
@@ -24,8 +24,7 @@ class NeuralNetworkModel(BaseModel):
         self.hidden_layers = hidden_layers
         self.output_layer = output_layer
         self.weights_range = weights_range
-
-        self.network = self._create_network()
+        self.network: nn.Module = self._create_network()
 
     def _create_layer(self, in_size: int, out_size: int) -> nn.Linear:
         """
@@ -46,7 +45,7 @@ class NeuralNetworkModel(BaseModel):
         """
         # TODO: add logging
         # Prepare stack of layers
-        layers = []
+        layers: List[nn.Module] = list()
         in_size = self.input_size
         # Hidden layers
         for out_size, af_type in self.hidden_layers:
@@ -60,22 +59,23 @@ class NeuralNetworkModel(BaseModel):
         # Build a sequential model
         return nn.Sequential(*layers)
 
-    def _get_activation_function(self, type_: str):
+    def _get_activation_function(self, activation_type: str) -> nn.Module:
         """
         Return the corresponding activation function.
         See here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
         """
         # TODO: use dict map instead
-        if type_ == "t":
+        if activation_type == "t":
             return nn.Tanh()
-        elif type_ == "l":
+        elif activation_type == "l":
             return nn.Identity()  # No activation function
         else:
             logger.error(
-                f"Unknown activation function type '{type_}'", exception=ValueError
+                f"Unknown activation function type '{activation_type}'",
+                exception=ValueError,
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.network(x)
 
     def save(self, filename: Path) -> None:

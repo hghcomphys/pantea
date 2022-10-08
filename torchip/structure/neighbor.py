@@ -2,6 +2,8 @@ from ..logger import logger
 from ..base import BaseTorchip
 from ..config import dtype
 from ..utils.attribute import set_as_attribute
+from typing import Dict
+from torch import Tensor
 
 # from .structure import Structure  # TODO: circular import error
 import torch
@@ -25,7 +27,7 @@ class Neighbor(BaseTorchip):
         """
         self.r_cutoff = r_cutoff
         self.r_cutoff_updated = False
-        self.tensors = None
+        self.tensors: Dict[str, Tensor] = None
         super().__init__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
@@ -57,24 +59,21 @@ class Neighbor(BaseTorchip):
         except AttributeError:
             pass
 
-        # --------------------------
         logger.debug("Allocating tensors for neighbor list")
-        self.tensors = {}
+        self.tensors = {
+            "number": torch.empty(
+                structure.natoms,
+                dtype=dtype.UINT,
+                device=structure.device,
+            ),
+            "index": torch.empty(
+                structure.natoms,
+                structure.natoms,
+                dtype=dtype.INDEX,
+                device=structure.device,
+            ),
+        }
 
-        # Neighbor atoms numbers and indices
-        self.tensors["number"] = torch.empty(
-            structure.natoms,
-            dtype=dtype.UINT,
-            device=structure.device,
-        )
-        self.tensors["index"] = torch.empty(
-            structure.natoms,
-            structure.natoms,
-            dtype=dtype.INDEX,
-            device=structure.device,
-        )
-
-        # Logging
         for attr, tensor in self.tensors.items():
             logger.debug(
                 f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"

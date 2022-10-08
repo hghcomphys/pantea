@@ -11,11 +11,12 @@ import torch
 
 class RunnerStructureDataset(StructureDataset):
     """
-    Structure dataset for RuNNer file format.
-    The input structure file contains snapshots of atoms located in the simulation box.
-    Each snapshot includes per-atom and collective properties.
-    The per-atom properties are element name, coordinates, energy, charge, and force components.
-    the collective properties are lattice info, total energy, and total charge.
+    Structure dataset for RuNNer data file format.
+    The input structure file contains snapshots of atoms inside a simulation box.
+
+    Each snapshot includes per-atom and collective properties:
+    - per-atom properties include the element name, atom coordinates, energy, charge, and force components.
+    - collective properties are the lattice matrix, total energy, and total charge.
 
     See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
     """
@@ -25,30 +26,33 @@ class RunnerStructureDataset(StructureDataset):
 
     def __init__(
         self,
-        structure_file: Path,
+        filename: Path,
         transform: Transformer = ToStructure(),
         persist: bool = False,
-    ):
+        # download: bool = False,  # TODO
+    ) -> None:
         """
+        Initialize RuNNer structure dataset.
+
         Args:
-            structure_file (Path): Path to the RuNNer structure file.
+            filename (Path): Path to the RuNNer structure file.
             transform (Transformer, optional): Optional transform to be applied on a structure. Defaults to None.
             persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
             Also it avoids unnecessary data transfer between CPU and GPU.
         """
-        self.structure_file = Path(structure_file)
+        self.filename = Path(filename)
         self.transform = transform  # transform after loading each sample
         self.persist = persist  # enabling caching
-        self._cached_structures = {}  # a dictionary of cached structures
-        self._current_index = 0  # used only for direct iteration
+        self._cached_structures: Dict = dict()  # a dictionary of cached structures
+        self._current_index: int = 0  # used only for direct iteration
         super().__init__()
 
     def __len__(self) -> int:
         """
         This method opens the structure file and return the number of structures.
         """
-        n_structures = 0
-        with open(str(self.structure_file), "r") as file:
+        n_structures: int = 0
+        with open(str(self.filename), "r") as file:
             while self.ignore(file):
                 n_structures += 1
         return n_structures
@@ -103,15 +107,8 @@ class RunnerStructureDataset(StructureDataset):
         self._current_index = 0
         raise StopIteration
 
-    def __iter__(self):
+    def __iter__(self) -> RunnerStructureDataset:
         return self
-
-    def copy(self) -> RunnerStructureDataset:
-        """
-        Create a copy of the object.
-        No structure data is loaded into the memory.
-        """
-        return RunnerStructureDataset(self.structure_file, self.transform, self.persist)
 
     def ignore(self, file: TextIO) -> bool:
         """
@@ -178,7 +175,7 @@ class RunnerStructureDataset(StructureDataset):
 
         return sample
 
-    def _read_cache(self, index):
+    def _read_cache(self, index: int):
         """
         This method reads cached structure if persist flag is True.
         """
@@ -194,12 +191,12 @@ class RunnerStructureDataset(StructureDataset):
 
         return sample
 
-    def _read_and_transform(self, index):
+    def _read_and_transform(self, index: int):
         """
         This method reads the i-th structure and then applying the transformation.
         """
         logger.debug(f"Reading structure[{index}]")
-        with open(str(self.structure_file), "r") as file:
+        with open(str(self.filename), "r") as file:
             for _ in range(index):
                 self.ignore(file)
             sample = self.read(file)
@@ -208,7 +205,3 @@ class RunnerStructureDataset(StructureDataset):
                 sample = self.transform(sample)
 
         return sample
-
-    # def __repr__(self) -> str:
-    #   return f"{self.__class__.__name__}(structure_file='{self.structure_file.name}'" \
-    #           f", transformer={self.transform}, persist={self.persist})"

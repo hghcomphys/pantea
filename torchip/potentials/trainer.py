@@ -3,12 +3,11 @@ from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
 from ..base import BaseTorchip
-from .metric import MSE
+from .metric import ErrorMetric, MSE
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch import nn
-from torch.autograd import grad
 import numpy as np
 import torch
 
@@ -36,19 +35,23 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         """
         Initialize trainer.
         """
-        self.potential = potential
-        self.learning_rate = kwargs.get("learning_rate", 0.001)
-        self.optimizer_func = kwargs.get("optimizer_func", torch.optim.Adam)
-        self.optimizer_func_kwargs = kwargs.get("optimizer_func_kwargs", {"lr": 0.001})
-        self.criterion = kwargs.get("criterion", nn.MSELoss())
-        self.save_best_model = kwargs.get("save_best_model", True)
-        self.error_metric = kwargs.get("error_metric", MSE())
-        self.force_weight = kwargs.get("force_weight", 1.0)
-        self.atom_energy = kwargs.get("atom_energy", None)
+        self.potential: Potential = potential
+        self.learning_rate: float = kwargs.get("learning_rate", 0.001)
+        self.optimizer_func: torch.optim.Optimizer = kwargs.get(
+            "optimizer_func", torch.optim.Adam
+        )
+        self.optimizer_func_kwargs: Dict = kwargs.get(
+            "optimizer_func_kwargs", {"lr": 0.001}
+        )
+        self.criterion: nn.MSELoss = kwargs.get("criterion", nn.MSELoss())
+        self.save_best_model: bool = kwargs.get("save_best_model", True)
+        self.error_metric: ErrorMetric = kwargs.get("error_metric", MSE())
+        self.force_weight: float = kwargs.get("force_weight", 1.0)
+        self.atom_energy: Dict[str, float] = kwargs.get("atom_energy", None)
         # TODO: remove defining members from kwargs.get() and directly using kwargs (rename to params)
 
         # The implementation can be either as a single or multiple optimizers.
-        self.optimizer = self.optimizer_func(
+        self.optimizer: torch.optim.Optimizer = self.optimizer_func(
             [
                 {"params": self.potential.model[element].parameters()}
                 for element in self.potential.elements
@@ -73,8 +76,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             self.potential.train()
             prefix = "train"
 
-        nbatch = 0
-        state = defaultdict(float)
+        nbatch: int = 0
+        state: Dict[str, float] = defaultdict(float)
         # Loop over training structures
         for batch in loader:
 

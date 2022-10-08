@@ -8,15 +8,16 @@ import torch
 
 
 class CutoffFunction(BaseTorchip):
-    # """
-    # This class contains different cutoff function used for ASF descriptor.
-    # TODO: optimization
-    # TODO: add logger
-    # TODO: add poly 3 & 4 funcions
-    # See N2P2 -> https://compphysvienna.github.io/n2p2/api/cutoff_functions.html?highlight=cutoff#
-    #             https://compphysvienna.github.io/n2p2/topics/keywords.html?highlight=cutoff_type
-    # TODO: define inv_r_cutoff
-    # """
+    """
+    This class contains different cutoff function used for ASF descriptor.
+    TODO: optimization
+    TODO: add logger
+    TODO: add poly 3 & 4 funcions
+    See N2P2 -> https://compphysvienna.github.io/n2p2/api/cutoff_functions.html?highlight=cutoff#
+                https://compphysvienna.github.io/n2p2/topics/keywords.html?highlight=cutoff_type
+    TODO: define inv_r_cutoff
+    """
+
     _TANH_PRE = math.pow((math.e + 1 / math.e) / (math.e - 1 / math.e), 3)
 
     def __init__(self, r_cutoff: float, cutoff_type: str = "tanh"):

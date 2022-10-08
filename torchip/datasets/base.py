@@ -8,7 +8,7 @@ class StructureDataset(BaseTorchip, Dataset):
     All future atomic datasets must be derived from this class.
     """
 
-    def __len__(self):
+    def __len__(self) -> int:
         raise NotImplementedError
 
     def __getitem__(self, index):

@@ -1,4 +1,3 @@
-from ...logger import logger
 from .cutoff import CutoffFunction
 from .symmetry import SymmetryFunction
 from torch import Tensor

@@ -1,7 +1,6 @@
 from torchip.descriptors.base import Descriptor
 from ..logger import logger
 from ..structure import Structure
-from ..datasets.transformer import ToStructure
 from ..datasets.runner import RunnerStructureDataset
 from ..descriptors.asf.asf import ASF
 from ..descriptors.asf.cutoff import CutoffFunction
@@ -17,7 +16,6 @@ from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
 from .metric import create_error_metric
-from collections import defaultdict
 from typing import List, Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
@@ -38,8 +36,8 @@ class NeuralNetworkPotential(Potential):
     # TODO: split structure from the potential model (in design)
 
     # Saving formats
-    _scaler_save_format = "scaling.{:03d}.data"
-    _model_save_format = "weights.{:03d}.zip"
+    _scaler_save_format: str = "scaling.{:03d}.data"
+    _model_save_format: str = "weights.{:03d}.zip"
 
     def __init__(self, potfile: Path) -> None:
         """
@@ -55,10 +53,10 @@ class NeuralNetworkPotential(Potential):
 
         self.settings.read(self.potfile)
 
-        self.descriptor = self._init_descriptor()
-        self.scaler = self._init_scaler()
-        self.model = self._init_model()
-        self.trainer = self._init_trainer()
+        self.descriptor: Dict[str, Descriptor] = self._init_descriptor()
+        self.scaler: Dict[str, DescriptorScaler] = self._init_scaler()
+        self.model: Dict[str, NeuralNetworkModel] = self._init_model()
+        self.trainer: NeuralNetworkPotentialTrainer = self._init_trainer()
 
     def _init_descriptor(self) -> Dict[str, Descriptor]:
         """
@@ -140,7 +138,7 @@ class NeuralNetworkPotential(Potential):
         Initialize a descriptor scaler for each element from the potential settings.
         """
         logger.debug(f"[Setting scalers]")
-        scaler = {}
+        scaler = dict()
 
         # Prepare scaler input argument if exist in settings
         scaler_kwargs = {
@@ -165,7 +163,7 @@ class NeuralNetworkPotential(Potential):
         Initialize a neural network for each element using a dictionary representation of potential settings.
         """
         logger.debug(f"[Setting models]")
-        model = {}
+        model = dict()
 
         # Instantiate neural network model for each element
         hidden_layers = zip(
@@ -198,7 +196,7 @@ class NeuralNetworkPotential(Potential):
         The trainer is used later for fitting the energy models.
         """
         logger.debug(f"[Setting trainer]")
-        trainer_kwargs = {}
+        trainer_kwargs = dict()
 
         # General trainer parameters
         trainer_kwargs["criterion"] = nn.MSELoss()
@@ -244,12 +242,11 @@ class NeuralNetworkPotential(Potential):
             structures (RunnerStructureDataset): Structure dataset
         """
         # Set parameters
-        save_scaler = kwargs.get("save_scaler", True)
-        batch_size = kwargs.get("batch_size", 8)  # batch of atoms in each structure
+        save_scaler: bool = kwargs.get("save_scaler", True)
+        batch_size: int = kwargs.get(
+            "batch_size", 8
+        )  # batch of atoms in each structure
 
-        # Prepare structure dataset and loader (for fitting scaler)
-        # dataset_ = dataset.copy() # because of using a new transformer (no structure data will be copied)
-        # dataset_.transform = ToStructure(r_cutoff=self.r_cutoff, requires_grad=False)
         loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
         logger.info("Fitting descriptor scalers")
@@ -290,16 +287,6 @@ class NeuralNetworkPotential(Potential):
                 f"Saving scaler parameters for element ({element}): {scaler_fn.name}"
             )
             self.scaler[element].save(scaler_fn)
-        # # Save scaler parameters for all element into a single file
-        # scaler_fn = Path(self.potfile.parent, self.scaler_save_format)
-        # logger.info(f"Saving scaler parameters into '{scaler_fn}'")
-        # with open(str(scaler_fn), "w") as file:
-        #   file.write(f"# Symmetry function scaling data\n")
-        #   file.write(f"# {'Element':<10s} {'Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
-        #   for element, scaler in self.scaler.items():
-        #     for i in range(scaler.dimension):
-        #       file.write(f"  {element:<10s} ")
-        #       file.write(f"{scaler.min[i]:<23.15E} {scaler.max[i]:<23.15E} {scaler.mean[i]:<23.15E} {scaler.sigma[i]:<23.15E}\n")
 
     # @Profiler.profile
     def load_scaler(self) -> None:
@@ -317,22 +304,6 @@ class NeuralNetworkPotential(Potential):
                 f"Loading scaler parameters for element {element}: {scaler_fn.name}"
             )
             self.scaler[element].load(scaler_fn)
-        # # Load scaler parameters for all element into a single file
-        # scaler_fn = Path(self.potfile.parent, self.scaler_save_format)
-        # logger.info(f"Loading scaler parameters from '{scaler_fn}'")
-        # data = np.loadtxt(scaler_fn, usecols=(1, 2, 3, 4))
-        # element_count = Counter(np.loadtxt(scaler_fn, usecols=(0), dtype=str))
-        # index = 0
-        # for element, count in element_count.items():
-        #   scaler= self.scaler[element]
-        #   data_ = data[index:index+count, :]
-        #   scaler.sample = 1
-        #   scaler.dimension = data.shape[1]
-        #   scaler.min   = torch.tensor(data_[:, 0], device=CFG["device"]) # TODO: dtype?
-        #   scaler.max   = torch.tensor(data_[:, 1], device=CFG["device"])
-        #   scaler.mean  = torch.tensor(data_[:, 2], device=CFG["device"])
-        #   scaler.sigma = torch.tensor(data_[:, 3], device=CFG["device"])
-        #   index += count
 
     # @Profiler.profile
     def fit_model(self, dataset: RunnerStructureDataset, **kwargs) -> Dict:

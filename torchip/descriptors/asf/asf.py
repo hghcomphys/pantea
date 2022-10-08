@@ -1,10 +1,11 @@
+from torchip.descriptors.asf.symmetry import SymmetryFunction
 from ...logger import logger
 from ...structure import Structure
 from ...config import TaskClient
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Union, List, Dict
+from typing import Tuple, Union, List, Dict
 import itertools
 import torch
 from torch import Tensor
@@ -20,18 +21,14 @@ class AtomicSymmetryFunction(Descriptor):
 
     def __init__(self, element: str) -> None:
         super().__init__(element)  # central element
-        self._radial = (
-            []
-        )  # tuple(RadialSymmetryFunction , central_element, neighbor_element1)
-        self._angular = (
-            []
-        )  # tuple(AngularSymmetryFunction, central_element, neighbor_element1, neighbor_element2)
+        self._radial: Tuple[RadialSymmetryFunction, str, str] = list()
+        self._angular: Tuple[AngularSymmetryFunction, str, str, str] = list()
         # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate
         logger.debug(f"Initializing {self}")
 
     def register(
         self,
-        symmetry_function: Union[RadialSymmetryFunction, AngularSymmetryFunction],
+        symmetry_function: SymmetryFunction,
         neighbor_element1: str,
         neighbor_element2: str = None,
     ) -> None:
@@ -50,7 +47,9 @@ class AtomicSymmetryFunction(Descriptor):
             logger.error(f"Unknown input symmetry function type", exception=TypeError)
 
     def __call__(
-        self, structure: Structure, aid: Union[List[int], int] = None
+        self,
+        structure: Structure,
+        aid: Union[List[int], int] = None,
     ) -> Tensor:
         """
         Calculate descriptor values for the input given structure and atom id(s).
@@ -64,12 +63,10 @@ class AtomicSymmetryFunction(Descriptor):
                 f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}"
             )
 
-        aids_ = (
-            [aid] if isinstance(aid, int) else aid
-        )  # TODO: raise ValueError("Unknown atom id type")
-        aids_ = (
-            structure.select(self.element) if aids_ is None else aids_
-        )  # TODO: optimize ifs here
+        # TODO: raise ValueError("Unknown atom id type")
+        aids_ = [aid] if isinstance(aid, int) else aid
+        # TODO: optimize ifs here
+        aids_ = structure.select(self.element) if aids_ is None else aids_
 
         # ================ TODO: Parallel Computing ====================
         if TaskClient.client is None:
@@ -282,9 +279,6 @@ class AtomicSymmetryFunction(Descriptor):
         return max(
             [cfn[0].r_cutoff for cfn in itertools.chain(*[self._radial, self._angular])]
         )
-
-    # def __repr__(self) -> str:
-    #   return f"{self.__class__.__name__}('{self.element}')"
 
 
 # Define ASF alias
