@@ -1,7 +1,8 @@
 from ..logger import logger
 from ..base import BaseTorchip
-import torch
 from torch import Tensor
+from typing import Mapping
+import torch
 
 
 class ErrorMetric(BaseTorchip):
@@ -18,7 +19,7 @@ class ErrorMetric(BaseTorchip):
         raise NotImplementedError()
 
     def __str__(self) -> str:
-        return self.__class__.__name__
+        return f"{self.__class__.__name__}()"
 
 
 class MSE(ErrorMetric):
@@ -74,7 +75,7 @@ def create_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
     :return: An instance of desired error metric
     :rtype: ErrorMetric
     """
-    _map_error_metric = {
+    _map_error_metric: Mapping[str, ErrorMetric] = {
         "MSE": MSE,
         "RMSE": RMSE,
         "MSEpa": MSEpa,
