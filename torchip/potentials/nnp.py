@@ -16,7 +16,7 @@ from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
 from .metric import create_error_metric
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
 from torch import Tensor
@@ -190,29 +190,17 @@ class NeuralNetworkPotential(Potential):
 
         return model
 
-    def _init_trainer(self) -> NeuralNetworkPotentialTrainer:
+    def _prepare_optimizer(self) -> torch.optim.Optimizer:
         """
-        This method initializes a trainer instance including optimizer, loss function, criterion, etc from the settings.
-        The trainer is used later for fitting the energy models.
+        Prepare optimizer using potential settings.
+
+        :return: optimizer
+        :rtype: torch.optim.Optimizer
         """
-        logger.debug(f"[Setting trainer]")
-        trainer_kwargs = dict()
-
-        # General trainer parameters
-        trainer_kwargs["criterion"] = nn.MSELoss()
-        trainer_kwargs["error_metric"] = create_error_metric(
-            self.settings["main_error_metric"], reduction="mean"
-        )
-        trainer_kwargs["force_weight"] = self.settings["force_weight"]
-        trainer_kwargs["atom_energy"] = self.settings["atom_energy"]
-
         if self.settings["updater_type"] == 0:  # Gradient Descent
             if self.settings["gradient_type"] == 1:  # Adam
-                trainer_kwargs["learning_rate"] = self.settings[
-                    "gradient_adam_eta"
-                ]  # TODO: defining learning_rate?
-                trainer_kwargs["optimizer_func"] = torch.optim.Adam
-                trainer_kwargs["optimizer_func_kwargs"] = {
+                optimizer_cls = torch.optim.Adam
+                optimizer_cls_kwargs = {
                     "lr": self.settings["gradient_adam_eta"],
                     "betas": (
                         self.settings["gradient_adam_beta1"],
@@ -227,9 +215,30 @@ class NeuralNetworkPotential(Potential):
                     exception=NotImplementedError,
                 )
 
-        # Create trainer instance
-        logger.debug(f"Trainer kwargs={trainer_kwargs}")
-        return NeuralNetworkPotentialTrainer(self, **trainer_kwargs)
+        # This can be either as a single or multiple optimizers # TODO: test
+        optimizer = optimizer_cls(
+            [{"params": self.model[element].parameters()} for element in self.elements],
+            **optimizer_cls_kwargs,
+        )
+
+        return optimizer
+
+    def _init_trainer(self) -> NeuralNetworkPotentialTrainer:
+        """
+        This method initializes a trainer instance including optimizer, loss function, criterion, and so on
+        from the potential settings.
+        The trainer is used later for fitting the energy models.
+        """
+        logger.debug(f"[Setting trainer]")
+
+        return NeuralNetworkPotentialTrainer(
+            potential=self,
+            optimizer=self._prepare_optimizer(),
+            # criterion=nn.MSELoss(),  # TODO: select from potential setting
+            error_metric=create_error_metric(self.settings["main_error_metric"]),
+            force_weight=self.settings["force_weight"],
+            atom_energy=self.settings["atom_energy"],
+        )
 
     # @Profiler.profile
     @torch.no_grad()
