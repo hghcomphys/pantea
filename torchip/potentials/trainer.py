@@ -2,6 +2,7 @@ from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
+from ..utils.attribute import set_as_attribute
 from ..base import BaseTorchip
 from .metric import ErrorMetric, MSE
 from collections import defaultdict
@@ -31,35 +32,30 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
 
-    def __init__(self, potential: Potential, **kwargs) -> None:
+    def __init__(
+        self,
+        potential: Potential,
+        optimizer: torch.optim.Optimizer,
+        criterion: nn.MSELoss = nn.MSELoss(),
+        error_metric: ErrorMetric = MSE(),
+        save_best_model: bool = True,
+        force_weight: float = 1.0,
+        atom_energy: Dict[str, float] = None,
+        **kwargs,
+    ) -> None:
         """
         Initialize trainer.
         """
-        self.potential: Potential = potential
-        self.learning_rate: float = kwargs.get("learning_rate", 0.001)
-        self.optimizer_func: torch.optim.Optimizer = kwargs.get(
-            "optimizer_func", torch.optim.Adam
-        )
-        self.optimizer_func_kwargs: Dict = kwargs.get(
-            "optimizer_func_kwargs", {"lr": 0.001}
-        )
-        self.criterion: nn.MSELoss = kwargs.get("criterion", nn.MSELoss())
-        self.save_best_model: bool = kwargs.get("save_best_model", True)
-        self.error_metric: ErrorMetric = kwargs.get("error_metric", MSE())
-        self.force_weight: float = kwargs.get("force_weight", 1.0)
-        self.atom_energy: Dict[str, float] = kwargs.get("atom_energy", None)
-        # TODO: remove defining members from kwargs.get() and directly using kwargs (rename to params)
+        self.potential = potential
+        self.optimizer = optimizer
+        self.criterion = criterion
+        self.save_best_model = save_best_model
+        self.error_metric = error_metric
+        self.force_weight = force_weight
+        self.atom_energy = atom_energy
+        set_as_attribute(self, kwargs)
 
-        # The implementation can be either as a single or multiple optimizers.
-        self.optimizer: torch.optim.Optimizer = self.optimizer_func(
-            [
-                {"params": self.potential.model[element].parameters()}
-                for element in self.potential.elements
-            ],
-            **self.optimizer_func_kwargs,
-        )
-
-        logger.debug(f"Initializing {self}")
+        super().__init__()
 
     def fit_one_epoch(
         self,
@@ -251,6 +247,6 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(optimizer={self.optimizer}, "
-            f"criterion={self.criterion}, error_metric={self.error_metric})"
+            f"{self.__class__.__name__}(\npotential={self.potential}, \noptimizer={self.optimizer}, "
+            f"\ncriterion={self.criterion}, \nerror_metric={self.error_metric})"
         )
