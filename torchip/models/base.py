@@ -1,8 +1,8 @@
-from ..base import BaseTorchip
+from ..base import _Base
 from torch import nn
 
 
-class BaseModel(nn.Module, BaseTorchip):
+class BaseModel(nn.Module, _Base):
     """
     A base class for all kinds of ML-based potential models.
     """

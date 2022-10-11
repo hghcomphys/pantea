@@ -1,11 +1,11 @@
 from ..logger import logger
-from ..base import BaseTorchip
+from ..base import _Base
 from torch import Tensor
 from typing import Mapping
 import torch
 
 
-class ErrorMetric(BaseTorchip):
+class ErrorMetric(_Base):
     """
     A base error metric class.
     Note: gradient calculations is disabled for all error metrics.

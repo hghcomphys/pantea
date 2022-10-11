@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ..logger import logger
-from ..base import BaseTorchip
+from ..base import _Base
 from ..config import dtype as _dtype
 from ..config import device as _device
 from ..utils.attribute import set_as_attribute
@@ -17,7 +17,7 @@ import numpy as np
 # import structure_cpp
 
 
-class Structure(BaseTorchip):
+class Structure(_Base):
     """
     A structure tensors of atomic information including positions, forces, per-atom and total energy,
     cell matrix, and  more) for a collection of atoms in the simulation box.

@@ -1,12 +1,12 @@
 from ..logger import logger
-from ..base import BaseTorchip
+from ..base import _Base
 from ..config import dtype as _dtype
 from ..config import device as _device
 from torch import Tensor
 import torch
 
 
-class Box(BaseTorchip):
+class Box(_Base):
     """
     Box class extract Box info from the lattice matrix.
     Currently, it only works for orthogonal lattice.

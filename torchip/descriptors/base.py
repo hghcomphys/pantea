@@ -1,7 +1,7 @@
-from ..base import BaseTorchip
+from ..base import _Base
 
 
-class Descriptor(BaseTorchip):
+class Descriptor(_Base):
     """
     A base descriptor class.
     All descriptors must derive from this class.

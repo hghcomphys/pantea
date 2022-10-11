@@ -1,14 +1,14 @@
 from ..logger import logger
 from ..config import dtype as _dtype
 from ..config import device as _device
-from .base import BaseTorchip
+from .base import _Base
 from torch import Tensor
 from pathlib import Path
 import torch
 import numpy as np
 
 
-class DescriptorScaler(BaseTorchip):
+class DescriptorScaler(_Base):
     """
     Scale descriptor values.
     TODO: see https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html

@@ -1,10 +1,10 @@
 from ...logger import logger
-from ...base import BaseTorchip
+from ...base import _Base
 from .cutoff import CutoffFunction
 from torch import Tensor
 
 
-class SymmetryFunction(BaseTorchip):
+class SymmetryFunction(_Base):
     """
     A base class for symmetry functions.
     All symmetry functions (i.e. radial and angular) must derive from this base class.

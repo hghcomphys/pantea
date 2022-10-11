@@ -3,7 +3,7 @@ from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
 from ..utils.attribute import set_as_attribute
-from ..base import BaseTorchip
+from ..base import _Base
 from .metric import ErrorMetric, MSE
 from collections import defaultdict
 from typing import Dict
@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 
-class BasePotentialTrainer(BaseTorchip):
+class BasePotentialTrainer(_Base):
     """
     A trainer class for fitting a generic potential.
     This class must be independent of the type of the potential.
