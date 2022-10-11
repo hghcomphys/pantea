@@ -1,5 +1,5 @@
 from ..logger import logger
-from ..base import BaseTorchip
+from ..base import _Base
 from ..config import dtype
 from ..utils.attribute import set_as_attribute
 from typing import Dict
@@ -9,12 +9,13 @@ from torch import Tensor
 import torch
 
 
-class Neighbor(BaseTorchip):
+class Neighbor(_Base):
     """
     Neighbor creates a neighbor list of atoms for an input structure.
-    Neighbor is teated as a buffer which classes are responsible to prepare it before using.
+    Neighbor class is utilized as a tensor buffer which is responsible for preparing a list
+    of neighbor it before using.
 
-    It is designed to be independent of the input structure.
+    Its design should be independent of the input structure.
     For MD simulations, re-neighboring the list is required every few steps (e.g. by defining a skin radius).
     """
 
