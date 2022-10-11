@@ -11,16 +11,15 @@ from ..models.nn import NeuralNetworkModel
 from ..utils.batch import create_batch
 from ..utils.profiler import Profiler
 from ..structure.element import ElementMap
-from ..config import dtype, device
+from ..config import device
 from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
 from .metric import create_error_metric
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
 from torch import Tensor
-from torch import nn
 import torch
 
 
@@ -64,7 +63,7 @@ class NeuralNetworkPotential(Potential):
         symmetry functions from the potential settings.
         """
         # TODO: add logging
-        logger.debug(f"[Setting descriptors]")
+        logger.debug("[Setting descriptors]")
         descriptor = {}
 
         # Elements
@@ -137,7 +136,7 @@ class NeuralNetworkPotential(Potential):
         """
         Initialize a descriptor scaler for each element from the potential settings.
         """
-        logger.debug(f"[Setting scalers]")
+        logger.debug("[Setting scalers]")
         scaler = dict()
 
         # Prepare scaler input argument if exist in settings
@@ -162,7 +161,7 @@ class NeuralNetworkPotential(Potential):
         """
         Initialize a neural network for each element using a dictionary representation of potential settings.
         """
-        logger.debug(f"[Setting models]")
+        logger.debug("[Setting models]")
         model = dict()
 
         # Instantiate neural network model for each element
@@ -229,7 +228,7 @@ class NeuralNetworkPotential(Potential):
         from the potential settings.
         The trainer is used later for fitting the energy models.
         """
-        logger.debug(f"[Setting trainer]")
+        logger.debug("[Setting trainer]")
 
         return NeuralNetworkPotentialTrainer(
             potential=self,
@@ -363,7 +362,8 @@ class NeuralNetworkPotential(Potential):
     def train(self, mode: bool = True) -> None:
         """
         Set pytorch models in training mode.
-        This is because layers like dropout, batch normalization etc. behave differently on the train and test procedures.
+        This is because layers like dropout, batch normalization etc. behave differently on the train
+        and test procedures.
         """
         for element in self.elements:
             self.model[element].train(mode)
@@ -371,7 +371,8 @@ class NeuralNetworkPotential(Potential):
     def eval(self) -> None:
         """
         Set pytorch models in evaluation mode.
-        This is because layers like dropout, batch normalization etc. behave differently on the train and test procedures.
+        This is because layers like dropout, batch normalization etc. behave differently on the train
+        and test procedures.
         """
         for element in self.elements:
             self.model[element].eval()

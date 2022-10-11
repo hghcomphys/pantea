@@ -42,15 +42,15 @@ class Structure(BaseTorchip):
     _atomic_attributes: Tuple[str] = (
         "position",  # per-atom position x, y, and z
         "force",  # per-atom force components x, y, and z
-        #'charge',       # per-atom electric charge
         "energy",  # per-atom energy
         "lattice",  # vectors of super cell 3x3 matrix
         "total_energy",  # total energy of atoms in simulation box
-        #'total_charger' # total charge of atoms in simulation box
+        # 'charge',       # per-atom electric charge
+        # 'total_charger' # total charge of atoms in simulation box
     )
     _differentiable_atomic_attributes: Tuple[str] = (
         "position",  # force = -gradient(energy, position)
-        #'charge, '  # TODO: for lang range interaction using charge models
+        # 'charge, '  # TODO: for lang range interaction using charge models
     )
 
     def __init__(
@@ -199,7 +199,8 @@ class Structure(BaseTorchip):
         # Logging
         for attr, tensor in self.tensors.items():
             logger.debug(
-                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
+                f"{attr:12} -> Tensor(shape='{tensor.shape}',"
+                f"dtype='{tensor.dtype}', device='{tensor.device}')"
             )
 
     def update_neighbor(self) -> None:
@@ -278,7 +279,10 @@ class Structure(BaseTorchip):
         return self.neighbor.r_cutoff
 
     def __repr__(self) -> str:
-        return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype}, device={self.device})"
+        return (
+            f"Structure(natoms={self.natoms}, elements={self.elements}"
+            f", dtype={self.dtype}, device={self.device})"
+        )
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -295,7 +299,7 @@ class Structure(BaseTorchip):
         This method returns an ASE representation (atoms) of the structure.
         The returned object can be used to visualize or modify the structure using the ASE package.
         """
-        logger.info(f"Creating a representation of the structure in form of ASE atoms")
+        logger.info("Creating a representation of the structure in form of ASE atoms")
         BOHR_TO_ANGSTROM = 0.529177  # TODO: Unit class or input length_conversion
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atype],

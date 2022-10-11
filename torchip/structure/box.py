@@ -41,7 +41,7 @@ class Box(BaseTorchip):
                 ).reshape(3, 3)
             except RuntimeError:
                 logger.error(
-                    f"Unexpected lattice matrix type or dimension", exception=ValueError
+                    "Unexpected lattice matrix type or dimension", exception=ValueError
                 )
 
         super().__init__()
