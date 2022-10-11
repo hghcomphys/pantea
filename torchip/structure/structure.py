@@ -103,8 +103,8 @@ class Structure(BaseTorchip):
             set_as_attribute(self, self.tensors)
 
         # TODO: test
-        if self.box.lattice:
-            logger.print("Reposition atoms inside the PBC simulation box")
+        if self.box:
+            logger.debug("Reposition atoms inside the PBC simulation box")
             self.position = self.box.pbc_shift_atoms(self.position)
 
         super().__init__()
@@ -143,7 +143,7 @@ class Structure(BaseTorchip):
         """
         self._init_neighbor(r_cutoff)
 
-    def _init_box(self, lattice: Tensor) -> None:
+    def _init_box(self, lattice: List) -> None:
         """
         Create a simulation box object using the provided lattice tensor.
 
@@ -154,7 +154,7 @@ class Structure(BaseTorchip):
             self.box = Box(lattice)
         else:
             logger.debug("No lattice info were found in structure")
-            self.box = Box(lattice=None)
+            self.box = Box()
 
     def _prepare_atype_tensor(self, elements: List[str]) -> Tensor:
         """
@@ -296,14 +296,14 @@ class Structure(BaseTorchip):
         The returned object can be used to visualize or modify the structure using the ASE package.
         """
         logger.info(f"Creating a representation of the structure in form of ASE atoms")
-        BOHR_TO_ANGSTROM = 0.529177  # TODO: define Unit class
+        BOHR_TO_ANGSTROM = 0.529177  # TODO: Unit class or input length_conversion
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atype],
             positions=[
                 BOHR_TO_ANGSTROM * pos.detach().cpu().numpy() for pos in self.position
             ],
             cell=[BOHR_TO_ANGSTROM * float(l) for l in self.box.length]
-            if self.box.lattice
+            if self.box
             else None,  # FIXME: works only for orthogonal cells
         )
 

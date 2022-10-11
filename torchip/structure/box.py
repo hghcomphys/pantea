@@ -16,7 +16,7 @@ class Box(BaseTorchip):
 
     def __init__(
         self,
-        lattice: Tensor,
+        lattice: Tensor = None,
         dtype=None,
         device=None,
     ) -> None:
@@ -45,6 +45,11 @@ class Box(BaseTorchip):
                 )
 
         super().__init__()
+
+    def __bool__(self):
+        if self.lattice is None:
+            return False
+        return True
 
     @staticmethod
     def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
