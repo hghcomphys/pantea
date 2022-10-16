@@ -55,7 +55,7 @@ class Neighbor(_Base):
         # Avoid re-allocating structure with the same size
         try:
             if structure.natoms == len(self.number):
-                logger.debug(f"Avoid re-allocating the neighbor tensors")
+                logger.debug("Avoid re-allocating the neighbor tensors")
                 return
         except AttributeError:
             pass
@@ -79,9 +79,9 @@ class Neighbor(_Base):
             logger.debug(
                 f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
             )
-
         set_as_attribute(self, self.tensors)
 
+    @torch.no_grad()
     def update(self, structure) -> None:
         """
         This method updates the neighbor atom tensors including the number of neighbor and neighbor atom
@@ -89,11 +89,11 @@ class Neighbor(_Base):
         """
         # TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
         if not self.r_cutoff:
-            logger.debug("Skipping updating the neighbor list (no cutoff radius)")
+            logger.debug("Skipped updating the neighbor list (no cutoff radius)")
             return
 
         if not structure.requires_neighbor_update and not self.r_cutoff_updated:
-            logger.debug("Skipping updating the neighbor list")
+            logger.debug("Skipped updating the neighbor list")
             return
 
         self._init_tensors(structure)
@@ -103,19 +103,18 @@ class Neighbor(_Base):
 
         # TODO: define staticmethod _update()
         # Tensors no need to be differentiable here
-        with torch.no_grad():
-            nn = self.number
-            ni = self.index
-            # TODO: optimization: torch unbind or vmap
-            for aid in range(structure.natoms):
-                rij = structure.calculate_distance(aid)
-                # Get atom indices within the cutoff radius
-                ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]
-                # Remove self-counting atom index
-                ni_ = ni_[ni_ != aid]
-                # Set neighbor list tensors
-                nn[aid] = ni_.shape[0]
-                ni[aid, : nn[aid]] = ni_
+        nn = self.number
+        ni = self.index
+        # TODO: optimization: torch unbind or vmap
+        for aid in range(structure.natoms):
+            rij: float = structure.calculate_distance(aid)
+            # Get atom indices within the cutoff radius
+            ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]
+            # avoid self-counting atom index
+            ni_ = ni_[ni_ != aid]
+            # Set neighbor list tensors
+            nn[aid] = ni_.shape[0]
+            ni[aid, : nn[aid]] = ni_
 
         # Avoid updating the neighbor list the next time
         structure.requires_neighbor_update = False
