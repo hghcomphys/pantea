@@ -208,11 +208,17 @@ class NeuralNetworkPotential(Potential):
                     "eps": self.settings["gradient_adam_epsilon"],
                     "weight_decay": self.settings["gradient_weight_decay"],
                 }
-            elif self.settings["gradient_type"] == 0:  # Fixed Step
+            # self.settings["gradient_type"] == 0:  # TODO: fixed Step
+            else:
                 logger.error(
-                    "Gradient descent type fixed step is not implemented yet",
+                    f'Gradient type {self.settings["gradient_type"]} is not implemented yet',
                     exception=NotImplementedError,
                 )
+        else:
+            logger.error(
+                f'Unknown updater type {self.settings["updater_type"]}',
+                exception=NotImplementedError,
+            )
 
         # This can be either as a single or multiple optimizers # TODO: test
         optimizer = optimizer_cls(
