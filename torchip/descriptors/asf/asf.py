@@ -122,18 +122,18 @@ class AtomicSymmetryFunction(Descriptor):
         if not emap[self.element] == at[aid]:
             logger.error(
                 f"Inconsistent central element ('{self.element}'): input aid={aid} (atype='{int(at[aid])}')",
-                exception=AssertionError,
+                exception=ValueError,
             )
 
         # Get the list of neighboring atom indices
         ni_ = ni[aid, : nn[aid]]
-        # Calculate distances of only neighboring atoms (detach flag must be disabled to keep the history of gradients)
+        # Calculate distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
         dis_, diff_ = Structure._calculate_distance(
             pos, aid, lattice=lattice, neighbors=ni_, return_difference=True
         )  # self-count excluded, PBC applied
         # Get the corresponding neighboring atom types and position
-        at_ = at[ni_]  # at_ refers to the array atom type of only neighbors
-        # x_ = x[ni_]    # x_ refers to the array position of only neighbor atoms
+        at_ = at[ni_]  # at_ refers to the array atom type of neighbors
+        # x_ = x[ni_]    # x_ refers to the array position of neighbor atoms
 
         # print("i", aid)
         # Loop over the radial terms
@@ -141,7 +141,11 @@ class AtomicSymmetryFunction(Descriptor):
             # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
             ni_rc__ = (dis_ <= radial[0].r_cutoff).detach()  # a logical array
             ni_rc_at_ = torch.nonzero(
-                torch.logical_and(ni_rc__, at_ == emap[radial[2]]), as_tuple=True
+                torch.logical_and(
+                    ni_rc__,
+                    at_ == emap[radial[2]],
+                ),
+                as_tuple=True,
             )[0]
             # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
             # print(aid.numpy(), radial[1], radial[2],
@@ -155,25 +159,30 @@ class AtomicSymmetryFunction(Descriptor):
             ni_rc__ = (dis_ <= angular[0].r_cutoff).detach()  # a logical array
             # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
             at_j, at_k = emap[angular[2]], emap[angular[3]]
+            # local index
             ni_rc_at_j_ = torch.nonzero(
-                torch.logical_and(ni_rc__, at_ == at_j), as_tuple=True
-            )[
-                0
-            ]  # local index
+                torch.logical_and(
+                    ni_rc__,
+                    at_ == at_j,
+                ),
+                as_tuple=True,
+            )[0]
+            # local index
             ni_rc_at_k_ = torch.nonzero(
-                torch.logical_and(ni_rc__, at_ == at_k), as_tuple=True
-            )[
-                0
-            ]  # local index
-            # print("j", ni_[ni_rc_at_j_].detach().numpy())
-            # print("k", ni_[ni_rc_at_k_].detach().numpy())
+                torch.logical_and(
+                    ni_rc__,
+                    at_ == at_k,
+                ),
+                as_tuple=True,
+            )[0]
 
             # Apply angular ASF term kernels and sum over the neighboring atoms
             # loop over neighbor element 1 (j)
             for j in ni_rc_at_j_:
                 # ----
-                ni_j_ = ni_[j]  # neighbor atom index for j (a scaler)
-                # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]                 # apply k > j (k,j != i is already applied in the neighbor list)
+                ni_j_ = ni_[j]  # neighbor atom index for j (scalar)
+                # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]
+                # # apply k > j (k,j != i is already applied in the neighbor list)
                 if at_j == at_k:  # TODO: why? dedicated k and j list to each element
                     k = ni_rc_at_k_[ni_[ni_rc_at_k_] > ni_j_]
                 else:
@@ -182,17 +191,13 @@ class AtomicSymmetryFunction(Descriptor):
                 # ---
                 rij = dis_[j]  # shape=(1), LOCAL index j
                 rik = dis_[k]  # shape=(*), LOCAL index k (an array)
-                Rij = diff_[
-                    j
-                ]  # x[aid] - x[ni_j_]                             # shape=(3)
-                Rik = diff_[
-                    k
-                ]  # x[aid] - x[ni_k_]                             # shape=(*, 3)
+                Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
+                Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
                 # ---
                 rjk = Structure._calculate_distance(
                     pos, ni_j_, lattice=lattice, neighbors=ni_k_
                 )  # shape=(*)
-                # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])                                      # shape=(*, 3)
+                # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
                 # ---
                 # Cosine of angle between k--<i>--j atoms
                 # TODO: move cosine calculation to structure
@@ -201,45 +206,9 @@ class AtomicSymmetryFunction(Descriptor):
                 # ---
                 # Broadcasting computation (avoiding to use the in-place add() because of autograd)
                 result[angular_index] = result[angular_index] + torch.sum(
-                    angular[0].kernel(rij, rik, rjk, cost), dim=0
+                    angular[0].kernel(rij, rik, rjk, cost),
+                    dim=0,
                 )
-
-                # ================ Debugging ===============
-                # ni_j_ = ni_[j] # atom index i
-                # rij = dis_[j]
-                # Rij = structure.apply_pbc(x[aid] - x[ni_j_])
-                # for k in ni_rc_at_k_:
-                #   ni_k_ = ni_[k]  # atom index j
-
-                #   # if (ni_k_ <= ni_j_):
-                #   #   continue
-                #   if at_j == at_k:
-                #     if ni_k_ <= ni_j_:
-                #       continue
-                #   else:
-                #     if ni_k_ == ni_j_:
-                #       continue
-                #     pass
-
-                #   rjk = structure.calculate_distance(ni_j_, lattice=lattice, neighbors=ni_k_)[0]
-                #   # if rjk > angular[0].r_cutoff:
-                #   #   continue
-
-                #   rik = dis_[k]
-                #   Rik = structure.apply_pbc(x[aid] - x[ni_k_])
-
-                #   cost = self.__cosine_similarity(torch.unsqueeze(Rij, 0), torch.unsqueeze(Rik, 0))[0]
-                #   # cost = torch.inner(Rij, Rik)/(rij*rik)
-                #   kernel = angular[0].kernel(rij, rik, rjk, cost)
-                #   result[angular_i] += kernel
-
-                #   if index == 0 and angular_i == 2:
-                #     print(f"i={aid}({emap[int(at[aid])]}), j={ni_j_.numpy()}({emap[int(at[ni_j_.numpy()])]}), k={ni_k_.numpy()}({emap[int(at[ni_k_.numpy()])]})"\
-                #       f", rij={rij.detach().numpy()}, rik={rik.detach().numpy()}, rjk={rjk.detach().numpy()}, cost={cost.detach().numpy()}"\
-                #         # f", local_j={j}, local_k={k}"\
-                #         f", kernel[{index}, {angular_i}]={kernel}")
-                # --------------------------------------------
-            # print(f"result[{angular_i}]={result[angular_i].detach().numpy()}")
 
         return result
 
@@ -281,5 +250,4 @@ class AtomicSymmetryFunction(Descriptor):
         )
 
 
-# Define ASF alias
 ASF = AtomicSymmetryFunction
