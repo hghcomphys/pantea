@@ -32,9 +32,8 @@ class Box(_Base):
         self.dtype = dtype if dtype else _dtype.FLOATX
         self.device = device if device else _device.DEVICE
 
-        if lattice is None:
-            self.lattice = lattice
-        else:
+        self.lattice = None
+        if lattice is not None:
             try:
                 self.lattice = torch.tensor(
                     lattice, dtype=self.dtype, device=self.device
