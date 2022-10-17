@@ -138,8 +138,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 logger.print(
                     "Training     "
                     f"loss: {state['train_loss']/nbatch :<12.8E}, "
-                    f"energy [{self.error_metric}]: {state['train_energy_error']/nbatch :<12.8E}, "
-                    f"force [{self.error_metric}]: {state['train_force_error']/nbatch :<12.8E}",
+                    f"energy [{self.error_metric.__class__.__name__}]: {state['train_energy_error']/nbatch :<12.8E}, "
+                    f"force [{self.error_metric.__class__.__name__}]: {state['train_force_error']/nbatch :<12.8E}",
                     end="\r",
                 )
 
@@ -147,8 +147,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             logger.print(
                 "Validation   "
                 f"loss: {state['valid_loss'] :<12.8E}, "
-                f"energy [{self.error_metric}]: {state['valid_energy_error']/nbatch :<12.8E}, "
-                f"force [{self.error_metric}]: {state['valid_force_error']/nbatch :<12.8E}"
+                f"energy [{self.error_metric.__class__.__name__}]: {state['valid_energy_error']/nbatch :<12.8E}, "
+                f"force [{self.error_metric.__class__.__name__}]: {state['valid_force_error']/nbatch :<12.8E}"
             )
         logger.print()
 
@@ -168,9 +168,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         """
         # TODO: more arguments to have better control on training
         epochs = kwargs.get("epochs", 1)
-        validation_split = kwargs.get(
-            "validation_split", None
-        )  # TODO: add validation split from potential settings
+        # TODO: add validation split from potential settings
+        validation_split = kwargs.get("validation_split", None)
         validation_dataset = kwargs.get("validation_dataset", None)
 
         # Prepare structure dataset and loader for training elemental models
@@ -189,12 +188,13 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             "collate_fn": lambda batch: batch,
         }
 
+        print(f"{validation_dataset=}, {validation_split=}")
         if validation_dataset:
             # Setting loaders
             train_loader = TorchDataLoader(dataset, shuffle=True, **params)
             valid_loader = TorchDataLoader(validation_dataset, shuffle=False, **params)
             # Logging
-            logger.debug(f"Using separate training and validation datasets")
+            logger.debug("Using separate training and validation datasets")
             logger.print(f"Number of structures (training)  : {len(dataset)}")
             logger.print(
                 f"Number of structures (validation): {len(validation_dataset)}"
@@ -211,7 +211,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             train_loader = TorchDataLoader(train_dataset, shuffle=True, **params)
             valid_loader = TorchDataLoader(valid_dataset, shuffle=False, **params)
             # Logging
-            logger.debug(f"Splitting dataset into training and validation subsets")
+            logger.debug("Splitting dataset into training and validation subsets")
             logger.print(
                 f"Number of structures (training)  : {nsamples - split} of {nsamples}"
             )
