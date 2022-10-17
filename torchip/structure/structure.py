@@ -102,10 +102,9 @@ class Structure(_Base):
         if self.tensors:
             set_as_attribute(self, self.tensors)
 
-        # TODO: test
-        if self.box:
-            logger.debug("Reposition atoms inside the PBC simulation box")
-            self.position = self.box.pbc_shift_atoms(self.position)
+        if self.box:  # TODO: torch.no_grad()
+            logger.debug("Shift all atoms into the PBC simulation box")
+            self.position = self.box.shift_pbc_atoms(self.position)
 
         super().__init__()
 
