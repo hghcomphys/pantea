@@ -56,6 +56,9 @@ class Box(_Base):
         [Kernel]
         Apply periodic boundary condition (PBC) along x,y, and z directions.
 
+        Make sure shifting all atoms inside the PBC box beforehand otherwise
+        this method may not work as expected, see shift_pbc_atoms().
+
         :param dx: Position difference
         :type dx: Tensor
         :param lattice: lattice matrix
@@ -63,11 +66,6 @@ class Box(_Base):
         :return: PBC applied position
         :rtype: Tensor
         """
-        # for i in range(3): # without broadcasting
-        #   l = lattice[i, i]
-        #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i >  0.5E0*l, dx_i - l, dx_i)
-        #   dx_i = dx[..., i]; dx[..., i] = torch.where( dx_i < -0.5E0*l, dx_i + l, dx_i)
-
         l = lattice.diagonal()
         dx = torch.where(dx > 0.5e0 * l, dx - l, dx)
         dx = torch.where(dx < -0.5e0 * l, dx + l, dx)
@@ -85,23 +83,16 @@ class Box(_Base):
         """
         return Box._apply_pbc(dx, self.lattice)
 
-    def pbc_shift_atoms(self, x: Tensor) -> Tensor:
+    def shift_pbc_atoms(self, x: Tensor) -> Tensor:
         """
-        Shift atom coordinates inside the PBC box.
+        Shift atom coordinates inside the PBC simulation box.
 
         :param x: atom position
         :type x: Tensor
         :return: moved atom position
         :rtype: Tensor
         """
-        l = self.length  # using broadcasting
-        x = torch.where(x > l, x - l, x)
-        x = torch.where(x < 0.0, x + l, x)
-
-        if torch.any(x > l) or torch.any(x < 0.0):
-            x = self._pbc_shift_atoms(x)  # recursive shift
-        else:
-            return x
+        return x.remainder(self.length)
 
     @property
     def lx(self) -> Tensor:
