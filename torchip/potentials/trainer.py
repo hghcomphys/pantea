@@ -188,7 +188,6 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             "collate_fn": lambda batch: batch,
         }
 
-        print(f"{validation_dataset=}, {validation_split=}")
         if validation_dataset:
             # Setting loaders
             train_loader = TorchDataLoader(dataset, shuffle=True, **params)

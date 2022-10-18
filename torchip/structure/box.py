@@ -57,7 +57,7 @@ class Box(_Base):
         Apply periodic boundary condition (PBC) along x,y, and z directions.
 
         Make sure shifting all atoms inside the PBC box beforehand otherwise
-        this method may not work as expected, see shift_pbc_atoms().
+        this method may not work as expected, see shift_inside_box().
 
         :param dx: Position difference
         :type dx: Tensor
@@ -83,9 +83,9 @@ class Box(_Base):
         """
         return Box._apply_pbc(dx, self.lattice)
 
-    def shift_pbc_atoms(self, x: Tensor) -> Tensor:
+    def shift_inside_box(self, x: Tensor) -> Tensor:
         """
-        Shift atom coordinates inside the PBC simulation box.
+        Shift the input atom coordinates inside the PBC simulation box.
 
         :param x: atom position
         :type x: Tensor

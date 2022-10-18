@@ -104,7 +104,7 @@ class Structure(_Base):
 
         if self.box:  # TODO: torch.no_grad()
             logger.debug("Shift all atoms into the PBC simulation box")
-            self.position = self.box.shift_pbc_atoms(self.position)
+            self.position = self.box.shift_inside_box(self.position)
 
         super().__init__()
 
