@@ -77,7 +77,7 @@ class NeuralNetworkPotential(Potential):
 
         # Add symmetry functions
         logger.debug(
-            f"Registering symmetry functions (radial and angular)"
+            "Registering symmetry functions (radial and angular)"
         )  # TODO: move logging inside .add() method
 
         for cfg in self.settings["symfunction_short"]:
@@ -246,7 +246,6 @@ class NeuralNetworkPotential(Potential):
         )
 
     # @Profiler.profile
-    @torch.no_grad()
     def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
         """
         Fit scaler parameters for each element using the input structure data.
@@ -270,17 +269,20 @@ class NeuralNetworkPotential(Potential):
             structure = batch[0]
             structure.set_cutoff_radius(self.r_cutoff)
 
-            # For each element in the structure
-            for element in structure.elements:
-                aids = structure.select(element).detach()
-                for aids_batch in create_batch(
-                    aids, batch_size
-                ):  # because of large memory usage
-                    logger.debug(
-                        f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})"
-                    )
-                    dsc_val = self.descriptor[element](structure, aids_batch)  # kernel
-                    self.scaler[element].fit(dsc_val)
+            with torch.no_grad():
+                # For each element in the structure
+                for element in structure.elements:
+                    aids = structure.select(element).detach()
+                    for aids_batch in create_batch(
+                        aids, batch_size
+                    ):  # because of large memory usage
+                        logger.debug(
+                            f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})"
+                        )
+                        dsc_val = self.descriptor[element](
+                            structure, aids_batch
+                        )  # kernel
+                        self.scaler[element].fit(dsc_val)
         logger.debug("Finished scaler fitting.")
 
         # Save scaler data into file
@@ -398,7 +400,9 @@ class NeuralNetworkPotential(Potential):
         self.eval()
 
         # Loop over elements
-        energy = 0.0
+        energy: Tensor = torch.tensor(
+            0.0e0, dtype=structure.dtype, device=structure.device
+        )
         for element in self.elements:
             aids = structure.select(element).detach()
             x = self.descriptor[element](structure, aid=aids)
