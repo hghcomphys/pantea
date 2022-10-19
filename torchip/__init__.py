@@ -16,7 +16,7 @@ from .logger import *
 from .config import *
 
 
-__version__ = "0.6.0"
+__version__ = "0.0.7"
 
 logger.debug(f"{__doc__}")
 logger.debug(f"Version: {__version__}")
