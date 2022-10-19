@@ -1,9 +1,9 @@
 from ..logger import logger
 from ..base import _Base
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple, Mapping
 
 
-_KNOWN_ELEMENTS_LIST = [
+_KNOWN_ELEMENTS_LIST: Tuple = (
     "H",
     "He",
     "Li",
@@ -105,9 +105,9 @@ _KNOWN_ELEMENTS_LIST = [
     "Es",
     "Fm",
     "Md",
-]
+)
 
-_KNOWN_ELEMENTS_DICT = {
+_KNOWN_ELEMENTS_DICT: Mapping[str, int] = {
     element: atomic_number
     for atomic_number, element in enumerate(_KNOWN_ELEMENTS_LIST, start=1)
 }
