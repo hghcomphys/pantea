@@ -3,7 +3,7 @@ from ..logger import logger
 from ..utils.tokenize import tokenize
 from .base import StructureDataset
 from .transformer import Transformer, ToStructure
-from typing import List, TextIO, Dict
+from typing import TextIO, Dict
 from collections import defaultdict
 from pathlib import Path
 import torch
