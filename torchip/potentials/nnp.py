@@ -16,7 +16,7 @@ from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
 from .metric import create_error_metric
-from typing import List, Dict
+from typing import List, Dict, Union
 from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path
 from torch import Tensor
@@ -406,13 +406,34 @@ class NeuralNetworkPotential(Potential):
         for element in self.elements:
             aids = structure.select(element).detach()
             x = self.descriptor[element](structure, aid=aids)
-            x = self.scaler[element](x)
+            x = self.scaler[element](x, warnings=True)
             x = self.model[element](x)
             # FIXME: float type neural network
             x = torch.sum(x, dim=0)
             energy = energy + x
 
         return energy
+
+    def set_extrapolation_warnings(self, threshold: Union[int, None]) -> None:
+        """
+        shows warning whenever a descriptor value is out of bounds defined by
+        minimum/maximum values in the scaler.
+
+        set_extrapolation_warnings(None) will disable it.
+
+        :param threshold: maximum number of warnings
+        :type threshold: int
+        """
+        logger.info(f"Setting extrapolation warning: {threshold}")
+        for scaler in self.scaler.values():
+            scaler.set_max_number_of_warnings(threshold)
+
+    @property
+    def extrapolation_warnings(self) -> Dict[str, int]:
+        return {
+            element: scaler.number_of_warnings
+            for element, scaler in self.scaler.items()
+        }
 
     @property
     def elements(self) -> List[str]:
