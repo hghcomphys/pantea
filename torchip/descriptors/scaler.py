@@ -22,11 +22,11 @@ class DescriptorScaler(_Base):
         scale_max: float = 1.0,
         dtype: torch.dtype = None,
         device: torch.device = None,
-        max_number_of_warnings: int = 100,
     ) -> None:
         """
         Initialize scaler including scaler type and min/max values.
         """
+        # TODO: remove dtype and device input arguments
         # Set min/max range for scaler
         self.scale_type = scale_type
         self.scale_min = scale_min
@@ -44,7 +44,7 @@ class DescriptorScaler(_Base):
         self.max: Tensor = None  # maximum
 
         self.number_of_warnings: int = 0
-        self.max_number_of_warnings = max_number_of_warnings
+        self.max_number_of_warnings: int = None
 
         # Set scaler type function
         self._transform = getattr(self, f"_{self.scale_type}")
@@ -97,7 +97,7 @@ class DescriptorScaler(_Base):
     def __call__(self, x: Tensor, warnings: bool = False) -> Tensor:
         """
         Transform the input descriptor values base on the selected scaler type.
-        This merhod has to be called when fit method is called ``batch-wise`` over all descriptor values,
+        This method has to be called when fit method is called ``batch-wise`` over all descriptor values,
         or statistical parameters are read from a saved file.
 
         Args:
@@ -107,11 +107,17 @@ class DescriptorScaler(_Base):
         Returns:
             Tensor: scaled input
         """
-        scaled_x = self._transform(x)
         if warnings:
-            self._check_warnings(scaled_x)
+            self._check_warnings(x)
 
-        return scaled_x
+        return self._transform(x)
+
+    def set_max_number_of_warnings(self, number: int) -> None:
+        self.max_number_of_warnings = number
+        self.number_of_warnings = 0
+        logger.debug(
+            f"Setting the maximum number of scaler warnings: {self.max_number_of_warnings}"
+        )
 
     @torch.no_grad()
     def _check_warnings(self, x: Tensor) -> None:
@@ -123,14 +129,20 @@ class DescriptorScaler(_Base):
         :param val: scaled values of descriptor
         :type val: Tensor
         """
+        if self.max_number_of_warnings is None:
+            return
+
         gt = torch.gt(x, self.max).detach()
         lt = torch.gt(self.min, x).detach()
-        self.number_of_warnings += int(torch.sum(torch.logical_or(gt, lt)))
+
+        self.number_of_warnings += int(
+            torch.any(torch.logical_or(gt, lt))
+        )  # alternative counting is using torch.sum
 
         if self.number_of_warnings >= self.max_number_of_warnings:
-            logger.error(
-                f"Exceeded the maximum number of scaler warnings ({self.max_number_of_warnings})",
-                exception=ValueError,
+            logger.warning(
+                "Exceeding maximum number scaler warnings (extrapolation warning): "
+                f"{self.number_of_warnings} (max={self.max_number_of_warnings})"
             )
 
     def _center(self, x: Tensor) -> Tensor:
