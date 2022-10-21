@@ -15,7 +15,7 @@ from ..config import device
 from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
-from .metric import create_error_metric
+from .metrics import create_error_metric
 from typing import List, Dict, Union
 from torch.utils.data import DataLoader as TorchDataLoader
 from pathlib import Path

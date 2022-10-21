@@ -18,7 +18,7 @@ class ErrorMetric(_Base):
     def __call__(self, prediction: Tensor, target: Tensor, factor=None) -> Tensor:
         raise NotImplementedError()
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
 
 

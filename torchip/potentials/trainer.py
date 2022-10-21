@@ -4,7 +4,7 @@ from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
 from ..utils.attribute import set_as_attribute
 from ..base import _Base
-from .metric import ErrorMetric, MSE
+from .metrics import ErrorMetric, MSE
 from collections import defaultdict
 from typing import Dict
 from torch.utils.data import DataLoader as TorchDataLoader
