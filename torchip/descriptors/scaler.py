@@ -69,7 +69,7 @@ class DescriptorScaler(_Base):
             # Check data dimension
             if data.shape[1] != self.dimension:
                 logger.error(
-                    f"Data dimension doesn't match previous observation ({self.dim}): {data.shape[0]}",
+                    f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
                     exception=ValueError,
                 )
 
@@ -182,14 +182,15 @@ class DescriptorScaler(_Base):
         """
         Load scaler parameters from file.
         """
-        data = np.loadtxt(str(filename))
+        data = np.loadtxt(str(filename)).T
         self.nsamples = 1
         self.dimension = data.shape[1]
+
         kwargs = {"dtype": self.dtype, "device": self.device}
-        self.min = torch.tensor(data[:, 0], **kwargs)
-        self.max = torch.tensor(data[:, 1], **kwargs)
-        self.mean = torch.tensor(data[:, 2], **kwargs)
-        self.sigma = torch.tensor(data[:, 3], **kwargs)
+        self.min = torch.tensor(data[0], **kwargs)
+        self.max = torch.tensor(data[1], **kwargs)
+        self.mean = torch.tensor(data[2], **kwargs)
+        self.sigma = torch.tensor(data[3], **kwargs)
 
     def __repr__(self) -> str:
         return (
