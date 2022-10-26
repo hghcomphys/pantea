@@ -18,7 +18,7 @@ class CutoffFunction(_Base):
     TODO: define inv_r_cutoff
     """
 
-    _TANH_PRE = torch.pow((torch.e + 1 / torch.e) / (torch.e - 1 / torch.e), 3)
+    _TANH_PRE = ((torch.e + 1 / torch.e) / (torch.e - 1 / torch.e)) ** 3
 
     def __init__(self, r_cutoff: float, cutoff_type: str = "tanh"):
         self.r_cutoff = r_cutoff
