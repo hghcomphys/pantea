@@ -6,6 +6,29 @@ from torch import Tensor
 import torch
 
 
+@torch.jit.script
+def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
+    """
+    [Kernel]
+    Apply periodic boundary condition (PBC) along x,y, and z directions.
+
+    Make sure shifting all atoms inside the PBC box beforehand otherwise
+    this method may not work as expected, see shift_inside_box().
+
+    :param dx: Position difference
+    :type dx: Tensor
+    :param lattice: lattice matrix
+    :type lattice: Tensor
+    :return: PBC applied position
+    :rtype: Tensor
+    """
+    l = lattice.diagonal()
+    dx = torch.where(dx > 0.5e0 * l, dx - l, dx)
+    dx = torch.where(dx < -0.5e0 * l, dx + l, dx)
+
+    return dx
+
+
 class Box(_Base):
     """
     Box class extract Box info from the lattice matrix.
@@ -50,28 +73,6 @@ class Box(_Base):
             return False
         return True
 
-    @staticmethod
-    def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
-        """
-        [Kernel]
-        Apply periodic boundary condition (PBC) along x,y, and z directions.
-
-        Make sure shifting all atoms inside the PBC box beforehand otherwise
-        this method may not work as expected, see shift_inside_box().
-
-        :param dx: Position difference
-        :type dx: Tensor
-        :param lattice: lattice matrix
-        :type lattice: Tensor
-        :return: PBC applied position
-        :rtype: Tensor
-        """
-        l = lattice.diagonal()
-        dx = torch.where(dx > 0.5e0 * l, dx - l, dx)
-        dx = torch.where(dx < -0.5e0 * l, dx + l, dx)
-
-        return dx
-
     def apply_pbc(self, dx: Tensor) -> Tensor:
         """
         Apply the periodic boundary condition (PBC) on input tensor.
@@ -81,7 +82,7 @@ class Box(_Base):
         :return: PBC applied position difference
         :rtype: Tensor
         """
-        return Box._apply_pbc(dx, self.lattice)
+        return _apply_pbc(dx, self.lattice)
 
     def shift_inside_box(self, x: Tensor) -> Tensor:
         """
