@@ -1,6 +1,6 @@
 from torchip.descriptors.asf.symmetry import SymmetryFunction
 from ...logger import logger
-from ...structure import Structure
+from ...structure import Structure, _calculate_distance
 from ...config import TaskClient
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
@@ -128,9 +128,8 @@ class AtomicSymmetryFunction(Descriptor):
         # Get the list of neighboring atom indices
         ni_ = ni[aid, : nn[aid]]
         # Calculate distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
-        dis_, diff_ = Structure._calculate_distance(
-            pos, aid, lattice=lattice, neighbors=ni_, return_difference=True
-        )  # self-count excluded, PBC applied
+        # self-count excluded, PBC applied
+        dis_, diff_ = _calculate_distance(pos[aid], pos[ni_], lattice=lattice)
         # Get the corresponding neighboring atom types and position
         at_ = at[ni_]  # at_ refers to the array atom type of neighbors
         # x_ = x[ni_]    # x_ refers to the array position of neighbor atoms
@@ -194,8 +193,8 @@ class AtomicSymmetryFunction(Descriptor):
                 Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
                 Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
                 # ---
-                rjk = Structure._calculate_distance(
-                    pos, ni_j_, lattice=lattice, neighbors=ni_k_
+                rjk, _ = _calculate_distance(
+                    pos[ni_j_], pos[ni_k_], lattice=lattice
                 )  # shape=(*)
                 # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
                 # ---

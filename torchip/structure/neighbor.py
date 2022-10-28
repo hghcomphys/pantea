@@ -107,7 +107,8 @@ class Neighbor(_Base):
         ni = self.index
         # TODO: optimization: torch unbind or vmap
         for aid in range(structure.natoms):
-            rij: float = structure.calculate_distance(aid)
+            # TODO call jit kernel of distance calculation
+            rij = structure.calculate_distance(aid)
             # Get atom indices within the cutoff radius
             ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]
             # avoid self-counting atom index

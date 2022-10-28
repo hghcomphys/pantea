@@ -7,14 +7,36 @@ from ..utils.attribute import set_as_attribute
 from ..utils.gradient import get_value
 from .element import ElementMap
 from .neighbor import Neighbor
-from .box import Box
+from .box import Box, _apply_pbc
 from typing import List, Dict, Tuple, Union
 from torch import Tensor
 from ase import Atoms as AseAtoms
 import torch
 import numpy as np
 
-# import structure_cpp
+
+@torch.jit.script
+def _calculate_distance(
+    x_atom: Tensor,
+    x_neighbors: Tensor,
+    lattice: Tensor = None,
+) -> Tuple[Tensor, Tensor]:
+    """
+    [Kernel]
+    Calculate a tensor of distances to all atoms existing in the structure from a specific atom.
+    TODO: input pbc flag, using default pbc from global configuration
+    TODO: also see torch.cdist
+    """
+    if x_neighbors.ndim == 1:
+        x_neighbors = torch.unsqueeze(x_neighbors, dim=0)
+    dx = x_atom - x_neighbors
+
+    if lattice is not None:
+        dx = _apply_pbc(dx, lattice)
+
+    dis = torch.linalg.vector_norm(dx, dim=1)
+
+    return dis, dx
 
 
 class Structure(_Base):
@@ -209,34 +231,6 @@ class Structure(_Base):
         """
         self.neighbor.update(self)
 
-    @staticmethod
-    def _calculate_distance(
-        pos: Tensor,
-        aid: int,
-        lattice: Tensor = None,
-        neighbors: Tensor = None,  # index
-        return_difference: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        """
-        [Kernel]
-        Calculate a tensor of distances to all atoms existing in the structure from a specific atom.
-        TODO: input pbc flag, using default pbc from global configuration
-        TODO: also see torch.cdist
-        """
-        x = pos
-        x = x[neighbors] if neighbors is not None else x
-        x = torch.unsqueeze(x, dim=0) if x.ndim == 1 else x
-        dx = pos[aid] - x
-
-        # Apply PBC along x,y, and z directions if needed
-        if lattice is not None:
-            dx = Box._apply_pbc(dx, lattice)
-
-        distance: Tensor = torch.linalg.vector_norm(dx, dim=1)
-
-        # Return results
-        return distance if not return_difference else (distance, dx)
-
     def calculate_distance(
         self,
         aid: int,
@@ -246,13 +240,12 @@ class Structure(_Base):
         """
         Return a tensor of distances between a specific atom and all atoms existing in the structure.
         """
-        return Structure._calculate_distance(
-            pos=self.position,
-            aid=aid,
-            lattice=self.box.lattice,
-            neighbors=neighbors,
-            return_difference=return_difference,
+        dis, dx = _calculate_distance(
+            self.position[aid],
+            self.position[neighbors] if neighbors is not None else self.position,
+            self.box.lattice,
         )
+        return (dis, dx) if return_difference else dis
 
     def select(self, element: str) -> Tensor:
         """

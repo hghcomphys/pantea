@@ -1,7 +1,6 @@
 from .cutoff import CutoffFunction
 from .symmetry import SymmetryFunction
 from torch import Tensor
-import math
 import torch
 
 # import angular_cpp
@@ -15,6 +14,26 @@ class AngularSymmetryFunction(SymmetryFunction):
 
     def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
         raise NotImplementedError
+
+
+@torch.jit.script
+def _G3_kernel(
+    rij: Tensor,
+    rik: Tensor,
+    rjk: Tensor,
+    cost: Tensor,
+    eta: float,
+    zeta: float,
+    lambda0: float,
+    r_shift: float,
+    _scale_factor: float,
+) -> Tensor:
+    # TODO: r_shift, define params argument instead
+    return (
+        _scale_factor
+        * torch.pow(1 + lambda0 * cost, zeta)
+        * torch.exp(-eta * (rij**2 + rik**2 + rjk**2))
+    )
 
 
 class G3(AngularSymmetryFunction):
@@ -34,18 +53,45 @@ class G3(AngularSymmetryFunction):
         self.zeta = zeta
         self.lambda0 = lambda0
         self.r_shift = r_shift
-        self._scale_factor = math.pow(2.0, 1.0 - self.zeta)
+        self._scale_factor = 2.0 ** (1.0 - self.zeta)
         super().__init__(cfn)
-        # self._params = [self.eta, self.zeta, self.lambda0, self.r_shift, self._scale_factor]
 
     def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
-        res = (
-            self._scale_factor
-            * torch.pow(1 + self.lambda0 * cost, self.zeta)
-            * torch.exp(-self.eta * (rij**2 + rik**2 + rjk**2))
-        )  # TODO: r_shift
-        # res = angular_cpp.g3_kernel(rij, rik, rjk, cost, self._params)
-        return res * self.cfn(rij) * self.cfn(rik) * self.cfn(rjk)
+        return (
+            _G3_kernel(
+                rij,
+                rik,
+                rjk,
+                cost,
+                self.eta,
+                self.zeta,
+                self.lambda0,
+                self.r_shift,
+                self._scale_factor,
+            )
+            * self.cfn(rij)
+            * self.cfn(rik)
+            * self.cfn(rjk)
+        )
+
+
+@torch.jit.script
+def _G9_kernel(
+    rij: Tensor,
+    rik: Tensor,
+    cost: Tensor,
+    eta: float,
+    zeta: float,
+    lambda0: float,
+    r_shift: float,
+    _scale_factor: float,
+) -> Tensor:
+    # TODO: r_shift, define params argument instead
+    return (
+        _scale_factor
+        * torch.pow(1 + lambda0 * cost, zeta)
+        * torch.exp(-eta * (rij**2 + rik**2))
+    )
 
 
 class G9(G3):  # AngularSymmetryFunction
@@ -54,20 +100,18 @@ class G9(G3):  # AngularSymmetryFunction
     Ref -> J. Behler, J. Chem. Phys. 134, 074106 (2011)
     """
 
-    # def __init__(self, cfn: CutoffFunction, eta: float, zeta: float, lambda0: float, r_shift: float) -> None:
-    #   self.eta = eta
-    #   self.zeta = zeta
-    #   self.lambda0 = lambda0
-    #   self.r_shift = r_shift
-    #   self._scale_factor = math.pow(2.0, 1.0-self.zeta)
-    #   self._params = [self.eta, self.zeta, self.lambda0, self.r_shift, self._scale_factor]
-    #   super().__init__(cfn)
-
     def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
-        res = (
-            self._scale_factor
-            * torch.pow(1 + self.lambda0 * cost, self.zeta)
-            * torch.exp(-self.eta * (rij**2 + rik**2))
-        )  # TODO: r_shift
-        # res = angular_cpp.g9_kernel(rij, rik, rjk, cost, self._params)
-        return res * self.cfn(rij) * self.cfn(rik)
+        return (
+            _G9_kernel(
+                rij,
+                rik,
+                cost,
+                self.eta,
+                self.zeta,
+                self.lambda0,
+                self.r_shift,
+                self._scale_factor,
+            )
+            * self.cfn(rij)
+            * self.cfn(rik)
+        )
