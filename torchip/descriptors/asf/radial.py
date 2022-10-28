@@ -48,5 +48,4 @@ class G2(RadialSymmetryFunction):
         super().__init__(cfn)
 
     def kernel(self, rij: Tensor) -> Tensor:
-        return _G2_kernel(rij, self.eta, self.r_cutoff) * self.cfn(rij)
-        # return radial_cpp.g2_kernel(rij, self._params) * self.cfn(rij)
+        return _G2_kernel(rij, self.eta, self.r_shift) * self.cfn(rij)
