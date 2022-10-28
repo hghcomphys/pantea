@@ -17,8 +17,8 @@ import numpy as np
 
 @torch.jit.script
 def _calculate_distance(
-    xi: Tensor,
-    xn: Tensor,
+    x_atom: Tensor,
+    x_neighbors: Tensor,
     lattice: Tensor = None,
 ) -> Tuple[Tensor, Tensor]:
     """
@@ -27,11 +27,13 @@ def _calculate_distance(
     TODO: input pbc flag, using default pbc from global configuration
     TODO: also see torch.cdist
     """
-    if xn.ndim == 1:
-        xn = torch.unsqueeze(xn, dim=0)
-    dx = xi - xn
+    if x_neighbors.ndim == 1:
+        x_neighbors = torch.unsqueeze(x_neighbors, dim=0)
+    dx = x_atom - x_neighbors
+
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
+
     dis = torch.linalg.vector_norm(dx, dim=1)
 
     return dis, dx

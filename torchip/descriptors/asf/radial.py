@@ -1,4 +1,3 @@
-from ...logger import logger
 from .symmetry import SymmetryFunction
 from .cutoff import CutoffFunction
 import torch
