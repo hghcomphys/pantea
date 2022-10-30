@@ -1,7 +1,10 @@
 from .symmetry import SymmetryFunction
 from .cutoff import CutoffFunction
-import torch
-from torch import Tensor
+import jax
+import jax.numpy as jnp
+from functools import partial
+
+Tensor = jnp.ndarray
 
 
 class RadialSymmetryFunction(SymmetryFunction):
@@ -14,7 +17,7 @@ class RadialSymmetryFunction(SymmetryFunction):
     TODO: add logging when initializing each symmetry function.
     """
 
-    def kernel(self, rij: Tensor) -> Tensor:
+    def __call__(self, rij: Tensor) -> Tensor:
         raise NotImplementedError
 
 
@@ -26,13 +29,9 @@ class G1(RadialSymmetryFunction):
     def __init__(self, cfn: CutoffFunction):
         super().__init__(cfn)
 
-    def kernel(self, rij: Tensor) -> Tensor:
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def __call__(self, rij: Tensor) -> Tensor:
         return self.cfn(rij)
-
-
-@torch.jit.script
-def _G2_kernel(rij: Tensor, eta: float, r_shift: float) -> Tensor:
-    return torch.exp(-eta * (rij - r_shift) ** 2)
 
 
 class G2(RadialSymmetryFunction):
@@ -43,8 +42,8 @@ class G2(RadialSymmetryFunction):
     def __init__(self, cfn: CutoffFunction, r_shift: float, eta: float):
         self.r_shift = r_shift
         self.eta = eta
-        self._params = [self.eta, self.r_shift]
         super().__init__(cfn)
 
-    def kernel(self, rij: Tensor) -> Tensor:
-        return _G2_kernel(rij, self.eta, self.r_shift) * self.cfn(rij)
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def __call__(self, rij: Tensor) -> Tensor:
+        return jnp.exp(-self.eta * (rij - self.r_shift) ** 2) * self.cfn(rij)
