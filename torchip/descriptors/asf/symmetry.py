@@ -1,7 +1,12 @@
 from ...logger import logger
 from ...base import _Base
 from .cutoff import CutoffFunction
-from torch import Tensor
+import jax
+import jax.numpy as jnp
+from jax import grad, vmap
+from functools import partial
+
+Tensor = jnp.ndarray
 
 
 class SymmetryFunction(_Base):
@@ -14,8 +19,16 @@ class SymmetryFunction(_Base):
         self.cfn = cfn
         logger.debug(repr(self))
 
-    def kernel(self, *args, **kwargs) -> Tensor:
+    def __call__(self, *args, **kwargs) -> Tensor:
         raise NotImplementedError
+
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def grad(self, *args, **kwargs):
+        try:
+            return vmap(grad(self), in_axes=0)(*args)
+        except ValueError:
+            pass
+        return grad(self)(*args)
 
     def __repr__(self) -> str:
         return (
