@@ -1,12 +1,34 @@
 from ..logger import logger
 from ..base import _Base
-from ..config import dtype
 from ..utils.attribute import set_as_attribute
-from typing import Dict
-from torch import Tensor
+from typing import Dict, Tuple
+import jax
+import jax.numpy as jnp
+from functools import partial
 
-# from .structure import Structure  # TODO: circular import error
-import torch
+Tensor = jnp.ndarray
+
+
+# TODO: jit
+def _update(
+    structure,
+    nn: Tensor,
+    ni: Tensor,
+    r_cutoff: Tensor,
+) -> Tuple[Tensor, Tensor]:
+    # Tensors no need to be differentiable here
+    # TODO: optimization vmap
+    for aid in range(structure.natoms):
+        # TODO call jit kernel of distance calculation
+        rij = structure.calculate_distance(aid)
+        # Get atom indices within the cutoff radius
+        ni_ = jnp.nonzero(rij < r_cutoff)[0]
+        # avoid self-counting atom index
+        ni_ = ni_[ni_ != aid]
+        # Set neighbor list tensors
+        nn = nn.at[aid].set(ni_.shape[0])
+        ni = ni.at[aid, : nn[aid]].set(ni_)
+    return nn, ni
 
 
 class Neighbor(_Base):
@@ -62,26 +84,24 @@ class Neighbor(_Base):
 
         logger.debug("Allocating tensors for neighbor list")
         self.tensors = {
-            "number": torch.empty(
+            "number": jnp.empty(
                 structure.natoms,
-                dtype=dtype.UINT,
-                device=structure.device,
+                dtype=int,  # dtype.UINT, FIXME
+                # device=structure.device,
             ),
-            "index": torch.empty(
-                structure.natoms,
-                structure.natoms,
-                dtype=dtype.INDEX,
-                device=structure.device,
+            "index": jnp.empty(
+                (structure.natoms, structure.natoms),
+                dtype=int,  # dtype.INDEX, FIXME
+                # device=structure.device,
             ),
         }
 
         for attr, tensor in self.tensors.items():
             logger.debug(
-                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
+                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}'"
             )
         set_as_attribute(self, self.tensors)
 
-    @torch.no_grad()
     def update(self, structure) -> None:
         """
         This method updates the neighbor atom tensors including the number of neighbor and neighbor atom
@@ -101,21 +121,12 @@ class Neighbor(_Base):
         # ----------------------------------------
         logger.debug("Updating neighbor list")
 
-        # TODO: define staticmethod _update()
-        # Tensors no need to be differentiable here
-        nn = self.number
-        ni = self.index
-        # TODO: optimization: torch unbind or vmap
-        for aid in range(structure.natoms):
-            # TODO call jit kernel of distance calculation
-            rij = structure.calculate_distance(aid)
-            # Get atom indices within the cutoff radius
-            ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]
-            # avoid self-counting atom index
-            ni_ = ni_[ni_ != aid]
-            # Set neighbor list tensors
-            nn[aid] = ni_.shape[0]
-            ni[aid, : nn[aid]] = ni_
+        self.number, self.index = _update(
+            structure,
+            self.number,
+            self.index,
+            self.r_cutoff,
+        )
 
         # Avoid updating the neighbor list the next time
         structure.requires_neighbor_update = False

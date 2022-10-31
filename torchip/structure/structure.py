@@ -2,20 +2,21 @@ from __future__ import annotations
 from ..logger import logger
 from ..base import _Base
 from ..config import dtype as _dtype
-from ..config import device as _device
 from ..utils.attribute import set_as_attribute
-from ..utils.gradient import get_value
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box, _apply_pbc
 from typing import List, Dict, Tuple, Union
-from torch import Tensor
 from ase import Atoms as AseAtoms
-import torch
 import numpy as np
+import jax
+import jax.numpy as jnp
+from functools import partial
+
+Tensor = jnp.ndarray
 
 
-@torch.jit.script
+@jax.jit
 def _calculate_distance(
     x_atom: Tensor,
     x_neighbors: Tensor,
@@ -23,18 +24,18 @@ def _calculate_distance(
 ) -> Tuple[Tensor, Tensor]:
     """
     [Kernel]
-    Calculate a tensor of distances to all atoms existing in the structure from a specific atom.
+    Calculate a tensor of distances to all atoms existing in the structure from a given atom.
     TODO: input pbc flag, using default pbc from global configuration
-    TODO: also see torch.cdist
     """
     if x_neighbors.ndim == 1:
-        x_neighbors = torch.unsqueeze(x_neighbors, dim=0)
+        x_neighbors = jnp.unsqueeze(x_neighbors, dim=0)
+
     dx = x_atom - x_neighbors
 
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
 
-    dis = torch.linalg.vector_norm(dx, dim=1)
+    dis = jnp.linalg.norm(dx, ord=2, axis=1)
 
     return dis, dx
 
@@ -70,18 +71,12 @@ class Structure(_Base):
         # 'charge',       # per-atom electric charge
         # 'total_charger' # total charge of atoms in simulation box
     )
-    _differentiable_atomic_attributes: Tuple[str] = (
-        "position",  # force = -gradient(energy, position)
-        # 'charge, '  # TODO: for lang range interaction using charge models
-    )
 
     def __init__(
         self,
         data: Dict = None,
         r_cutoff: float = None,
-        dtype: torch.dtype = None,
-        device: torch.device = None,
-        requires_grad: bool = True,
+        dtype: jnp.dtype = jnp.float32,  # FIXME
         **kwargs,
     ) -> None:
         """
@@ -99,8 +94,6 @@ class Structure(_Base):
         :type position_grad: bool, optional
         """
         self.dtype = dtype if dtype else _dtype.FLOATX
-        self.device = device if device else _device.DEVICE
-        self.requires_grad = requires_grad
         self.requires_neighbor_update = True
 
         self.element_map: ElementMap = kwargs.get("element_map", None)
@@ -181,10 +174,9 @@ class Structure(_Base):
         """
         Set atom types using the element map
         """
-        return torch.tensor(
+        return jnp.asarray(
             [self.element_map(elem) for elem in elements],
-            dtype=_dtype.INDEX,
-            device=self.device,
+            dtype=int,  # FIXME _dtype.INDEX,
         )
 
     def _init_tensors(self, data: Dict) -> None:
@@ -197,17 +189,10 @@ class Structure(_Base):
         try:
             # Tensors for atomic attributes
             for atomic_attr in self._atomic_attributes:
-                if atomic_attr in self._differentiable_atomic_attributes:
-                    self.tensors[atomic_attr] = torch.tensor(
-                        data[atomic_attr],
-                        dtype=self.dtype,
-                        device=self.device,
-                        requires_grad=self.requires_grad,
-                    )
-                else:
-                    self.tensors[atomic_attr] = torch.tensor(
-                        data[atomic_attr], dtype=self.dtype, device=self.device
-                    )
+                self.tensors[atomic_attr] = jnp.asarray(
+                    data[atomic_attr],
+                    dtype=self.dtype,
+                )
             # A tensor for atomic type
             self.tensors["atype"] = self._prepare_atype_tensor(data["element"])
 
@@ -220,8 +205,7 @@ class Structure(_Base):
         # Logging
         for attr, tensor in self.tensors.items():
             logger.debug(
-                f"{attr:12} -> Tensor(shape='{tensor.shape}',"
-                f"dtype='{tensor.dtype}', device='{tensor.device}')"
+                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}')"
             )
 
     def update_neighbor(self) -> None:
@@ -231,11 +215,11 @@ class Structure(_Base):
         """
         self.neighbor.update(self)
 
+    # TODO: jit
     def calculate_distance(
         self,
         aid: int,
-        neighbors: Tensor = None,  # index
-        return_difference=False,
+        neighbors: Tensor = None,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
         Return a tensor of distances between a specific atom and all atoms existing in the structure.
@@ -245,8 +229,10 @@ class Structure(_Base):
             self.position[neighbors] if neighbors is not None else self.position,
             self.box.lattice,
         )
-        return (dis, dx) if return_difference else dis
 
+        return dis, dx
+
+    # TODO: jit
     def select(self, element: str) -> Tensor:
         """
         Return all atom ids with atom type same as the input element.
@@ -256,7 +242,7 @@ class Structure(_Base):
         :return: atom indices
         :rtype: Tensor
         """
-        return torch.nonzero(self.atype == self.element_map[element], as_tuple=True)[0]
+        return jnp.nonzero(self.atype == self.element_map[element])[0]
 
     @property
     def natoms(self) -> int:
@@ -271,10 +257,7 @@ class Structure(_Base):
         return self.neighbor.r_cutoff
 
     def __repr__(self) -> str:
-        return (
-            f"Structure(natoms={self.natoms}, elements={self.elements}"
-            f", dtype={self.dtype}, device={self.device})"
-        )
+        return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -283,7 +266,7 @@ class Structure(_Base):
         """
         data = {}
         for name, tensor in self.tensors.items():
-            data[name] = get_value(tensor)
+            data[name] = np.asarray(tensor)
         return data
 
     def to_ase_atoms(self) -> AseAtoms:
@@ -295,15 +278,12 @@ class Structure(_Base):
         BOHR_TO_ANGSTROM = 0.529177  # TODO: Unit class or input length_conversion
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atype],
-            positions=[
-                BOHR_TO_ANGSTROM * pos.detach().cpu().numpy() for pos in self.position
-            ],
+            positions=[BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position],
             cell=[BOHR_TO_ANGSTROM * float(l) for l in self.box.length]
             if self.box
             else None,  # FIXME: works only for orthogonal cells
         )
 
-    @torch.no_grad()
     def compare(
         self,
         other: Structure,
@@ -332,19 +312,17 @@ class Structure(_Base):
 
         # TODO: use metric classes
         if "rmse" in errors:
-            result["force_RMSE"] = torch.sqrt(torch.mean(frc_diff**2))
-            result["energy_RMSE"] = torch.sqrt(torch.mean(eng_diff**2))
+            result["force_RMSE"] = jnp.sqrt(jnp.mean(frc_diff**2))
+            result["energy_RMSE"] = jnp.sqrt(jnp.mean(eng_diff**2))
         if "rmsepa" in errors:
-            result["force_RMSEpa"] = torch.sqrt(torch.mean(frc_diff**2))
-            result["energy_RMSEpa"] = (
-                torch.sqrt(torch.mean(eng_diff**2)) / self.natoms
-            )
+            result["force_RMSEpa"] = jnp.sqrt(jnp.mean(frc_diff**2))
+            result["energy_RMSEpa"] = jnp.sqrt(jnp.mean(eng_diff**2)) / self.natoms
         if "mse" in errors:
-            result["force_MSE"] = torch.mean(frc_diff**2)
-            result["energy_MSE"] = torch.mean(eng_diff**2)
+            result["force_MSE"] = jnp.mean(frc_diff**2)
+            result["energy_MSE"] = jnp.mean(eng_diff**2)
         if "msepa" in errors:
-            result["force_MSEpa"] = torch.mean(frc_diff**2)
-            result["energy_MSEpa"] = torch.mean(eng_diff**2) / self.natoms
+            result["force_MSEpa"] = jnp.mean(frc_diff**2)
+            result["energy_MSEpa"] = jnp.mean(eng_diff**2) / self.natoms
         if return_difference:
             result["frc_diff"] = frc_diff
             result["eng_diff"] = eng_diff
@@ -360,9 +338,11 @@ class Structure(_Base):
         :return: energy offset
         :rtype: Tensor
         """
-        energy_offset: Tensor = torch.empty_like(self.energy)
-        for element in self.elements:
-            energy_offset[self.select(element)] = atom_energy[element]
+        energy_offset: Tensor = jnp.empty_like(self.energy)
+        for element in self.elements:  # TODO: optimize item assignment
+            energy_offset = energy_offset.at[self.select(element)].set(
+                atom_energy[element]
+            )
         return energy_offset
 
     def remove_energy_offset(self, atom_energy: Dict[str, float]) -> None:
