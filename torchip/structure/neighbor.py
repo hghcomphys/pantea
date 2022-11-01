@@ -10,6 +10,7 @@ Tensor = jnp.ndarray
 
 
 # TODO: jit
+# @partial(jax.jit, static_argnums=(0,))  # FIXME
 def _update(
     structure,
     nn: Tensor,
@@ -20,7 +21,7 @@ def _update(
     # TODO: optimization vmap
     for aid in range(structure.natoms):
         # TODO call jit kernel of distance calculation
-        rij = structure.calculate_distance(aid)
+        rij, _ = structure.calculate_distance(aid)
         # Get atom indices within the cutoff radius
         ni_ = jnp.nonzero(rij < r_cutoff)[0]
         # avoid self-counting atom index
