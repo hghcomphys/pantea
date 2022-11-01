@@ -17,6 +17,33 @@ Tensor = jnp.ndarray
 
 
 @jax.jit
+def _calculate_distance_per_atom(
+    x_atom: Tensor,
+    x_neighbors: Tensor,
+    lattice: Tensor = None,
+) -> Tuple[Tensor, Tensor]:
+    """
+    [Kernel]
+    Calculate a tensor of distances to all atoms existing in the structure from a given atom.
+    TODO: input pbc flag, using default pbc from global configuration
+    """
+    dx = x_atom - x_neighbors
+
+    if lattice is not None:
+        dx = _apply_pbc(dx, lattice)
+
+    dis = jnp.linalg.norm(dx, ord=2, axis=1)
+
+    return dis, dx
+
+
+_vmap_calculate_distance = jax.vmap(
+    _calculate_distance_per_atom,
+    in_axes=(0, None, None),
+)
+
+
+@jax.jit
 def _calculate_distance(
     x_atom: Tensor,
     x_neighbors: Tensor,
@@ -27,17 +54,7 @@ def _calculate_distance(
     Calculate a tensor of distances to all atoms existing in the structure from a given atom.
     TODO: input pbc flag, using default pbc from global configuration
     """
-    if x_neighbors.ndim == 1:
-        x_neighbors = jnp.unsqueeze(x_neighbors, dim=0)
-
-    dx = x_atom - x_neighbors
-
-    if lattice is not None:
-        dx = _apply_pbc(dx, lattice)
-
-    dis = jnp.linalg.norm(dx, ord=2, axis=1)
-
-    return dis, dx
+    return _vmap_calculate_distance(x_atom, x_neighbors, lattice)
 
 
 class Structure(_Base):
@@ -215,22 +232,22 @@ class Structure(_Base):
         """
         self.neighbor.update(self)
 
-    # TODO: jit
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
     def calculate_distance(
         self,
-        aid: int,
+        aid: Tensor,
         neighbors: Tensor = None,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
         Return a tensor of distances between a specific atom and all atoms existing in the structure.
         """
         dis, dx = _calculate_distance(
-            self.position[aid],
+            jnp.atleast_2d(self.position[jnp.asarray(aid)]),
             self.position[neighbors] if neighbors is not None else self.position,
             self.box.lattice,
         )
 
-        return dis, dx
+        return jnp.squeeze(dis), jnp.squeeze(dx)
 
     # TODO: jit
     def select(self, element: str) -> Tensor:
