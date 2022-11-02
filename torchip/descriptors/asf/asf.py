@@ -138,85 +138,85 @@ class AtomicSymmetryFunction(Descriptor):
                 )
             )
 
-        # Loop over the angular terms
-        for angular_index, angular in enumerate(self._angular, start=self.n_radial):
+        # # Loop over the angular terms
+        # for angular_index, angular in enumerate(self._angular, start=self.n_radial):
 
-            # Find neighboring atom indices that match the given ASF cutoff radius
-            mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-                aid, dis_i, jnp.atleast_1d(angular[0].r_cutoff)
-            )
+        #     # Find neighboring atom indices that match the given ASF cutoff radius
+        #     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        #         aid, dis_i, jnp.atleast_1d(angular[0].r_cutoff)
+        #     )
 
-            # Find LOCAL indices of neighboring elements j and k
-            at_j, at_k = emap[angular[2]], emap[angular[3]]
-            mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
-            mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
+        #     # Find LOCAL indices of neighboring elements j and k
+        #     at_j, at_k = emap[angular[2]], emap[angular[3]]
+        #     mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
+        #     mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
-            # Apply angular ASF term kernels and sum over the neighboring atoms
-            total = jnp.asarray(0.0)
-            for Rij, rij, mask in zip(diff_i, dis_i, mask_cutoff_and_atype_ij):
+        #     # Apply angular ASF term kernels and sum over the neighboring atoms
+        #     total = jnp.asarray(0.0)
+        #     for Rij, rij, mask in zip(diff_i, dis_i, mask_cutoff_and_atype_ij):
 
-                rjk = rij  # FIXME
-                # mask_cutoff_jk = _
+        #         rjk = rij  # FIXME
+        #         # mask_cutoff_jk = _
 
-                rik = jnp.where(
-                    mask_cutoff_and_atype_ik,
-                    dis_i,
-                    0.0,
-                )
+        #         rik = jnp.where(
+        #             mask_cutoff_and_atype_ik,
+        #             dis_i,
+        #             0.0,
+        #         )
 
-                cost = jnp.where(
-                    mask_cutoff_and_atype_ik,
-                    jnp.inner(Rij, diff_i) / (rij * dis_i),
-                    0.0,
-                )
+        #         cost = jnp.where(
+        #             mask_cutoff_and_atype_ik,
+        #             jnp.inner(Rij, diff_i) / (rij * dis_i),
+        #             0.0,
+        #         )
 
-                total += jnp.where(
-                    mask,
-                    jnp.sum(
-                        angular[0](rij, rik, rjk, cost),
-                        where=mask_cutoff_and_atype_ik,
-                    ),
-                    0.0,
-                )
+        #         total += jnp.where(
+        #             mask,
+        #             jnp.sum(
+        #                 angular[0](rij, rik, rjk, cost),
+        #                 where=mask_cutoff_and_atype_ik,
+        #             ),
+        #             0.0,
+        #         )
 
-            result = result.at[angular_index].set(total)
+        #     result = result.at[angular_index].set(total)
 
-            # # loop over neighbor element 1 (j)
-            # for j in ni_rc_at_j_:
-            #     # ----
-            #     ni_j_ = ni_[j]  # neighbor atom index for j (scalar)
-            #     # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]
-            #     # # apply k > j (k,j != i is already applied in the neighbor list)
-            #     if at_j == at_k:  # TODO: why? dedicated k and j list to each element
-            #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] > ni_j_]
-            #     else:
-            #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] != ni_j_]
-            #     ni_k_ = ni_[k]  # neighbor atom index for k (an array)
+        # # loop over neighbor element 1 (j)
+        # for j in ni_rc_at_j_:
+        #     # ----
+        #     ni_j_ = ni_[j]  # neighbor atom index for j (scalar)
+        #     # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]
+        #     # # apply k > j (k,j != i is already applied in the neighbor list)
+        #     if at_j == at_k:  # TODO: why? dedicated k and j list to each element
+        #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] > ni_j_]
+        #     else:
+        #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] != ni_j_]
+        #     ni_k_ = ni_[k]  # neighbor atom index for k (an array)
 
-            #     # ---
-            #     rij = dis_[j]  # shape=(1), LOCAL index j
-            #     rik = dis_[k]  # shape=(*), LOCAL index k (an array)
-            #     Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
-            #     Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
+        #     # ---
+        #     rij = dis_[j]  # shape=(1), LOCAL index j
+        #     rik = dis_[k]  # shape=(*), LOCAL index k (an array)
+        #     Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
+        #     Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
 
-            #     # ---
-            #     rjk, _ = _calculate_distance(
-            #         pos[ni_j_], pos[ni_k_], lattice=lattice
-            #     )  # shape=(*)
-            #     # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
-            #     # ---
-            #     # Cosine of angle between k--<i>--j atoms
-            #     # TODO: move cosine calculation to structure
-            #     # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
-            #     cost = jnp.inner(Rij, Rik) / (rij * rik)
-            #     # ---
-            #     # Broadcasting computation (avoiding to use the in-place add() because of autograd)
-            #     result = result.at[angular_index].add(
-            #         jnp.sum(
-            #             angular[0](rij, rik, rjk, cost),
-            #             axis=0,
-            #         )
-            #     )
+        #     # ---
+        #     rjk, _ = _calculate_distance(
+        #         pos[ni_j_], pos[ni_k_], lattice=lattice
+        #     )  # shape=(*)
+        #     # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
+        #     # ---
+        #     # Cosine of angle between k--<i>--j atoms
+        #     # TODO: move cosine calculation to structure
+        #     # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
+        #     cost = jnp.inner(Rij, Rik) / (rij * rik)
+        #     # ---
+        #     # Broadcasting computation (avoiding to use the in-place add() because of autograd)
+        #     result = result.at[angular_index].add(
+        #         jnp.sum(
+        #             angular[0](rij, rik, rjk, cost),
+        #             axis=0,
+        #         )
+        #     )
 
         return result
 
