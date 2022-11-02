@@ -1,7 +1,5 @@
 from ..logger import logger
 from ..base import _Base
-from ..utils.attribute import set_as_attribute
-from typing import Dict, Tuple
 import jax
 import jax.numpy as jnp
 from functools import partial
@@ -10,26 +8,26 @@ Tensor = jnp.ndarray
 
 
 @jax.jit
-def _calculate_neighbor_mask_per_atom(
+def _calculate_cutoff_mask_per_atom(
     aid: Tensor,
     rij: Tensor,
     r_cutoff: Tensor,
 ) -> Tensor:
     # Select atoms inside cutoff radius
-    mask = rij < r_cutoff
+    mask = rij <= r_cutoff
     # exclude self-counting
     mask = mask.at[aid].set(False)
     return mask
 
 
 _vmap_calculate_neighbor_mask = jax.vmap(
-    _calculate_neighbor_mask_per_atom,
+    _calculate_cutoff_mask_per_atom,
     in_axes=(0, 0, None),
 )
 
 
 @partial(jax.jit, static_argnums=(0,))  # FIXME
-def _calculate_neighbor_mask(
+def _calculate_cutoff_mask(
     structure,
     r_cutoff: Tensor,
 ) -> Tensor:
@@ -127,7 +125,7 @@ class Neighbor(_Base):
         # ----------------------------------------
         logger.debug("Updating neighbor list")
 
-        self.mask = _calculate_neighbor_mask(
+        self.mask = _calculate_cutoff_mask(
             structure,
             jnp.atleast_1d(self.r_cutoff),
         )
