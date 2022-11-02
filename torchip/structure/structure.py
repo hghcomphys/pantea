@@ -28,7 +28,6 @@ def _calculate_distance_per_atom(
     TODO: input pbc flag, using default pbc from global configuration
     """
     dx = x_atom - x_neighbors
-
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
 

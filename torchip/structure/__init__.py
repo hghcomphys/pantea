@@ -1,2 +1,2 @@
 from .structure import *
-from .structure import _calculate_distance
+from .neighbor import _calculate_cutoff_mask_per_atom
