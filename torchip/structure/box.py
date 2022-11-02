@@ -72,6 +72,7 @@ class Box(_Base):
             return False
         return True
 
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
     def apply_pbc(self, dx: Tensor) -> Tensor:
         """
         Apply the periodic boundary condition (PBC) on input tensor.
