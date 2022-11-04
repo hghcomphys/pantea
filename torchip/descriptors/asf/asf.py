@@ -5,13 +5,49 @@ from ...structure import _calculate_cutoff_mask_per_atom
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Tuple, List, Union, Optional
+from typing import Callable, Tuple, List, Union, Optional
 import itertools
 import jax
 import jax.numpy as jnp
 from functools import partial
 
 Tensor = jnp.ndarray
+
+
+# Called by jax.lax.scan (no need for @jax.jit )
+def _calculate_descriptor_terms(
+    total: Tensor,
+    inputs: Tuple[Tensor],
+    diff_i: Tensor,
+    dis_i: Tensor,
+    mask_ik: Tensor,
+    kernel: Callable,
+) -> Tuple[Tensor, Tensor]:
+
+    # scan occurs along the leading axis
+    Rij, rij, mask_ij = inputs
+
+    # rik = jnp.where(
+    #     mask_cutoff_and_atype_ik,
+    #     dis_i,
+    #     0.0,
+    # )
+    cost = jnp.where(
+        mask_ik,
+        jnp.inner(Rij, diff_i) / (rij * dis_i),
+        0.0,
+    )
+    rjk = rij  # FIXME !!!
+
+    value = jnp.where(
+        mask_ij,
+        jnp.sum(
+            kernel(rij, dis_i, rjk, cost),
+            where=mask_ik,
+        ),
+        0.0,
+    )
+    return total + value, value
 
 
 @partial(jax.jit, static_argnums=(0, 1))  # FIXME
@@ -59,51 +95,32 @@ def _calculate_descriptor_per_atom(
             )
         )
 
-    # # Loop over the angular terms
-    # for angular_index, angular in enumerate(asf._angular, start=asf.n_radial):
+    # Loop over the angular terms
+    for angular_index, angular in enumerate(asf._angular, start=asf.n_radial):
 
-    #     # Find neighboring atom indices that match the given ASF cutoff radius
-    #     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-    #         aid, dis_i, jnp.atleast_1d(angular[0].r_cutoff)
-    #     )
+        # Find neighboring atom indices that match the given ASF cutoff radius
+        mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+            aid, dis_i, jnp.atleast_1d(angular[0].r_cutoff)
+        )
 
-    #     # Find LOCAL indices of neighboring elements j and k
-    #     at_j, at_k = emap[angular[2]], emap[angular[3]]
-    #     mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
-    #     mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
+        # Find LOCAL indices of neighboring elements j and k
+        at_j, at_k = emap[angular[2]], emap[angular[3]]
+        mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
+        mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
-    #     # Apply angular ASF term kernels and sum over the neighboring atoms
-    #     total = jnp.asarray(0.0)
-    #     for Rij, rij, mask in zip(diff_i, dis_i, mask_cutoff_and_atype_ij):
+        total, _ = jax.lax.scan(
+            partial(
+                _calculate_descriptor_terms,
+                mask_ik=mask_cutoff_and_atype_ik,
+                diff_i=diff_i,
+                dis_i=dis_i,
+                kernel=angular[0],
+            ),
+            0.0,
+            (diff_i, dis_i, mask_cutoff_and_atype_ij),
+        )
 
-    #         rjk = rij  # FIXME
-    #         # mask_cutoff_jk = _
-
-    #         rik = rij  # FIXME
-    #         # rik = jnp.where(
-    #         #     mask_cutoff_and_atype_ik,
-    #         #     dis_i,
-    #         #     0.0,
-    #         # )
-
-    #         # # TODO: jax_metrics.losses.CosineSimilarity?
-    #         cost = rij  # FIXME
-    #         # cost = jnp.where(
-    #         #     mask_cutoff_and_atype_ik,
-    #         #     jnp.inner(Rij, diff_i) / (rij * dis_i),
-    #         #     0.0,
-    #         # )
-
-    #         total += jnp.where(
-    #             mask,
-    #             jnp.sum(
-    #                 angular[0](rij, dis_i, rjk, cost),
-    #                 where=mask_cutoff_and_atype_ik,
-    #             ),
-    #             0.0,
-    #         )
-
-    #     result = result.at[angular_index].set(total)
+        result = result.at[angular_index].set(total)
 
     # # loop over neighbor element 1 (j)
     # for j in ni_rc_at_j_:
