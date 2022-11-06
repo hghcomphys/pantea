@@ -39,9 +39,9 @@ def _calculate_descriptor_terms(
         jnp.inner(Rij, diff_i) / (rij * dist_i),
         0.0,
     )
-    rjk = jnp.where(
+    rjk = jnp.where(  # dx_jk = dx_ji - dx_ik
         mask_ik,
-        _calculate_distance_per_atom(Rij, diff_i, lattice)[0],  # dx_jk = dx_ji - dx_ik
+        _calculate_distance_per_atom(Rij, diff_i, lattice)[0],
         0.0,
     )  # second output for Rjk
 
@@ -50,7 +50,8 @@ def _calculate_descriptor_terms(
         mask_ij,
         jnp.sum(
             kernel(rij, dist_i, rjk, cost),
-            where=mask_ik,
+            where=mask_ik & (rjk > 0.0),  # exclude k=j
+            axis=0,
         ),
         0.0,
     )
@@ -128,44 +129,11 @@ def _calculate_descriptor_per_atom(
             (diff_i, dist_i, mask_cutoff_and_atype_ij),
         )
 
+        # Correct double-counting
+        if at_j == at_k:
+            total *= 0.5
+
         result = result.at[angular_index].set(total)
-
-    # # loop over neighbor element 1 (j)
-    # for j in ni_rc_at_j_:
-    #     # ----
-    #     ni_j_ = ni_[j]  # neighbor atom index for j (scalar)
-    #     # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]
-    #     # # apply k > j (k,j != i is already applied in the neighbor list)
-    #     if at_j == at_k:  # TODO: why? dedicated k and j list to each element
-    #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] > ni_j_]
-    #     else:
-    #         k = ni_rc_at_k_[ni_[ni_rc_at_k_] != ni_j_]
-    #     ni_k_ = ni_[k]  # neighbor atom index for k (an array)
-
-    #     # ---
-    #     rij = dis_[j]  # shape=(1), LOCAL index j
-    #     rik = dis_[k]  # shape=(*), LOCAL index k (an array)
-    #     Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
-    #     Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
-
-    #     # ---
-    #     rjk, _ = _calculate_distance(
-    #         pos[ni_j_], pos[ni_k_], lattice=lattice
-    #     )  # shape=(*)
-    #     # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
-    #     # ---
-    #     # Cosine of angle between k--<i>--j atoms
-    #     # TODO: move cosine calculation to structure
-    #     # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
-    #     cost = jnp.inner(Rij, Rik) / (rij * rik)
-    #     # ---
-    #     # Broadcasting computation (avoiding to use the in-place add() because of autograd)
-    #     result = result.at[angular_index].add(
-    #         jnp.sum(
-    #             angular[0](rij, rik, rjk, cost),
-    #             axis=0,
-    #         )
-    #     )
 
     return result
 
