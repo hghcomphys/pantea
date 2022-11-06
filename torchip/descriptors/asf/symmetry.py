@@ -22,13 +22,17 @@ class SymmetryFunction(_Base):
     def __call__(self, *args, **kwargs) -> Tensor:
         raise NotImplementedError
 
-    @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def grad(self, *args, **kwargs):
-        try:
-            return vmap(grad(self), in_axes=0)(*args)
-        except ValueError:
-            pass
-        return grad(self)(*args)
+    # @partial(jax.jit, static_argnums=(0,))  # FIXME
+    # def grad(self, *args, **kwargs):
+    #     grad_call = grad(
+    #         self,  # __call__
+    #         argnums=tuple(index for index, _ in enumerate(args)),
+    #     )
+    #     try:
+    #         return vmap(grad_call, in_axes=0)(*args)
+    #     except ValueError:
+    #         pass
+    #     return grad_call(*args)
 
     def __repr__(self) -> str:
         return (
