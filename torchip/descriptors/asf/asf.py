@@ -1,6 +1,7 @@
 from torchip.descriptors.asf.symmetry import SymmetryFunction
 from ...logger import logger
 from ...structure import Structure
+from ...structure import _calculate_distance_per_atom
 from ...structure import _calculate_cutoff_mask_per_atom
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
@@ -19,30 +20,36 @@ def _calculate_descriptor_terms(
     total: Tensor,
     inputs: Tuple[Tensor],
     diff_i: Tensor,
-    dis_i: Tensor,
+    dist_i: Tensor,
     mask_ik: Tensor,
+    lattice: Tensor,
     kernel: Callable,
 ) -> Tuple[Tensor, Tensor]:
 
-    # scan occurs along the leading axis
+    # Scan occurs along the leading axis
     Rij, rij, mask_ij = inputs
 
     # rik = jnp.where(
     #     mask_cutoff_and_atype_ik,
-    #     dis_i,
+    #     dist_i,
     #     0.0,
     # )
     cost = jnp.where(
         mask_ik,
-        jnp.inner(Rij, diff_i) / (rij * dis_i),
+        jnp.inner(Rij, diff_i) / (rij * dist_i),
         0.0,
     )
-    rjk = rij  # FIXME !!!
+    rjk = jnp.where(
+        mask_ik,
+        _calculate_distance_per_atom(Rij, diff_i, lattice)[0],  # dx_jk = dx_ji - dx_ik
+        0.0,
+    )
 
+    # TODO: using jax.lax.cond?
     value = jnp.where(
         mask_ij,
         jnp.sum(
-            kernel(rij, dis_i, rjk, cost),
+            kernel(rij, dist_i, rjk, cost),
             where=mask_ik,
         ),
         0.0,
@@ -62,7 +69,7 @@ def _calculate_descriptor_per_atom(
     """
     # pos = structure.position
     # ms = structure.neighbor.mask
-    # lattice = structure.box.lattice
+    lattice = structure.box.lattice
     atype = structure.atype
     emap = structure.element_map.element_to_atype
 
@@ -72,7 +79,7 @@ def _calculate_descriptor_per_atom(
     # Get cutoff mask for the atom
     # ms_ = jnp.squeeze(ms[aid])
     # Calculate distances of neighboring atoms
-    dis_i, diff_i = structure.calculate_distance(aid)  # TODO: use _calculate_distance
+    dist_i, diff_i = structure.calculate_distance(aid)  # TODO: use _calculate_distance
     # Get the corresponding neighboring atom types
     # at_ refers to the array atom type of neighbors
     # at_ = jnp.where(ms_, at, -1)
@@ -82,14 +89,14 @@ def _calculate_descriptor_per_atom(
 
         # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
         mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dis_i, jnp.atleast_1d(radial[0].r_cutoff)
+            aid, dist_i, jnp.atleast_1d(radial[0].r_cutoff)
         )
         mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
 
         # Apply radial ASF term kernels and sum over the all neighboring atoms
         result = result.at[radial_index].set(
             jnp.sum(
-                radial[0](dis_i),
+                radial[0](dist_i),
                 where=mask_cutoff_and_atype_ij,
                 axis=0,
             )
@@ -100,7 +107,7 @@ def _calculate_descriptor_per_atom(
 
         # Find neighboring atom indices that match the given ASF cutoff radius
         mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dis_i, jnp.atleast_1d(angular[0].r_cutoff)
+            aid, dist_i, jnp.atleast_1d(angular[0].r_cutoff)
         )
 
         # Find LOCAL indices of neighboring elements j and k
@@ -113,11 +120,12 @@ def _calculate_descriptor_per_atom(
                 _calculate_descriptor_terms,
                 mask_ik=mask_cutoff_and_atype_ik,
                 diff_i=diff_i,
-                dis_i=dis_i,
+                dist_i=dist_i,
+                lattice=lattice,
                 kernel=angular[0],
             ),
             0.0,
-            (diff_i, dis_i, mask_cutoff_and_atype_ij),
+            (diff_i, dist_i, mask_cutoff_and_atype_ij),
         )
 
         result = result.at[angular_index].set(total)
@@ -205,7 +213,7 @@ class AtomicSymmetryFunction(Descriptor):
         Calculate descriptor values for the input given structure and atom id(s).
         """
         # Update neighbor list if needed
-        structure.update_neighbor()  # TODO: remove?
+        # structure.update_neighbor()  # TODO: remove?
 
         # Check number of symmetry functions
         if self.n_descriptor == 0:
