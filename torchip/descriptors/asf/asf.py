@@ -33,7 +33,7 @@ def _calculate_descriptor_terms(
     #     mask_cutoff_and_atype_ik,
     #     dist_i,
     #     0.0,
-    # )
+    # ) # same for Rjk
     cost = jnp.where(
         mask_ik,
         jnp.inner(Rij, diff_i) / (rij * dist_i),
@@ -43,7 +43,7 @@ def _calculate_descriptor_terms(
         mask_ik,
         _calculate_distance_per_atom(Rij, diff_i, lattice)[0],  # dx_jk = dx_ji - dx_ik
         0.0,
-    )
+    )  # second output for Rjk
 
     # TODO: using jax.lax.cond?
     value = jnp.where(
