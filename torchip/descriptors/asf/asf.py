@@ -33,17 +33,17 @@ def _inner_loop_over_angular_terms(
     #     mask_cutoff_and_atype_ik,
     #     dist_i,
     #     0.0,
-    # ) # same for Rjk
+    # ) # same for Rjk if using diff_i
     cost = jnp.where(
         mask_ik,
         jnp.inner(Rij, diff_i) / (rij * dist_i),
         0.0,
     )
-    rjk = jnp.where(  # dx_jk = dx_ji - dx_ik
+    rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,
         _calculate_distance_per_atom(Rij, diff_i, lattice)[0],
         0.0,
-    )  # second output for Rjk
+    )  # second tuple output for Rjk
 
     # TODO: using jax.lax.cond?
     value = jnp.where(
@@ -58,35 +58,33 @@ def _inner_loop_over_angular_terms(
     return total + value, value
 
 
-@partial(jax.jit, static_argnums=(0, 1))  # FIXME
+@partial(jax.jit, static_argnums=(0, 5))  # FIXME
 def _calculate_descriptor_per_atom(
     asf,
-    structure,
-    aid: Tensor,  # expected only one atom id
-    # position: Tensor,  # because of grad, must be an explicit input TODO: remove?
+    aid: Tensor,  # must be a single atom id
+    position: Tensor,
+    atype: Tensor,
+    lattice: Tensor,
+    dtype: jnp.dtype,
+    emap: Dict,
 ) -> Tensor:
     """
     Compute descriptor values per atom in the structure (via atom id).
     """
-
     # returned descriptor array
-    result = jnp.zeros(asf.n_descriptor, dtype=structure.dtype)
+    result = jnp.zeros(asf.n_descriptor, dtype=dtype)
 
-    dist_i, diff_i = _calculate_distance_per_atom(
-        structure.position[aid], structure.position, structure.lattice
-    )
+    dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
 
     # Loop over the radial terms
     for radial_index, radial in enumerate(asf._radial):
 
         # cutoff-radius mask
         mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dist_i, jnp.atleast_1d(radial[0].r_cutoff)
+            aid, dist_i, jnp.asarray(radial[0].r_cutoff)
         )
         # get the corresponding neighboring atom types
-        mask_cutoff_and_atype_ij = mask_cutoff_i & (
-            structure.atype == structure.element_map.element_to_atype[radial[2]]
-        )
+        mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
 
         result = result.at[radial_index].set(
             jnp.sum(
@@ -101,14 +99,14 @@ def _calculate_descriptor_per_atom(
 
         # cutoff-radius mask
         mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dist_i, jnp.atleast_1d(angular[0].r_cutoff)
+            aid, dist_i, jnp.asarray(angular[0].r_cutoff)
         )
         # mask for neighboring element j
-        at_j = structure.element_map.element_to_atype[angular[2]]
-        mask_cutoff_and_atype_ij = mask_cutoff_i & (structure.atype == at_j)
+        at_j = emap[angular[2]]
+        mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
         # mask for neighboring element k
-        at_k = structure.element_map.element_to_atype[angular[3]]
-        mask_cutoff_and_atype_ik = mask_cutoff_i & (structure.atype == at_k)
+        at_k = emap[angular[3]]
+        mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
         total, _ = jax.lax.scan(
             partial(
@@ -116,15 +114,14 @@ def _calculate_descriptor_per_atom(
                 mask_ik=mask_cutoff_and_atype_ik,
                 diff_i=diff_i,
                 dist_i=dist_i,
-                lattice=structure.lattice,
+                lattice=lattice,
                 kernel=angular[0],
             ),
             0.0,
             (diff_i, dist_i, mask_cutoff_and_atype_ij),
         )
         # correct double-counting
-        if at_j == at_k:
-            total *= 0.5
+        total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
 
         result = result.at[angular_index].set(total)
 
@@ -133,7 +130,7 @@ def _calculate_descriptor_per_atom(
 
 _calculate_descriptor = jax.vmap(
     _calculate_descriptor_per_atom,
-    in_axes=(None, None, 0),  # vmap only on aid
+    in_axes=(None, 0, None, None, None, None, None),  # vmap only on aid
 )
 
 
@@ -151,25 +148,39 @@ class AtomicSymmetryFunction(Descriptor):
         self._angular: List[Tuple[AngularSymmetryFunction, str, str, str]] = list()
         logger.debug(f"Initializing {self}")
 
-    def register(
+    def add(
         self,
         symmetry_function: SymmetryFunction,
-        neighbor_element1: str,
-        neighbor_element2: str = None,
+        neighbor_element_j: str,
+        neighbor_element_k: Optional[str] = None,
     ) -> None:
         """
-        This method registers an input symmetry function to the list of ASFs and assign it to the given neighbor element(s).
+        This method adds an input symmetry function to the list of ASFs
+        and assign it to the given neighbor element(s).
         # TODO: tuple of dict? (tuple is fine if it's used internally)
-        # TODO: solve the confusion for aid, starting from 0 or 1?!
         """
         if isinstance(symmetry_function, RadialSymmetryFunction):
-            self._radial.append((symmetry_function, self.element, neighbor_element1))
+            self._radial.append(
+                (
+                    symmetry_function,
+                    self.element,
+                    neighbor_element_j,
+                )
+            )
         elif isinstance(symmetry_function, AngularSymmetryFunction):
             self._angular.append(
-                (symmetry_function, self.element, neighbor_element1, neighbor_element2)
+                (
+                    symmetry_function,
+                    self.element,
+                    neighbor_element_j,
+                    neighbor_element_k,
+                )
             )
         else:
-            logger.error("Unknown input symmetry function type", exception=TypeError)
+            logger.error(
+                f"Unknown input symmetry function type {symmetry_function}",
+                exception=TypeError,
+            )
 
     def __call__(
         self,
@@ -204,12 +215,19 @@ class AtomicSymmetryFunction(Descriptor):
                 )
 
         # FIXME: jax.jit
-        return _calculate_descriptor(self, structure, aid)
+        return _calculate_descriptor(
+            self,
+            aid,
+            structure.position,
+            structure.atype,
+            structure.box.lattice,
+            structure.dtype,
+            structure.element_map.element_to_atype,
+        )
 
     # # @partial(jax.jit, static_argnums=(0,))  # FIXME
     # def grad(self, structure, aid=None):
     #     aid = jnp.atleast_1d(aid)
-
     #     vgrad_calculate_descriptor = jax.vmap(
     #         jax.grad(_calculate_descriptor_per_atom, argnums=3),  # gradient respect to position
     #         in_axes=(None, None, 1, None),  # vmap on aid
