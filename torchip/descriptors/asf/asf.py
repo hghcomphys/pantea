@@ -190,13 +190,11 @@ class AtomicSymmetryFunction(Descriptor):
         """
         Calculate descriptor values for the input given structure and atom id(s).
         """
-        # Update neighbor list if needed
-        # structure.update_neighbor()
-
         # Check number of symmetry functions
         if self.n_descriptor == 0:
             logger.warning(
-                f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}"
+                f"No symmetry function was found: radial={self.n_radial}"
+                f", angular={self.n_angular}"
             )
 
         if aid is None:
@@ -209,12 +207,11 @@ class AtomicSymmetryFunction(Descriptor):
                 == structure.atype[aid]
             ):
                 logger.error(
-                    f"Inconsistent central element ('{self.element}'): input aid={aid}"
+                    f"Inconsistent central element '{self.element}': input aid={aid}"
                     f" (atype='{int(structure.atype[aid])}')",
                     exception=ValueError,
                 )
 
-        # FIXME: jax.jit
         return _calculate_descriptor(
             self,
             aid,
@@ -225,14 +222,37 @@ class AtomicSymmetryFunction(Descriptor):
             structure.element_map.element_to_atype,
         )
 
-    # # @partial(jax.jit, static_argnums=(0,))  # FIXME
-    # def grad(self, structure, aid=None):
-    #     aid = jnp.atleast_1d(aid)
-    #     vgrad_calculate_descriptor = jax.vmap(
-    #         jax.grad(_calculate_descriptor_per_atom, argnums=3),  # gradient respect to position
-    #         in_axes=(None, None, 1, None),  # vmap on aid
-    #     )
-    #     return vgrad_calculate_descriptor(self, structure, aid, structure.position)
+    # @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def grad(self, structure, aid=None):
+
+        aid = jnp.atleast_1d(aid)
+
+        # vgrad_calculate_descriptor = jax.vmap(
+        #     jax.grad(_calculate_descriptor_per_atom, argnums=3),  # gradient respect to position
+        #     in_axes=(None, None, 1, None),  # vmap on aid
+        # )
+        # return vgrad_calculate_descriptor(self, structure, aid, structure.position)
+
+        def kernel(asf, aid, position, atype, lattice, dtype, emap):
+            return _calculate_descriptor_per_atom(
+                asf, aid, position, atype, lattice, dtype, emap
+            ).sum()
+
+        # gradient respect to position
+        grad_calculate_descriptor_per_atom = jax.grad(
+            kernel,
+            argnums=2,
+        )
+
+        return grad_calculate_descriptor_per_atom(
+            self,
+            aid,
+            structure.position,
+            structure.atype,
+            structure.box.lattice,
+            structure.dtype,
+            structure.element_map.element_to_atype,
+        )
 
     @property
     def n_radial(self) -> int:
