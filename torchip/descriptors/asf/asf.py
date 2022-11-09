@@ -34,10 +34,16 @@ def _inner_loop_over_angular_terms(
     #     dist_i,
     #     0.0,
     # ) # same for Rjk if using diff_i
+
+    # fix nan issue in gradient
+    # see https://github.com/google/jax/issues/1052#issuecomment-514083352
+    value = rij * dist_i
+    true_op = jnp.where(value == 0.0, 1.0, value)
+
     cost = jnp.where(
         mask_ik,
-        jnp.inner(Rij, diff_i) / (rij * dist_i),
-        0.0,
+        jnp.inner(Rij, diff_i) / true_op,
+        1.0,
     )
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,
