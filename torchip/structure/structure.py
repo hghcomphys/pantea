@@ -31,9 +31,14 @@ def _calculate_distance_per_atom(
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
 
-    dis = jnp.linalg.norm(dx, ord=2, axis=1)
+    # Fix NaN in gradient of np.linalg.norm
+    # see https://github.com/google/jax/issues/3058
+    is_zero = dx.sum(axis=1, keepdims=True) == 0.0
+    dx_ = jnp.where(is_zero, jnp.ones_like(dx), dx)
+    dist = jnp.linalg.norm(dx_, ord=2, axis=1)
+    dist = jnp.where(jnp.squeeze(is_zero), 0.0, dist)
 
-    return dis, dx
+    return dist, dx
 
 
 _vmap_calculate_distance = jax.vmap(
@@ -242,7 +247,9 @@ class Structure(_Base):
         """
         dis, dx = _calculate_distance(
             jnp.atleast_2d(self.position[jnp.asarray(aid)]),
-            self.position[neighbors] if neighbors is not None else self.position,
+            self.position[jnp.asarray(neighbors)]
+            if neighbors is not None
+            else self.position,
             self.box.lattice,
         )
 
