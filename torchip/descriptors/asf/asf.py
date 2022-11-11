@@ -1,14 +1,216 @@
 from torchip.descriptors.asf.symmetry import SymmetryFunction
 from ...logger import logger
-from ...structure import Structure, _calculate_distance
-from ...config import TaskClient
+from ...structure import Structure
+from ...structure import _calculate_distance_per_atom
+from ...structure import _calculate_cutoff_mask_per_atom
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Tuple, Union, List, Dict
+from typing import Callable, Tuple, List, Optional, Dict
 import itertools
-import torch
-from torch import Tensor
+import jax
+import jax.numpy as jnp
+from functools import partial
+
+Tensor = jnp.ndarray
+
+
+@partial(jax.jit, static_argnums=(0,))  # FIXME
+def _calculate_radial_descriptor_per_atom(
+    radial: Tuple,
+    aid: Tensor,
+    atype: Tensor,
+    dist_i: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    # cutoff-radius mask
+    mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        aid, dist_i, jnp.asarray(radial[0].r_cutoff)
+    )
+    # get the corresponding neighboring atom types
+    mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
+
+    return jnp.sum(
+        radial[0](dist_i),
+        where=mask_cutoff_and_atype_ij,
+        axis=0,
+    )
+
+
+@partial(jax.jit, static_argnums=(0,))  # FIXME
+def _calculate_angular_descriptor_per_atom(
+    angular: Tuple,
+    aid: Tensor,  # must be a single atom id
+    atype: Tensor,
+    diff_i: Tensor,
+    dist_i: Tensor,
+    lattice: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    # cutoff-radius mask
+    mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        aid, dist_i, jnp.asarray(angular[0].r_cutoff)
+    )
+    # mask for neighboring element j
+    at_j = emap[angular[2]]
+    mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
+    # mask for neighboring element k
+    at_k = emap[angular[3]]
+    mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
+
+    total, _ = jax.lax.scan(
+        partial(
+            _inner_loop_over_angular_terms,
+            mask_ik=mask_cutoff_and_atype_ik,
+            diff_i=diff_i,
+            dist_i=dist_i,
+            lattice=lattice,
+            kernel=angular[0],
+        ),
+        0.0,
+        (diff_i, dist_i, mask_cutoff_and_atype_ij),
+    )
+    # correct double-counting
+    total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
+
+    return total
+
+
+# Called by jax.lax.scan (no need for @jax.jit)
+def _inner_loop_over_angular_terms(
+    total: Tensor,
+    inputs: Tuple[Tensor],
+    diff_i: Tensor,
+    dist_i: Tensor,
+    mask_ik: Tensor,
+    lattice: Tensor,
+    kernel: Callable,
+) -> Tuple[Tensor, Tensor]:
+
+    # Scan occurs along the leading axis
+    Rij, rij, mask_ij = inputs
+
+    # rik = jnp.where(
+    #     mask_cutoff_and_atype_ik,
+    #     dist_i,
+    #     0.0,
+    # ) # same for Rjk if using diff_i
+
+    # fix nan issue in gradient
+    # see https://github.com/google/jax/issues/1052#issuecomment-514083352
+    operand = rij * dist_i
+    is_zero = operand == 0.0
+    true_op = jnp.where(is_zero, 1.0, operand)
+    cost = jnp.where(
+        mask_ik,
+        jnp.inner(Rij, diff_i) / true_op,
+        1.0,
+    )
+    cost = jnp.where(is_zero, 0.0, cost)  # FIXME: gradient value!
+
+    rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
+        mask_ik,
+        _calculate_distance_per_atom(Rij, diff_i, lattice)[0],
+        0.0,
+    )  # second tuple output for Rjk
+
+    # TODO: using jax.lax.cond?
+    value = jnp.where(
+        mask_ij,
+        jnp.sum(
+            kernel(rij, dist_i, rjk, cost),
+            where=mask_ik & (rjk > 0.0),  # exclude k=j
+            axis=0,
+        ),
+        0.0,
+    )
+    return total + value, value
+
+
+@partial(jax.jit, static_argnums=(0, 5))  # FIXME
+def _calculate_descriptor_per_atom(
+    asf,
+    aid: Tensor,  # must be a single atom id
+    position: Tensor,
+    atype: Tensor,
+    lattice: Tensor,
+    dtype: jnp.dtype,
+    emap: Dict,
+) -> Tensor:
+    """
+    Compute descriptor values per atom in the structure (via atom id).
+    """
+    result = jnp.empty(asf.n_descriptor, dtype=dtype)
+
+    dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
+
+    # Loop over the radial terms
+    for index, radial in enumerate(asf._radial):
+
+        result = result.at[index].set(
+            _calculate_radial_descriptor_per_atom(radial, aid, atype, dist_i, emap)
+        )
+
+    # Loop over the angular terms
+    for index, angular in enumerate(asf._angular, start=asf.n_radial):
+
+        result = result.at[index].set(
+            _calculate_angular_descriptor_per_atom(
+                angular, aid, atype, diff_i, dist_i, lattice, emap
+            )
+        )
+
+    return result
+
+
+def _func_radial(
+    radial,
+    x: Tensor,
+    aid: Tensor,
+    position: Tensor,
+    lattice: Tensor,
+    atype: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    dist_i, _ = _calculate_distance_per_atom(x, position, lattice)
+
+    return _calculate_radial_descriptor_per_atom(radial, aid, atype, dist_i, emap)
+
+
+def _func_angular(
+    angular: Tuple,
+    x: Tensor,
+    aid: Tensor,
+    position: Tensor,
+    lattice: Tensor,
+    atype: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    dist_i, diff_i = _calculate_distance_per_atom(x, position, lattice)
+
+    return _calculate_angular_descriptor_per_atom(
+        angular, aid, atype, diff_i, dist_i, lattice, emap
+    )
+
+
+_grad_func_radial = jax.jit(
+    jax.grad(_func_radial, argnums=1),
+    static_argnums=(0,),
+)
+
+_grad_func_angular = jax.jit(
+    jax.grad(_func_angular, argnums=1),
+    static_argnums=(0,),
+)
+
+_calculate_descriptor = jax.vmap(
+    _calculate_descriptor_per_atom,
+    in_axes=(None, 0, None, None, None, None, None),  # vmap on aid
+)
 
 
 class AtomicSymmetryFunction(Descriptor):
@@ -21,211 +223,112 @@ class AtomicSymmetryFunction(Descriptor):
 
     def __init__(self, element: str) -> None:
         super().__init__(element)  # central element
-        self._radial: Tuple[RadialSymmetryFunction, str, str] = list()
-        self._angular: Tuple[AngularSymmetryFunction, str, str, str] = list()
-        # self.__cosine_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-8) # instantiate
+        self._radial: List[Tuple[RadialSymmetryFunction, str, str]] = list()
+        self._angular: List[Tuple[AngularSymmetryFunction, str, str, str]] = list()
         logger.debug(f"Initializing {self}")
 
-    def register(
+    def add(
         self,
         symmetry_function: SymmetryFunction,
-        neighbor_element1: str,
-        neighbor_element2: str = None,
+        neighbor_element_j: str,
+        neighbor_element_k: Optional[str] = None,
     ) -> None:
         """
-        This method registers an input symmetry function to the list of ASFs and assign it to the given neighbor element(s).
+        This method adds an input symmetry function to the list of ASFs
+        and assign it to the given neighbor element(s).
         # TODO: tuple of dict? (tuple is fine if it's used internally)
-        # TODO: solve the confusion for aid, starting from 0 or 1?!
         """
         if isinstance(symmetry_function, RadialSymmetryFunction):
-            self._radial.append((symmetry_function, self.element, neighbor_element1))
+            self._radial.append(
+                (
+                    symmetry_function,
+                    self.element,
+                    neighbor_element_j,
+                )
+            )
         elif isinstance(symmetry_function, AngularSymmetryFunction):
             self._angular.append(
-                (symmetry_function, self.element, neighbor_element1, neighbor_element2)
+                (
+                    symmetry_function,
+                    self.element,
+                    neighbor_element_j,
+                    neighbor_element_k,
+                )
             )
         else:
-            logger.error(f"Unknown input symmetry function type", exception=TypeError)
+            logger.error(
+                f"Unknown input symmetry function type {symmetry_function}",
+                exception=TypeError,
+            )
 
-    def __call__(
-        self,
-        structure: Structure,
-        aid: Union[List[int], int] = None,
-    ) -> Tensor:
+    def __call__(self, structure: Structure, aid: Optional[Tensor] = None) -> Tensor:
         """
         Calculate descriptor values for the input given structure and atom id(s).
         """
-        # Update neighbor list if needed
-        structure.update_neighbor()
-
         # Check number of symmetry functions
         if self.n_descriptor == 0:
             logger.warning(
-                f"No symmetry function was found: radial={self.n_radial}, angular={self.n_angular}"
+                f"No symmetry function was found: radial={self.n_radial}"
+                f", angular={self.n_angular}"
             )
 
-        # TODO: raise ValueError("Unknown atom id type")
-        aids_ = [aid] if isinstance(aid, int) else aid
-        # TODO: optimize ifs here
-        aids_ = structure.select(self.element) if aids_ is None else aids_
-
-        # ================ TODO: Parallel Computing ====================
-        if TaskClient.client is None:
-            results = [self.compute(structure, aid_) for aid_ in aids_]
+        if aid is None:
+            aid = structure.select(self.element)
         else:
-            logger.debug(f"Parallelizing {self.__class__.__name__} computing kernel")
-            tensors = [
-                structure.position,
-                structure.atype,
-                structure.neighbor.number,
-                structure.neighbor.index,
-            ]
-            params = {
-                "lattice": structure.box.lattice,
-                "emap": structure.element_map.element_to_atype,
-                "dtype": structure.dtype,
-                "device": structure.device,
-            }
-            scattered_tensors = TaskClient.client.scatter(tensors, broadcast=True)
-            futures = [
-                TaskClient.client.submit(
-                    self._compute, *scattered_tensors, aid_, **params
-                )
-                for aid_ in aids_
-            ]
-            results = TaskClient.client.gather(futures)
-        # ===========================================================
-
-        # Return descriptor values
-        return torch.stack(results, dim=0)  # torch.squeeze(torch.stack(results, dim=0))
-
-    # TODO: static method?
-    def _compute(
-        self,
-        pos: Tensor,
-        at: Tensor,
-        nn: Tensor,
-        ni: Tensor,
-        aid: int,
-        lattice: Tensor,
-        emap: Dict[str, int],
-        dtype,
-        device,
-    ) -> Tensor:
-        """
-        [Kernel]
-        Compute descriptor values of an input atom id for the given structure tensors.
-        """
-        # A tensor for final descriptor values of a single atom
-        result = torch.zeros(self.n_descriptor, dtype=dtype, device=device)
-
-        # Check aid atom type match the central element
-        if not emap[self.element] == at[aid]:
-            logger.error(
-                f"Inconsistent central element ('{self.element}'): input aid={aid} (atype='{int(at[aid])}')",
-                exception=ValueError,
-            )
-
-        # Get the list of neighboring atom indices
-        ni_ = ni[aid, : nn[aid]]
-        # Calculate distances of neighboring atoms (detach flag must be disabled to keep the history of gradients)
-        # self-count excluded, PBC applied
-        dis_, diff_ = _calculate_distance(pos[aid], pos[ni_], lattice=lattice)
-        # Get the corresponding neighboring atom types and position
-        at_ = at[ni_]  # at_ refers to the array atom type of neighbors
-        # x_ = x[ni_]    # x_ refers to the array position of neighbor atoms
-
-        # print("i", aid)
-        # Loop over the radial terms
-        for radial_index, radial in enumerate(self._radial):
-            # Find neighboring atom indices that match the given ASF cutoff radius AND atom type
-            ni_rc__ = (dis_ <= radial[0].r_cutoff).detach()  # a logical array
-            ni_rc_at_ = torch.nonzero(
-                torch.logical_and(
-                    ni_rc__,
-                    at_ == emap[radial[2]],
-                ),
-                as_tuple=True,
-            )[0]
-            # Apply radial ASF term kernels and sum over the all neighboring atoms and finally return the result
-            # print(aid.numpy(), radial[1], radial[2],
-            #   radial[0].kernel(dis_[ni_rc_at_]).detach().numpy(),
-            #   torch.sum( radial[0].kernel(dis_[ni_rc_at_] ), dim=0).detach().numpy())
-            result[radial_index] = torch.sum(radial[0].kernel(dis_[ni_rc_at_]), dim=0)
-
-        # Loop over the angular terms
-        for angular_index, angular in enumerate(self._angular, start=self.n_radial):
-            # Find neighboring atom indices that match the given ASF cutoff radius
-            ni_rc__ = (dis_ <= angular[0].r_cutoff).detach()  # a logical array
-            # Find LOCAL indices of neighboring elements j and k (can be used for ni_, at_, dis_, and x_ arrays)
-            at_j, at_k = emap[angular[2]], emap[angular[3]]
-            # local index
-            ni_rc_at_j_ = torch.nonzero(
-                torch.logical_and(
-                    ni_rc__,
-                    at_ == at_j,
-                ),
-                as_tuple=True,
-            )[0]
-            # local index
-            ni_rc_at_k_ = torch.nonzero(
-                torch.logical_and(
-                    ni_rc__,
-                    at_ == at_k,
-                ),
-                as_tuple=True,
-            )[0]
-
-            # Apply angular ASF term kernels and sum over the neighboring atoms
-            # loop over neighbor element 1 (j)
-            for j in ni_rc_at_j_:
-                # ----
-                ni_j_ = ni_[j]  # neighbor atom index for j (scalar)
-                # k = ni_rc_at_k_[ ni_[ni_rc_at_k_] > ni_j_ ]
-                # # apply k > j (k,j != i is already applied in the neighbor list)
-                if at_j == at_k:  # TODO: why? dedicated k and j list to each element
-                    k = ni_rc_at_k_[ni_[ni_rc_at_k_] > ni_j_]
-                else:
-                    k = ni_rc_at_k_[ni_[ni_rc_at_k_] != ni_j_]
-                ni_k_ = ni_[k]  # neighbor atom index for k (an array)
-                # ---
-                rij = dis_[j]  # shape=(1), LOCAL index j
-                rik = dis_[k]  # shape=(*), LOCAL index k (an array)
-                Rij = diff_[j]  # x[aid] - x[ni_j_] # shape=(3)
-                Rik = diff_[k]  # x[aid] - x[ni_k_] # shape=(*, 3)
-                # ---
-                rjk, _ = _calculate_distance(
-                    pos[ni_j_], pos[ni_k_], lattice=lattice
-                )  # shape=(*)
-                # Rjk = structure.apply_pbc(x[ni_j_] - x[ni_k_])   # shape=(*, 3)
-                # ---
-                # Cosine of angle between k--<i>--j atoms
-                # TODO: move cosine calculation to structure
-                # cost = self.__cosine_similarity(Rij.expand(Rik.shape), Rik)   # shape=(*)
-                cost = torch.inner(Rij, Rik) / (rij * rik)
-                # ---
-                # Broadcasting computation (avoiding to use the in-place add() because of autograd)
-                result[angular_index] = result[angular_index] + torch.sum(
-                    angular[0].kernel(rij, rik, rjk, cost),
-                    dim=0,
+            aid = jnp.atleast_1d(aid)
+            # Check aid atom type match the central element
+            if not jnp.all(
+                structure.element_map.element_to_atype[self.element]
+                == structure.atype[aid]
+            ):
+                logger.error(
+                    f"Inconsistent central element '{self.element}': input aid={aid}"
+                    f" (atype='{int(structure.atype[aid])}')",
+                    exception=ValueError,
                 )
 
-        return result
-
-    def compute(self, structure: Structure, aid: int) -> Tensor:
-        """
-        Compute descriptor values of an input atom id for the given structure.
-        """
-        return self._compute(
-            pos=structure.position,
-            at=structure.atype,
-            nn=structure.neighbor.number,
-            ni=structure.neighbor.index,
-            aid=aid,
-            lattice=structure.box.lattice,
-            emap=structure.element_map.element_to_atype,
-            dtype=structure.dtype,
-            device=structure.device,
+        return _calculate_descriptor(
+            self,
+            aid,
+            structure.position,
+            structure.atype,
+            structure.box.lattice,
+            structure.dtype,
+            structure.element_map.element_to_atype,
         )
+
+    def grad(self, structure: Structure, aid: Tensor, descriptor_index: int):
+
+        # TODO: add logging
+        assert descriptor_index < self.n_descriptor
+
+        position = structure.position
+        lattice = structure.lattice
+        atype = structure.atype
+        emap = structure.element_map.element_to_atype
+
+        aid = jnp.atleast_1d(aid)
+        if descriptor_index < self.n_radial:
+            grad_value = _grad_func_radial(
+                self._radial[descriptor_index],
+                position[aid],
+                aid,
+                position,
+                lattice,
+                atype,
+                emap,
+            )
+        else:
+            grad_value = _grad_func_angular(
+                self._angular[descriptor_index - self.n_radial],
+                position[aid],
+                aid,
+                position,
+                lattice,
+                atype,
+                emap,
+            )
+        return jnp.squeeze(grad_value)
 
     @property
     def n_radial(self) -> int:

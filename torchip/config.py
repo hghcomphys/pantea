@@ -80,9 +80,9 @@ def manual_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 
-class TaskClient:
-    client = None
-    # from dask.distributed import Client
-    # client = Client(memory_limit='4GB', n_workers=2, processes=True, threads_per_worker=2, dashboard_address=':8791')
-    # FIXME: There is an issue in Dask where the pytorch graph history cannot be transferred to
-    # the client workers when having multiple processes
+# class TaskClient:
+#     client = None
+#     from dask.distributed import Client
+#     client = Client(memory_limit='4GB', n_workers=2, processes=True, threads_per_worker=2, dashboard_address=':8791')
+#     # FIXME: There is an issue in Dask where the pytorch graph history cannot be transferred to
+#     # the client workers when having multiple processes

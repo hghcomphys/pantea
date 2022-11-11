@@ -1,12 +1,40 @@
 from ..logger import logger
 from ..base import _Base
-from ..config import dtype
-from ..utils.attribute import set_as_attribute
-from typing import Dict
-from torch import Tensor
+import jax
+import jax.numpy as jnp
+from functools import partial
 
-# from .structure import Structure  # TODO: circular import error
-import torch
+Tensor = jnp.ndarray
+
+
+@jax.jit
+def _calculate_cutoff_mask_per_atom(
+    aid: Tensor,
+    rij: Tensor,
+    r_cutoff: Tensor,
+) -> Tensor:
+    # Select atoms inside cutoff radius
+    mask = rij <= r_cutoff
+    # exclude self-counting
+    mask = mask.at[aid].set(False)
+    return mask
+
+
+_vmap_calculate_neighbor_mask = jax.vmap(
+    _calculate_cutoff_mask_per_atom,
+    in_axes=(0, 0, None),
+)
+
+
+@partial(jax.jit, static_argnums=(0,))  # FIXME
+def _calculate_cutoff_mask(
+    structure,
+    r_cutoff: Tensor,
+) -> Tensor:
+    # Tensors no need to be differentiable here
+    aids = jnp.arange(structure.natoms)  # all atoms
+    rij, _ = structure.calculate_distance(aids)
+    return _vmap_calculate_neighbor_mask(aids, rij, r_cutoff)
 
 
 class Neighbor(_Base):
@@ -42,46 +70,42 @@ class Neighbor(_Base):
         self.r_cutoff = r_cutoff
         self.r_cutoff_updated = True
 
-    def _init_tensors(self, structure) -> None:
-        """
-        Allocating tensors for the neighbor list from the input structure.
+    # def _init_tensors(self, structure) -> None:
+    #     """
+    #     Allocating tensors for the neighbor list from the input structure.
 
-        :param structure: An instance of Structure
-        :type structure: Dict[Tensor]
-        """
-        # FIXME: reduce natoms*natoms tensor size!
-        # TODO: define max_num_neighbor to avoid extra memory allocation!
+    #     :param structure: An instance of Structure
+    #     :type structure: Dict[Tensor]
+    #     """
+    #     # FIXME: reduce natoms*natoms tensor size!
+    #     # TODO: define max_num_neighbor to avoid extra memory allocation!
 
-        # Avoid re-allocating structure with the same size
-        try:
-            if structure.natoms == len(self.number):
-                logger.debug("Avoid re-allocating the neighbor tensors")
-                return
-        except AttributeError:
-            pass
+    #     # Avoid re-allocating structure with the same size
+    #     try:
+    #         if structure.natoms == len(self.number):
+    #             logger.debug("Avoid re-allocating the neighbor tensors")
+    #             return
+    #     except AttributeError:
+    #         pass
 
-        logger.debug("Allocating tensors for neighbor list")
-        self.tensors = {
-            "number": torch.empty(
-                structure.natoms,
-                dtype=dtype.UINT,
-                device=structure.device,
-            ),
-            "index": torch.empty(
-                structure.natoms,
-                structure.natoms,
-                dtype=dtype.INDEX,
-                device=structure.device,
-            ),
-        }
+    #     logger.debug("Allocating tensors for neighbor list")
+    #     self.tensors = {
+    #         "number": jnp.empty(
+    #             structure.natoms,
+    #             dtype=int,  # dtype.UINT, FIXME
+    #         ),
+    #         "index": jnp.empty(
+    #             (structure.natoms, structure.natoms),
+    #             dtype=int,  # dtype.INDEX, FIXME
+    #         ),
+    #     }
 
-        for attr, tensor in self.tensors.items():
-            logger.debug(
-                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}', device='{tensor.device}')"
-            )
-        set_as_attribute(self, self.tensors)
+    #     for attr, tensor in self.tensors.items():
+    #         logger.debug(
+    #             f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}'"
+    #         )
+    #     set_as_attribute(self, self.tensors)
 
-    @torch.no_grad()
     def update(self, structure) -> None:
         """
         This method updates the neighbor atom tensors including the number of neighbor and neighbor atom
@@ -96,26 +120,15 @@ class Neighbor(_Base):
             logger.debug("Skipped updating the neighbor list")
             return
 
-        self._init_tensors(structure)
+        # self._init_tensors(structure) # FIXME: remove
 
         # ----------------------------------------
         logger.debug("Updating neighbor list")
 
-        # TODO: define staticmethod _update()
-        # Tensors no need to be differentiable here
-        nn = self.number
-        ni = self.index
-        # TODO: optimization: torch unbind or vmap
-        for aid in range(structure.natoms):
-            # TODO call jit kernel of distance calculation
-            rij = structure.calculate_distance(aid)
-            # Get atom indices within the cutoff radius
-            ni_ = torch.nonzero(rij < self.r_cutoff, as_tuple=True)[0]
-            # avoid self-counting atom index
-            ni_ = ni_[ni_ != aid]
-            # Set neighbor list tensors
-            nn[aid] = ni_.shape[0]
-            ni[aid, : nn[aid]] = ni_
+        self.mask = _calculate_cutoff_mask(
+            structure,
+            jnp.atleast_1d(self.r_cutoff),
+        )
 
         # Avoid updating the neighbor list the next time
         structure.requires_neighbor_update = False

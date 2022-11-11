@@ -1,9 +1,10 @@
 from .cutoff import CutoffFunction
 from .symmetry import SymmetryFunction
-from torch import Tensor
-import torch
+import jax
+import jax.numpy as jnp
+from functools import partial
 
-# import angular_cpp
+Tensor = jnp.ndarray
 
 
 class AngularSymmetryFunction(SymmetryFunction):
@@ -12,28 +13,8 @@ class AngularSymmetryFunction(SymmetryFunction):
     TODO: add other variant of angular symmetry functions (see N2P2 documentation).
     """
 
-    def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
         raise NotImplementedError
-
-
-@torch.jit.script
-def _G3_kernel(
-    rij: Tensor,
-    rik: Tensor,
-    rjk: Tensor,
-    cost: Tensor,
-    eta: float,
-    zeta: float,
-    lambda0: float,
-    r_shift: float,
-    _scale_factor: float,
-) -> Tensor:
-    # TODO: r_shift, define params argument instead
-    return (
-        _scale_factor
-        * torch.pow(1 + lambda0 * cost, zeta)
-        * torch.exp(-eta * (rij**2 + rik**2 + rjk**2))
-    )
 
 
 class G3(AngularSymmetryFunction):
@@ -56,42 +37,17 @@ class G3(AngularSymmetryFunction):
         self._scale_factor = 2.0 ** (1.0 - self.zeta)
         super().__init__(cfn)
 
-    def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+        # TODO: r_shift, define params argument instead
         return (
-            _G3_kernel(
-                rij,
-                rik,
-                rjk,
-                cost,
-                self.eta,
-                self.zeta,
-                self.lambda0,
-                self.r_shift,
-                self._scale_factor,
-            )
+            self._scale_factor
+            * jnp.power(1 + self.lambda0 * cost, self.zeta)
+            * jnp.exp(-self.eta * (rij**2 + rik**2 + rjk**2))
             * self.cfn(rij)
             * self.cfn(rik)
             * self.cfn(rjk)
         )
-
-
-@torch.jit.script
-def _G9_kernel(
-    rij: Tensor,
-    rik: Tensor,
-    cost: Tensor,
-    eta: float,
-    zeta: float,
-    lambda0: float,
-    r_shift: float,
-    _scale_factor: float,
-) -> Tensor:
-    # TODO: r_shift, define params argument instead
-    return (
-        _scale_factor
-        * torch.pow(1 + lambda0 * cost, zeta)
-        * torch.exp(-eta * (rij**2 + rik**2))
-    )
 
 
 class G9(G3):  # AngularSymmetryFunction
@@ -100,18 +56,13 @@ class G9(G3):  # AngularSymmetryFunction
     Ref -> J. Behler, J. Chem. Phys. 134, 074106 (2011)
     """
 
-    def kernel(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
+    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+        # TODO: r_shift, define params argument instead
         return (
-            _G9_kernel(
-                rij,
-                rik,
-                cost,
-                self.eta,
-                self.zeta,
-                self.lambda0,
-                self.r_shift,
-                self._scale_factor,
-            )
+            self._scale_factor
+            * jnp.pow(1 + self.lambda0 * cost, self.zeta)
+            * jnp.exp(-self.eta * (rij**2 + rik**2))
             * self.cfn(rij)
             * self.cfn(rik)
         )

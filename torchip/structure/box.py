@@ -1,12 +1,14 @@
 from ..logger import logger
 from ..base import _Base
 from ..config import dtype as _dtype
-from ..config import device as _device
-from torch import Tensor
-import torch
+import jax
+import jax.numpy as jnp
+from functools import partial
+
+Tensor = jnp.ndarray
 
 
-@torch.jit.script
+@jax.jit
 def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
     """
     [Kernel]
@@ -23,8 +25,8 @@ def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
     :rtype: Tensor
     """
     l = lattice.diagonal()
-    dx = torch.where(dx > 0.5e0 * l, dx - l, dx)
-    dx = torch.where(dx < -0.5e0 * l, dx + l, dx)
+    dx = jnp.where(dx > 0.5e0 * l, dx - l, dx)
+    dx = jnp.where(dx < -0.5e0 * l, dx + l, dx)
 
     return dx
 
@@ -40,8 +42,7 @@ class Box(_Base):
     def __init__(
         self,
         lattice: Tensor = None,
-        dtype=None,
-        device=None,
+        dtype: jnp.dtype = jnp.float32,  # FIXME
     ) -> None:
         """
         Initialize simulation box (super-cell).
@@ -49,17 +50,15 @@ class Box(_Base):
         :param lattice: Lattice matrix (3x3 array)
         :param dtype: Data type of internal tensors which represent structure, defaults to None
         :type dtype: torch.dtype, optional
-        :param device: Device on which tensors are allocated, defaults to None
-        :type device: torch.device, optional
         """
         self.dtype = dtype if dtype else _dtype.FLOATX
-        self.device = device if device else _device.DEVICE
 
         self.lattice = None
         if lattice is not None:
             try:
-                self.lattice = torch.tensor(
-                    lattice, dtype=self.dtype, device=self.device
+                self.lattice = jnp.asarray(
+                    lattice,
+                    dtype=self.dtype,
                 ).reshape(3, 3)
             except RuntimeError:
                 logger.error(
@@ -73,6 +72,7 @@ class Box(_Base):
             return False
         return True
 
+    @partial(jax.jit, static_argnums=(0,))  # FIXME
     def apply_pbc(self, dx: Tensor) -> Tensor:
         """
         Apply the periodic boundary condition (PBC) on input tensor.
@@ -93,7 +93,7 @@ class Box(_Base):
         :return: moved atom position
         :rtype: Tensor
         """
-        return x.remainder(self.length)
+        return jnp.remainder(x, self.length)
 
     @property
     def lx(self) -> Tensor:
