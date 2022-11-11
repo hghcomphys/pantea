@@ -1,16 +1,16 @@
-# MLPOT - A Framework for Developing Machine Learning Interatomic Potential
+# MLPOT - Machine-learning Potential
 
 <!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 
 <!-- ## What is it? -->
 
-MLPOT is a software _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to quickly construct their ML-based potentials and allowing to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
+MLPOT is a software _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to construct their ML-based potentials and allowing them to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
 
-<!-- ### Main features -->
+### Main features
 
-- generic and flexible design which allows defining various atomic descriptors and potentials in Python
-- Support GPU-accelerated computing which can speed up potential training
-- automatic differentiation and optimized tensor computations
+- Generic and flexible design which allows defining any atomic descriptors and potentials
+- Support GPU-accelerated computing, this speeds up model trainings order of magnitudes
+- automatic differentiation, no need to explicitly define gradients
 
 <!--  -->
 
@@ -24,9 +24,9 @@ This repository is currently under heavy development and the main focus is on th
 
 The following packages have to be installed beforehand:
 
-- [JAX](https://github.com/google/jax)
-- [PyTorch](https://github.com/pytorch/pytorch) (> 1.12.0)
-- [ASE](https://wiki.fysik.dtu.dk/ase/#) (> 3.22.1)
+- [JAX](https://github.com/google/jax) (0.3.23)
+- [PyTorch](https://github.com/pytorch/pytorch) (1.12.0)
+- [ASE](https://wiki.fysik.dtu.dk/ase/#) (3.22.1)
 
 You can install `MLPOT` using:
 
