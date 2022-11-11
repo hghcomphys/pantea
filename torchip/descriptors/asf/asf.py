@@ -6,13 +6,76 @@ from ...structure import _calculate_cutoff_mask_per_atom
 from ..base import Descriptor
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
-from typing import Callable, Tuple, List, Union, Optional, Dict
+from typing import Callable, Tuple, List, Optional, Dict
 import itertools
 import jax
 import jax.numpy as jnp
 from functools import partial
 
 Tensor = jnp.ndarray
+
+
+@partial(jax.jit, static_argnums=(0,))  # FIXME
+def _calculate_radial_descriptor_per_atom(
+    radial: Tuple,
+    aid: Tensor,
+    atype: Tensor,
+    dist_i: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    # cutoff-radius mask
+    mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        aid, dist_i, jnp.asarray(radial[0].r_cutoff)
+    )
+    # get the corresponding neighboring atom types
+    mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
+
+    return jnp.sum(
+        radial[0](dist_i),
+        where=mask_cutoff_and_atype_ij,
+        axis=0,
+    )
+
+
+@partial(jax.jit, static_argnums=(0,))  # FIXME
+def _calculate_angular_descriptor_per_atom(
+    angular: Tuple,
+    aid: Tensor,  # must be a single atom id
+    atype: Tensor,
+    diff_i: Tensor,
+    dist_i: Tensor,
+    lattice: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    # cutoff-radius mask
+    mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        aid, dist_i, jnp.asarray(angular[0].r_cutoff)
+    )
+    # mask for neighboring element j
+    at_j = emap[angular[2]]
+    mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
+    # mask for neighboring element k
+    at_k = emap[angular[3]]
+    mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
+
+    total, _ = jax.lax.scan(
+        partial(
+            _inner_loop_over_angular_terms,
+            mask_ik=mask_cutoff_and_atype_ik,
+            diff_i=diff_i,
+            dist_i=dist_i,
+            lattice=lattice,
+            kernel=angular[0],
+        ),
+        0.0,
+        (diff_i, dist_i, mask_cutoff_and_atype_ij),
+    )
+    # correct double-counting
+    total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
+
+    return total
 
 
 # Called by jax.lax.scan (no need for @jax.jit)
@@ -37,14 +100,16 @@ def _inner_loop_over_angular_terms(
 
     # fix nan issue in gradient
     # see https://github.com/google/jax/issues/1052#issuecomment-514083352
-    value = rij * dist_i
-    true_op = jnp.where(value == 0.0, 1.0, value)
-
+    operand = rij * dist_i
+    is_zero = operand == 0.0
+    true_op = jnp.where(is_zero, 1.0, operand)
     cost = jnp.where(
         mask_ik,
         jnp.inner(Rij, diff_i) / true_op,
         1.0,
     )
+    cost = jnp.where(is_zero, 0.0, cost)  # FIXME: gradient value!
+
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,
         _calculate_distance_per_atom(Rij, diff_i, lattice)[0],
@@ -83,60 +148,112 @@ def _calculate_descriptor_per_atom(
     dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
 
     # Loop over the radial terms
-    for radial_index, radial in enumerate(asf._radial):
+    for index, radial in enumerate(asf._radial):
 
-        # cutoff-radius mask
-        mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dist_i, jnp.asarray(radial[0].r_cutoff)
+        result = result.at[index].set(
+            _calculate_radial_descriptor_per_atom(radial, aid, atype, dist_i, emap)
         )
-        # get the corresponding neighboring atom types
-        mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
 
-        result = result.at[radial_index].set(
-            jnp.sum(
-                radial[0](dist_i),
-                where=mask_cutoff_and_atype_ij,
-                axis=0,
+        # # cutoff-radius mask
+        # mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        #     aid, dist_i, jnp.asarray(radial[0].r_cutoff)
+        # )
+        # # get the corresponding neighboring atom types
+        # mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
+
+        # result = result.at[radial_index].set(
+        #     jnp.sum(
+        #         radial[0](dist_i),
+        #         where=mask_cutoff_and_atype_ij,
+        #         axis=0,
+        #     )
+        # )
+
+    # Loop over the angular terms
+    for index, angular in enumerate(asf._angular, start=asf.n_radial):
+
+        result = result.at[index].set(
+            _calculate_angular_descriptor_per_atom(
+                angular, aid, atype, diff_i, dist_i, lattice, emap
             )
         )
 
-    # Loop over the angular terms
-    for angular_index, angular in enumerate(asf._angular, start=asf.n_radial):
+        # # cutoff-radius mask
+        # mask_cutoff_i = _calculate_cutoff_mask_per_atom(
+        #     aid, dist_i, jnp.asarray(angular[0].r_cutoff)
+        # )
+        # # mask for neighboring element j
+        # at_j = emap[angular[2]]
+        # mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
+        # # mask for neighboring element k
+        # at_k = emap[angular[3]]
+        # mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
-        # cutoff-radius mask
-        mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-            aid, dist_i, jnp.asarray(angular[0].r_cutoff)
-        )
-        # mask for neighboring element j
-        at_j = emap[angular[2]]
-        mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
-        # mask for neighboring element k
-        at_k = emap[angular[3]]
-        mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
+        # total, _ = jax.lax.scan(
+        #     partial(
+        #         _inner_loop_over_angular_terms,
+        #         mask_ik=mask_cutoff_and_atype_ik,
+        #         diff_i=diff_i,
+        #         dist_i=dist_i,
+        #         lattice=lattice,
+        #         kernel=angular[0],
+        #     ),
+        #     0.0,
+        #     (diff_i, dist_i, mask_cutoff_and_atype_ij),
+        # )
+        # # correct double-counting
+        # total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
 
-        total, _ = jax.lax.scan(
-            partial(
-                _inner_loop_over_angular_terms,
-                mask_ik=mask_cutoff_and_atype_ik,
-                diff_i=diff_i,
-                dist_i=dist_i,
-                lattice=lattice,
-                kernel=angular[0],
-            ),
-            0.0,
-            (diff_i, dist_i, mask_cutoff_and_atype_ij),
-        )
-        # correct double-counting
-        total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
-
-        result = result.at[angular_index].set(total)
+        # result = result.at[angular_index].set(total)
 
     return result
 
 
+def _func_radial(
+    radial,
+    x: Tensor,
+    aid: Tensor,
+    position: Tensor,
+    lattice: Tensor,
+    atype: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    dist_i, _ = _calculate_distance_per_atom(x, position, lattice)
+
+    return _calculate_radial_descriptor_per_atom(radial, aid, atype, dist_i, emap)
+
+
+def _func_angular(
+    angular: Tuple,
+    x: Tensor,
+    aid: Tensor,
+    position: Tensor,
+    lattice: Tensor,
+    atype: Tensor,
+    emap: Dict,
+) -> Tensor:
+
+    dist_i, diff_i = _calculate_distance_per_atom(x, position, lattice)
+
+    return _calculate_angular_descriptor_per_atom(
+        angular, aid, atype, diff_i, dist_i, lattice, emap
+    )
+
+
+_grad_func_radial = jax.jit(
+    jax.grad(_func_radial, argnums=1),
+    static_argnums=(0,),
+)
+
+_grad_func_angular = jax.jit(
+    jax.grad(_func_angular, argnums=1),
+    static_argnums=(0,),
+)
+
 _calculate_descriptor = jax.vmap(
     _calculate_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None, None),  # vmap only on aid
+    in_axes=(None, 0, None, None, None, None, None),  # vmap on aid
 )
 
 
@@ -191,7 +308,7 @@ class AtomicSymmetryFunction(Descriptor):
     def __call__(
         self,
         structure: Structure,
-        aid: Optional[Union[int, Tensor]] = None,
+        aid: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Calculate descriptor values for the input given structure and atom id(s).
@@ -228,37 +345,42 @@ class AtomicSymmetryFunction(Descriptor):
             structure.element_map.element_to_atype,
         )
 
-    # @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def grad(self, structure, aid=None):
+    def grad(
+        self,
+        structure: Structure,
+        aid: Tensor,
+        descriptor_index: int,
+    ):
+
+        # TODO: add logging
+        assert descriptor_index < self.n_descriptor
+
+        position = structure.position
+        lattice = structure.lattice
+        atype = structure.atype
+        emap = structure.element_map.element_to_atype
 
         aid = jnp.atleast_1d(aid)
-
-        # vgrad_calculate_descriptor = jax.vmap(
-        #     jax.grad(_calculate_descriptor_per_atom, argnums=3),  # gradient respect to position
-        #     in_axes=(None, None, 1, None),  # vmap on aid
-        # )
-        # return vgrad_calculate_descriptor(self, structure, aid, structure.position)
-
-        def kernel(asf, aid, position, atype, lattice, dtype, emap):
-            return _calculate_descriptor_per_atom(
-                asf, aid, position, atype, lattice, dtype, emap
-            ).sum()
-
-        # gradient respect to position
-        grad_calculate_descriptor_per_atom = jax.grad(
-            kernel,
-            argnums=2,
-        )
-
-        return grad_calculate_descriptor_per_atom(
-            self,
-            aid,
-            structure.position,
-            structure.atype,
-            structure.box.lattice,
-            structure.dtype,
-            structure.element_map.element_to_atype,
-        )
+        if descriptor_index < self.n_radial:
+            return _grad_func_radial(
+                self._radial[descriptor_index],
+                position[aid],
+                aid,
+                position,
+                lattice,
+                atype,
+                emap,
+            )
+        else:
+            return _grad_func_angular(
+                self._angular[descriptor_index - self.n_radial],
+                position[aid],
+                aid,
+                position,
+                lattice,
+                atype,
+                emap,
+            )
 
     @property
     def n_radial(self) -> int:
