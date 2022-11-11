@@ -6,7 +6,7 @@ from ..utils.attribute import set_as_attribute
 from .element import ElementMap
 from .neighbor import Neighbor
 from .box import Box, _apply_pbc
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Optional
 from ase import Atoms as AseAtoms
 import numpy as np
 import jax
@@ -240,15 +240,17 @@ class Structure(_Base):
     def calculate_distance(
         self,
         aid: Tensor,
-        neighbors: Tensor = None,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        neighbor_index: Optional[Tensor] = None,
+    ) -> Tuple[Tensor, Tensor]:
         """
-        Return a tensor of distances between a specific atom and all atoms existing in the structure.
+        Return distances between a specific atom and given neighboring atoms in the structure,
+        and corresponding position difference.
+        If no neighbor index is given, all atoms in the structure will be considered.
         """
         dis, dx = _calculate_distance(
             jnp.atleast_2d(self.position[jnp.asarray(aid)]),
-            self.position[jnp.asarray(neighbors)]
-            if neighbors is not None
+            self.position[jnp.atleast_1d(neighbor_index)]
+            if neighbor_index is not None
             else self.position,
             self.box.lattice,
         )
