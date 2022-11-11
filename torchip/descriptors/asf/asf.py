@@ -142,8 +142,7 @@ def _calculate_descriptor_per_atom(
     """
     Compute descriptor values per atom in the structure (via atom id).
     """
-    # returned descriptor array
-    result = jnp.zeros(asf.n_descriptor, dtype=dtype)
+    result = jnp.empty(asf.n_descriptor, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
 
@@ -154,21 +153,6 @@ def _calculate_descriptor_per_atom(
             _calculate_radial_descriptor_per_atom(radial, aid, atype, dist_i, emap)
         )
 
-        # # cutoff-radius mask
-        # mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-        #     aid, dist_i, jnp.asarray(radial[0].r_cutoff)
-        # )
-        # # get the corresponding neighboring atom types
-        # mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
-
-        # result = result.at[radial_index].set(
-        #     jnp.sum(
-        #         radial[0](dist_i),
-        #         where=mask_cutoff_and_atype_ij,
-        #         axis=0,
-        #     )
-        # )
-
     # Loop over the angular terms
     for index, angular in enumerate(asf._angular, start=asf.n_radial):
 
@@ -177,34 +161,6 @@ def _calculate_descriptor_per_atom(
                 angular, aid, atype, diff_i, dist_i, lattice, emap
             )
         )
-
-        # # cutoff-radius mask
-        # mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-        #     aid, dist_i, jnp.asarray(angular[0].r_cutoff)
-        # )
-        # # mask for neighboring element j
-        # at_j = emap[angular[2]]
-        # mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
-        # # mask for neighboring element k
-        # at_k = emap[angular[3]]
-        # mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
-
-        # total, _ = jax.lax.scan(
-        #     partial(
-        #         _inner_loop_over_angular_terms,
-        #         mask_ik=mask_cutoff_and_atype_ik,
-        #         diff_i=diff_i,
-        #         dist_i=dist_i,
-        #         lattice=lattice,
-        #         kernel=angular[0],
-        #     ),
-        #     0.0,
-        #     (diff_i, dist_i, mask_cutoff_and_atype_ij),
-        # )
-        # # correct double-counting
-        # total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
-
-        # result = result.at[angular_index].set(total)
 
     return result
 
@@ -305,11 +261,7 @@ class AtomicSymmetryFunction(Descriptor):
                 exception=TypeError,
             )
 
-    def __call__(
-        self,
-        structure: Structure,
-        aid: Optional[Tensor] = None,
-    ) -> Tensor:
+    def __call__(self, structure: Structure, aid: Optional[Tensor] = None) -> Tensor:
         """
         Calculate descriptor values for the input given structure and atom id(s).
         """
@@ -345,12 +297,7 @@ class AtomicSymmetryFunction(Descriptor):
             structure.element_map.element_to_atype,
         )
 
-    def grad(
-        self,
-        structure: Structure,
-        aid: Tensor,
-        descriptor_index: int,
-    ):
+    def grad(self, structure: Structure, aid: Tensor, descriptor_index: int):
 
         # TODO: add logging
         assert descriptor_index < self.n_descriptor
@@ -362,7 +309,7 @@ class AtomicSymmetryFunction(Descriptor):
 
         aid = jnp.atleast_1d(aid)
         if descriptor_index < self.n_radial:
-            return _grad_func_radial(
+            grad_value = _grad_func_radial(
                 self._radial[descriptor_index],
                 position[aid],
                 aid,
@@ -372,7 +319,7 @@ class AtomicSymmetryFunction(Descriptor):
                 emap,
             )
         else:
-            return _grad_func_angular(
+            grad_value = _grad_func_angular(
                 self._angular[descriptor_index - self.n_radial],
                 position[aid],
                 aid,
@@ -381,6 +328,7 @@ class AtomicSymmetryFunction(Descriptor):
                 atype,
                 emap,
             )
+        return jnp.squeeze(grad_value)
 
     @property
     def n_radial(self) -> int:
