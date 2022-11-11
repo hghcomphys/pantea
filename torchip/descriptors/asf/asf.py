@@ -1,9 +1,9 @@
-from torchip.descriptors.asf.symmetry import SymmetryFunction
 from ...logger import logger
 from ...structure import Structure
 from ...structure import _calculate_distance_per_atom
 from ...structure import _calculate_cutoff_mask_per_atom
 from ..base import Descriptor
+from .symmetry import SymmetryFunction
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from typing import Callable, Tuple, List, Optional, Dict
