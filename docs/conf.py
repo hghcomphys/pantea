@@ -12,18 +12,20 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(".."))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'TorchIP - PyTorch Interatomic Potential'
-copyright = '2022, Hossein Ghorbanfekr'
-author = 'Hossein Ghorbanfekr'
+project = "MLPOT"
+copyright = "2022, Hossein Ghorbanfekr"
+author = "Hossein Ghorbanfekr"
 
-import torchip
-version = torchip.__version__
-release = torchip.__version__
+import mlpot
+
+version = mlpot.__version__
+release = mlpot.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,11 +34,11 @@ release = torchip.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.todo',
-    'sphinx.ext.mathjax',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.todo",
+    "sphinx.ext.mathjax",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -47,12 +49,12 @@ extensions = [
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = 'en'
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -63,7 +65,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # html_logo = "images/logo.png"
 # html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme' 
+html_theme = "sphinx_rtd_theme"
 # html_theme = 'cloud'
 # html_theme = 'karma_sphinx_theme'
 
@@ -86,10 +88,10 @@ html_theme = 'sphinx_rtd_theme'
 todo_include_todos = True
 
 autodoc_default_options = {
-    'members': True,
-    'member-order': 'bysource',
-    'special-members': '__init__,__call__',
-    'undoc-members': True,
-    'exclude-members': '__weakref__',
-    'private-members': True,
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__,__call__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
+    "private-members": True,
 }

@@ -15,7 +15,7 @@ class Logger:
     """
 
     def __init__(self, level=logging.WARNING, filename=None):
-        self.logger = logging.getLogger("TorchIP")
+        self.logger = logging.getLogger("MLPOT")
         self.level = level
         self.handlers = []
 

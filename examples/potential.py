@@ -1,4 +1,4 @@
-# # TorchIP: Lennard-Jones potential
+# # LMPOT: Lennard-Jones potential
 # An example notebook that shows how to reconstruct a Lennard-Jones potential using
 # high-dimensional neural network potential (HDNNP).
 
@@ -8,16 +8,16 @@ import sys
 
 sys.path.append("../")
 
-import torchip
-from torchip.datasets import RunnerStructureDataset
-from torchip.potentials import NeuralNetworkPotential
+import mlpot
+from mlpot.datasets import RunnerStructureDataset
+from mlpot.potentials import NeuralNetworkPotential
 import torch
 import pandas as pd
 from pathlib import Path
 
-# torchip.set_logging_level(logging.DEBUG)
-torchip.manual_seed(2022)
-torchip.device.DEVICE = torch.device("cpu")
+# mlpot.set_logging_level(logging.DEBUG)
+mlpot.manual_seed(2022)
+mlpot.device.DEVICE = torch.device("cpu")
 
 potdir = Path("./LJ")
 
