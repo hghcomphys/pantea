@@ -1,20 +1,21 @@
-# MLPOT - Machine-learning Potential
+# MLPOT: Machine-Learning Interatomic Potential
 
 <!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 
 <!-- ## What is it? -->
 
-MLPOT is a software _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to construct their ML-based potentials and allowing them to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
+MLPOT is an _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to construct their ML-based potentials and allowing them to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
 
-### Main features
+### Why MLPOT?
 
-- Generic and flexible design which allows defining any atomic descriptors and potentials
-- Support GPU-accelerated computing, this speeds up model trainings order of magnitudes
-- automatic differentiation, no need to explicitly define gradients
+- Having generic and flexible design in mind which allows introducing any atomic descriptors and potentials
+- Utilize automatic differentiation instead of explicitly defining gradients of descriptors
+- Optimized on CPU, just-in-time compilation and data/task level parallelization
+- Support GPU-computing, this speeds up model trainings orders of magnitude
 
 <!--  -->
 
-MLPOT is not a molecular dynamics simulation package (like [LAMMPS](https://github.com/lammps/lammps)) but in fact a framework to develop ML-based potentials used for the large-scale simulations.
+MLPOT is not a molecular dynamics simulation package (unlike [LAMMPS](https://github.com/lammps/lammps)) but it's in fact a framework to develop ML-based potentials used for the large-scale simulations.
 
 This repository is currently under heavy development and the main focus is on the implementation of _high-dimensional neural network potential (HDNNP)_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
 
