@@ -1,40 +1,9 @@
 from ..logger import logger
 from ..base import _Base
-import jax
+from ._neighbor import _calculate_cutoff_mask
 import jax.numpy as jnp
-from functools import partial
 
 Tensor = jnp.ndarray
-
-
-@jax.jit
-def _calculate_cutoff_mask_per_atom(
-    aid: Tensor,
-    rij: Tensor,
-    r_cutoff: Tensor,
-) -> Tensor:
-    # Select atoms inside cutoff radius
-    mask = rij <= r_cutoff
-    # exclude self-counting
-    mask = mask.at[aid].set(False)
-    return mask
-
-
-_vmap_calculate_neighbor_mask = jax.vmap(
-    _calculate_cutoff_mask_per_atom,
-    in_axes=(0, 0, None),
-)
-
-
-@partial(jax.jit, static_argnums=(0,))  # FIXME
-def _calculate_cutoff_mask(
-    structure,
-    r_cutoff: Tensor,
-) -> Tensor:
-    # Tensors no need to be differentiable here
-    aids = jnp.arange(structure.natoms)  # all atoms
-    rij, _ = structure.calculate_distance(aids)
-    return _vmap_calculate_neighbor_mask(aids, rij, r_cutoff)
 
 
 class Neighbor(_Base):
@@ -56,7 +25,7 @@ class Neighbor(_Base):
         """
         self.r_cutoff = r_cutoff
         self.r_cutoff_updated = False
-        self.tensors: Dict[str, Tensor] = None
+        self.mask: Tensor = None
         super().__init__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
@@ -69,42 +38,6 @@ class Neighbor(_Base):
         )
         self.r_cutoff = r_cutoff
         self.r_cutoff_updated = True
-
-    # def _init_tensors(self, structure) -> None:
-    #     """
-    #     Allocating tensors for the neighbor list from the input structure.
-
-    #     :param structure: An instance of Structure
-    #     :type structure: Dict[Tensor]
-    #     """
-    #     # FIXME: reduce natoms*natoms tensor size!
-    #     # TODO: define max_num_neighbor to avoid extra memory allocation!
-
-    #     # Avoid re-allocating structure with the same size
-    #     try:
-    #         if structure.natoms == len(self.number):
-    #             logger.debug("Avoid re-allocating the neighbor tensors")
-    #             return
-    #     except AttributeError:
-    #         pass
-
-    #     logger.debug("Allocating tensors for neighbor list")
-    #     self.tensors = {
-    #         "number": jnp.empty(
-    #             structure.natoms,
-    #             dtype=int,  # dtype.UINT, FIXME
-    #         ),
-    #         "index": jnp.empty(
-    #             (structure.natoms, structure.natoms),
-    #             dtype=int,  # dtype.INDEX, FIXME
-    #         ),
-    #     }
-
-    #     for attr, tensor in self.tensors.items():
-    #         logger.debug(
-    #             f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}'"
-    #         )
-    #     set_as_attribute(self, self.tensors)
 
     def update(self, structure) -> None:
         """
@@ -119,8 +52,6 @@ class Neighbor(_Base):
         if not structure.requires_neighbor_update and not self.r_cutoff_updated:
             logger.debug("Skipped updating the neighbor list")
             return
-
-        # self._init_tensors(structure) # FIXME: remove
 
         # ----------------------------------------
         logger.debug("Updating neighbor list")
