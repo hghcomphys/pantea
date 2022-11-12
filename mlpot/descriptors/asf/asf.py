@@ -5,8 +5,7 @@ from .symmetry import SymmetryFunction
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from ._asf import _calculate_descriptor
-from ._grad import _grad_asf_func_radial
-from ._grad import _grad_asf_func_angular
+from ._grad import _vmap_grad_func_asf
 from typing import Tuple, List, Optional
 import itertools
 import jax.numpy as jnp
@@ -70,7 +69,7 @@ class AtomicSymmetryFunction(Descriptor):
         # Check number of symmetry functions
         if self.n_descriptor == 0:
             logger.warning(
-                f"No symmetry function was found: radial={self.n_radial}"
+                f"No symmetry function defined yet: radial={self.n_radial}"
                 f", angular={self.n_angular}"
             )
 
@@ -99,38 +98,30 @@ class AtomicSymmetryFunction(Descriptor):
             structure.element_map.element_to_atype,
         )
 
-    def grad(self, structure: Structure, aid: Tensor, descriptor_index: int):
-
-        # TODO: add logging
-        assert descriptor_index < self.n_descriptor
-
-        position = structure.position
-        lattice = structure.lattice
-        atype = structure.atype
-        emap = structure.element_map.element_to_atype
-
-        aid = jnp.atleast_1d(aid)
-        if descriptor_index < self.n_radial:
-            grad_value = _grad_asf_func_radial(
-                self._radial[descriptor_index],
-                position[aid],
-                aid,
-                position,
-                lattice,
-                atype,
-                emap,
+    def grad(
+        self,
+        structure: Structure,
+        asf_index: int,
+        aid: Optional[Tensor] = None,
+    ):
+        if asf_index > self.n_descriptor - 1:
+            logger.error(
+                f"Unexpected ASF array index {asf_index}. The index must be between [0, {self.n_descriptor})",
+                ValueError,
             )
-        else:
-            grad_value = _grad_asf_func_angular(
-                self._angular[descriptor_index - self.n_radial],
-                position[aid],
-                aid,
-                position,
-                lattice,
-                atype,
-                emap,
-            )
-        return jnp.squeeze(grad_value)
+
+        if aid is None:
+            aid = jnp.arange(structure.natoms)
+
+        return _vmap_grad_func_asf(
+            self,
+            asf_index,
+            jnp.atleast_1d(aid),
+            structure.position,
+            structure.box.lattice,
+            structure.atype,
+            structure.element_map.element_to_atype,
+        )
 
     @property
     def n_radial(self) -> int:

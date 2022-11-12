@@ -1,16 +1,16 @@
 from ...structure._structure import _calculate_distance_per_atom
-from ._asf import _calculate_radial_asf_per_atom
-from ._asf import _calculate_angular_asf_per_atom
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
+from ._asf import _calculate_radial_asf_per_atom
+from ._asf import _calculate_angular_asf_per_atom
 from typing import Tuple, Dict
-import jax
 import jax.numpy as jnp
-
+import jax
 
 Tensor = jnp.ndarray
 
 
+# A help function to calculate gradient of radial ASF respect to x
 def _func_asf_radial(
     radial: Tuple[RadialSymmetryFunction, str, str],
     x: Tensor,
@@ -26,6 +26,7 @@ def _func_asf_radial(
     return _calculate_radial_asf_per_atom(radial, aid, atype, dist_i, emap)
 
 
+# A help function to calculate gradient of angular ASF respect to x
 def _func_asf_angular(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
     x: Tensor,
@@ -43,12 +44,58 @@ def _func_asf_angular(
     )
 
 
-_grad_asf_func_radial = jax.jit(
+_grad_func_asf_radial = jax.jit(
     jax.grad(_func_asf_radial, argnums=1),
     static_argnums=(0,),
 )
 
-_grad_asf_func_angular = jax.jit(
+_grad_func_asf_angular = jax.jit(
     jax.grad(_func_asf_angular, argnums=1),
     static_argnums=(0,),
 )
+
+
+def _grad_func_asf(
+    asf,
+    asf_index: int,
+    aid: Tensor,
+    position: Tensor,
+    lattice: Tensor,
+    atype: Tensor,
+    emap: Dict[str, int],
+) -> Tensor:
+
+    if asf_index < asf.n_radial:
+        grad_value = _grad_func_asf_radial(
+            asf._radial[asf_index],
+            position[aid],
+            aid,
+            position,
+            lattice,
+            atype,
+            emap,
+        )
+    else:
+        grad_value = _grad_func_asf_angular(
+            asf._angular[asf_index - asf.n_radial],
+            position[aid],
+            aid,
+            position,
+            lattice,
+            atype,
+            emap,
+        )
+
+    return jnp.squeeze(grad_value)
+
+
+_vmap_grad_func_asf = jax.vmap(
+    _grad_func_asf,
+    in_axes=(None, None, 0, None, None, None, None),
+)
+
+# TODO: nested vmap over asf_index
+# _vmap2_grad_func_asf = jax.vmap(
+#     _vmap_grad_func_asf,
+#     in_axes=(None, None, 0, None, None, None, None),
+# )
