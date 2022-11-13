@@ -2,10 +2,13 @@ from ..logger import logger
 from ..config import dtype as _dtype
 from ..config import device as _device
 from .base import _Base
-from torch import Tensor
 from pathlib import Path
-import torch
+import jax
 import numpy as np
+import jax.numpy as jnp
+from functools import partial
+
+Tensor = jnp.ndarray
 
 
 class DescriptorScaler(_Base):
@@ -20,8 +23,7 @@ class DescriptorScaler(_Base):
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-        dtype: torch.dtype = None,
-        device: torch.device = None,
+        dtype: jnp.dtype = jnp.float32,  # FIXME
     ) -> None:
         """
         Initialize scaler including scaler type and min/max values.
@@ -32,7 +34,6 @@ class DescriptorScaler(_Base):
         self.scale_min = scale_min
         self.scale_max = scale_max
         self.dtype = dtype if dtype else _dtype.FLOATX
-        self.device = device if device else _device.DEVICE
         logger.debug(f"Initializing {self}")
 
         # Statistical parameters
@@ -49,22 +50,20 @@ class DescriptorScaler(_Base):
         # Set scaler type function
         self._transform = getattr(self, f"_{self.scale_type}")
 
-    def fit(self, x: Tensor) -> None:
+    def fit(self, data: Tensor) -> None:
         """
         This method fits the scaler parameters based on the given input tensor.
         It also works also in a batch-wise form.
         """
-        data = x.detach()  # no gradient history is required
-        data = torch.atleast_2d(data)
+        data = jnp.atleast_2d(data)
 
-        # First time initialization
         if self.nsamples == 0:
             self.nsamples = data.shape[0]
             self.dimension = data.shape[1]
-            self.mean = torch.mean(data, dim=0)
-            self.sigma = torch.std(data, dim=0, unbiased=False)
-            self.max = torch.max(data, dim=0)[0]
-            self.min = torch.min(data, dim=0)[0]
+            self.mean = jnp.mean(data, axis=0)
+            self.sigma = jnp.std(data, axis=0)
+            self.max = jnp.max(data, axis=0)
+            self.min = jnp.min(data, axis=0)
         else:
             # Check data dimension
             if data.shape[1] != self.dimension:
@@ -74,24 +73,24 @@ class DescriptorScaler(_Base):
                 )
 
             # New data (batch)
-            new_mean = torch.mean(data, dim=0)
-            new_sigma = torch.std(data, dim=0, unbiased=False)
-            new_min = torch.min(data, dim=0)[0]
-            new_max = torch.max(data, dim=0)[0]
+            new_mean = jnp.mean(data, axis=0)
+            new_sigma = jnp.std(data, axis=0)
+            new_min = jnp.min(data, axis=0)
+            new_max = jnp.max(data, axis=0)
             m, n = float(self.nsamples), data.shape[0]
 
             # Calculate quantities for entire data
-            mean = self.mean.clone()
+            mean = self.mean  # immutable
             self.mean = (
                 m / (m + n) * mean + n / (m + n) * new_mean
             )  # self.mean is now a new array and different from the above mean variable
-            self.sigma = torch.sqrt(
+            self.sigma = jnp.sqrt(
                 m / (m + n) * self.sigma**2
                 + n / (m + n) * new_sigma**2
                 + m * n / (m + n) ** 2 * (mean - new_mean) ** 2
             )
-            self.max = torch.maximum(self.max, new_max)
-            self.min = torch.minimum(self.min, new_min)
+            self.max = jnp.maximum(self.max, new_max)
+            self.min = jnp.minimum(self.min, new_min)
             self.nsamples += n
 
     def __call__(self, x: Tensor, warnings: bool = False) -> Tensor:
@@ -119,7 +118,6 @@ class DescriptorScaler(_Base):
             f"Setting the maximum number of scaler warnings: {self.max_number_of_warnings}"
         )
 
-    @torch.no_grad()
     def _check_warnings(self, x: Tensor) -> None:
         """
         Check whether the output scaler values exceed the predefined min/max range values or not.
@@ -132,11 +130,11 @@ class DescriptorScaler(_Base):
         if self.max_number_of_warnings is None:
             return
 
-        gt = torch.gt(x, self.max).detach()
-        lt = torch.gt(self.min, x).detach()
+        gt = jax.lax.gt(x, self.max)
+        lt = jax.lax.gt(self.min, x)
 
         self.number_of_warnings += int(
-            torch.any(torch.logical_or(gt, lt))
+            jnp.any(jnp.logical_or(gt, lt))
         )  # alternative counting is using torch.sum
 
         if self.number_of_warnings >= self.max_number_of_warnings:
@@ -186,11 +184,10 @@ class DescriptorScaler(_Base):
         self.nsamples = 1
         self.dimension = data.shape[1]
 
-        kwargs = {"dtype": self.dtype, "device": self.device}
-        self.min = torch.tensor(data[0], **kwargs)
-        self.max = torch.tensor(data[1], **kwargs)
-        self.mean = torch.tensor(data[2], **kwargs)
-        self.sigma = torch.tensor(data[3], **kwargs)
+        self.min = jnp.asarray(data[0], dtype=self.dtype)
+        self.max = jnp.asarray(data[1], dtype=self.dtype)
+        self.mean = jnp.asarray(data[2], dtype=self.dtype)
+        self.sigma = jnp.asarray(data[3], dtype=self.dtype)
 
     def __repr__(self) -> str:
         return (
