@@ -4,13 +4,16 @@ from .radial import RadialSymmetryFunction
 from ._asf import _calculate_radial_asf_per_atom
 from ._asf import _calculate_angular_asf_per_atom
 from typing import Tuple, Dict
+from functools import partial
+from jax import jit, grad, vmap
 import jax.numpy as jnp
-import jax
+
 
 Tensor = jnp.ndarray
 
 
 # A help function to calculate gradient of radial ASF respect to x
+@partial(jit, static_argnums=(0,))  # FIXME
 def _func_asf_radial(
     radial: Tuple[RadialSymmetryFunction, str, str],
     x: Tensor,
@@ -27,6 +30,7 @@ def _func_asf_radial(
 
 
 # A help function to calculate gradient of angular ASF respect to x
+@partial(jit, static_argnums=(0,))  # FIXME
 def _func_asf_angular(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
     x: Tensor,
@@ -44,17 +48,18 @@ def _func_asf_angular(
     )
 
 
-_grad_func_asf_radial = jax.jit(
-    jax.grad(_func_asf_radial, argnums=1),
+_grad_func_asf_radial = jit(
+    grad(_func_asf_radial, argnums=1),
     static_argnums=(0,),
 )
 
-_grad_func_asf_angular = jax.jit(
-    jax.grad(_func_asf_angular, argnums=1),
+_grad_func_asf_angular = jit(
+    grad(_func_asf_angular, argnums=1),
     static_argnums=(0,),
 )
 
 
+# TODO: jax.jit
 def _grad_func_asf(
     asf,
     asf_index: int,
@@ -89,13 +94,13 @@ def _grad_func_asf(
     return jnp.squeeze(grad_value)
 
 
-_vmap_grad_func_asf = jax.vmap(
+_vmap_grad_func_asf = vmap(
     _grad_func_asf,
     in_axes=(None, None, 0, None, None, None, None),
 )
 
 # TODO: nested vmap over asf_index
-# _vmap2_grad_func_asf = jax.vmap(
+# _vmap2_grad_func_asf = vmap(
 #     _vmap_grad_func_asf,
 #     in_axes=(None, None, 0, None, None, None, None),
 # )

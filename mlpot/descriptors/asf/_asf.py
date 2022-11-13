@@ -4,17 +4,17 @@ from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from typing import Callable, Tuple, Dict
 from functools import partial
-import jax
+from jax import jit, vmap, lax
 import jax.numpy as jnp
 
 
 Tensor = jnp.ndarray
 
 
-@partial(jax.jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_radial_asf_per_atom(
     radial: Tuple[RadialSymmetryFunction, str, str],
-    aid: Tensor,
+    aid: Tensor,  # must be a single atom index
     atype: Tensor,
     dist_i: Tensor,
     emap: Dict,
@@ -34,10 +34,10 @@ def _calculate_radial_asf_per_atom(
     )
 
 
-@partial(jax.jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_angular_asf_per_atom(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
-    aid: Tensor,  # must be a single atom id
+    aid: Tensor,  # must be a single atom index
     atype: Tensor,
     diff_i: Tensor,
     dist_i: Tensor,
@@ -56,7 +56,7 @@ def _calculate_angular_asf_per_atom(
     at_k = emap[angular[3]]
     mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
-    total, _ = jax.lax.scan(
+    total, _ = lax.scan(
         partial(
             _inner_loop_over_angular_asf_terms,
             mask_ik=mask_cutoff_and_atype_ik,
@@ -69,7 +69,7 @@ def _calculate_angular_asf_per_atom(
         (diff_i, dist_i, mask_cutoff_and_atype_ij),
     )
     # correct double-counting
-    total = jax.lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
+    total = lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
 
     return total
 
@@ -125,10 +125,10 @@ def _inner_loop_over_angular_asf_terms(
     return total + value, value
 
 
-@partial(jax.jit, static_argnums=(0, 5))  # FIXME
+@partial(jit, static_argnums=(0, 5))  # FIXME
 def _calculate_descriptor_per_atom(
     asf,
-    aid: Tensor,  # must be a single atom id
+    aid: Tensor,  # must be a single atom index
     position: Tensor,
     atype: Tensor,
     lattice: Tensor,
@@ -161,7 +161,7 @@ def _calculate_descriptor_per_atom(
     return result
 
 
-_calculate_descriptor = jax.vmap(
+_calculate_descriptor = vmap(
     _calculate_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None, None),  # vmap on aid
+    in_axes=(None, 0, None, None, None, None, None),
 )
