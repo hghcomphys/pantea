@@ -82,16 +82,16 @@ class NeuralNetworkPotential(Potential):
 
         for cfg in self.settings["symfunction_short"]:
             if cfg[1] == 1:
-                descriptor[cfg[0]].register(
+                descriptor[cfg[0]].add(
                     symmetry_function=G1(
                         CutoffFunction(
                             r_cutoff=cfg[5], cutoff_type=self.settings["cutoff_type"]
                         )
                     ),
-                    neighbor_element1=cfg[2],
+                    neighbor_element_j=cfg[2],
                 )
             elif cfg[1] == 2:
-                descriptor[cfg[0]].register(
+                descriptor[cfg[0]].add(
                     symmetry_function=G2(
                         CutoffFunction(
                             r_cutoff=cfg[5], cutoff_type=self.settings["cutoff_type"]
@@ -99,10 +99,10 @@ class NeuralNetworkPotential(Potential):
                         eta=cfg[3],
                         r_shift=cfg[4],
                     ),
-                    neighbor_element1=cfg[2],
+                    neighbor_element_j=cfg[2],
                 )
             elif cfg[1] == 3:
-                descriptor[cfg[0]].register(
+                descriptor[cfg[0]].add(
                     symmetry_function=G3(
                         CutoffFunction(
                             r_cutoff=cfg[7], cutoff_type=self.settings["cutoff_type"]
@@ -112,11 +112,11 @@ class NeuralNetworkPotential(Potential):
                         lambda0=cfg[5],
                         r_shift=0.0,
                     ),  # TODO: add r_shift!
-                    neighbor_element1=cfg[2],
-                    neighbor_element2=cfg[3],
+                    neighbor_element_j=cfg[2],
+                    neighbor_element_k=cfg[3],
                 )
             elif cfg[1] == 9:
-                descriptor[cfg[0]].register(
+                descriptor[cfg[0]].add(
                     symmetry_function=G9(
                         CutoffFunction(
                             r_cutoff=cfg[7], cutoff_type=self.settings["cutoff_type"]
@@ -126,8 +126,8 @@ class NeuralNetworkPotential(Potential):
                         lambda0=cfg[5],
                         r_shift=0.0,
                     ),  # TODO: add r_shift!
-                    neighbor_element1=cfg[2],
-                    neighbor_element2=cfg[3],
+                    neighbor_element_j=cfg[2],
+                    neighbor_element_k=cfg[3],
                 )
 
         return descriptor
@@ -254,38 +254,18 @@ class NeuralNetworkPotential(Potential):
         Args:
             structures (RunnerStructureDataset): Structure dataset
         """
-        # Set parameters
         save_scaler: bool = kwargs.get("save_scaler", True)
-        batch_size: int = kwargs.get(
-            "batch_size", 8
-        )  # batch of atoms in each structure
 
-        loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
+        # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
         logger.info("Fitting descriptor scalers")
-        for index, batch in enumerate(loader):
-
-            # TODO: spawn processes
-            structure = batch[0]
-            structure.set_cutoff_radius(self.r_cutoff)
-
-            with torch.no_grad():
-                # For each element in the structure
-                for element in structure.elements:
-                    aids = structure.select(element).detach()
-                    for aids_batch in create_batch(
-                        aids, batch_size
-                    ):  # because of large memory usage
-                        logger.debug(
-                            f"Calculating descriptor for Structure {index} (element='{element}', aids={aids_batch})"
-                        )
-                        dsc_val = self.descriptor[element](
-                            structure, aids_batch
-                        )  # kernel
-                        self.scaler[element].fit(dsc_val)
+        for structure in dataset:
+            for element in structure.elements:
+                aid = structure.select(element)
+                dsc_val = self.descriptor[element](structure, aid)
+                self.scaler[element].fit(dsc_val)
         logger.debug("Finished scaler fitting.")
 
-        # Save scaler data into file
         if save_scaler:
             self.save_scaler()
 
