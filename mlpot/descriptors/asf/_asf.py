@@ -161,7 +161,10 @@ def _calculate_descriptor_per_atom(
     return result
 
 
-_calculate_descriptor = vmap(
-    _calculate_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None, None),
+_calculate_descriptor = jit(
+    vmap(
+        _calculate_descriptor_per_atom,
+        in_axes=(None, 0, None, None, None, None, None),
+    ),
+    static_argnums=(0, 5),  # FIXME
 )
