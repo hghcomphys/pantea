@@ -4,32 +4,32 @@
 
 <!-- ## What is it? -->
 
-MLPOT is an _framework_ written in Python to facilitate the development of emerging machine learning interatomic potentials. It is intended to help researchers to construct their ML-based potentials and allowing them to perform large-scale molecular dynamics simulations of complex materials in computational physics and chemistry.
+MLPOT is a Python package to facilitate development of the emerging machine-learning (ML) interatomic potentials in computational physics and chemistry. Such potentials are essential for performing large-scale molecular dynamics (MD) simulations of complex materials at the atomic scale and with ab initio accuracy.
 
 ### Why MLPOT?
 
-- Having generic and flexible design in mind which allows introducing any atomic descriptors and potentials
-- Utilize automatic differentiation instead of explicitly defining gradients of descriptors
-- Optimized on CPU, just-in-time compilation and data/task level parallelization
-- Support GPU-computing, this speeds up model trainings orders of magnitude
+- Offers a generic and flexible design which allows introducing any atomic descriptors and potentials
+- Utilizes automatic differentiation that makes definition of new descriptors quite easy
+- Pythonic design with an optimized implementation using just-in-time compilations and task/data parallelization
+- Supports GPU-computing that can speeds up model trainings orders of magnitude
 
 <!--  -->
 
-MLPOT is not a molecular dynamics simulation package (unlike [LAMMPS](https://github.com/lammps/lammps)) but it's in fact a framework to develop ML-based potentials used for the large-scale simulations.
+MLPOT is not a simulation package but a framework to develop ML-based potentials used for the MD simulations.
 
-This repository is currently under heavy development and the main focus is on the implementation of _high-dimensional neural network potential (HDNNP)_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
+This repository is under heavy development and the current focus is on the implementation of _high-dimensional neural network potential (HDNNP)_ proposed by Behler _et al._ ([2007](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401)).
 
-## Installation
+## Install
 
 ### Requirements
 
 The following packages have to be installed beforehand:
 
 - [JAX](https://github.com/google/jax) (0.3.23)
-- [PyTorch](https://github.com/pytorch/pytorch) (1.12.0)
 - [ASE](https://wiki.fysik.dtu.dk/ase/#) (3.22.1)
+<!-- - [PyTorch](https://github.com/pytorch/pytorch) (1.12.0) -->
 
-You can install `MLPOT` using:
+We can install `MLPOT` via pip:
 
 ```bash
 $ pip install mlpot
@@ -37,7 +37,7 @@ $ pip install mlpot
 
 ## Examples
 
-### Defining atomic descriptors
+### Defining an atomic descriptor
 
 The below example shows how to define a vector of Atomic-centered Symmetry Functions
 ([ASF](https://aip.scitation.org/doi/10.1063/1.3553717)) for an element.
