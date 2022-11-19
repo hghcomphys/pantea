@@ -4,13 +4,19 @@ from ..datasets.base import StructureDataset
 from ..utils.gradient import gradient
 from ..utils.attribute import set_as_attribute
 from ..base import _Base
-from .metrics import ErrorMetric, MSE
+from .loss import mse_loss
+from .metrics import ErrorMetric
+from .metrics import init_error_metric
 from collections import defaultdict
-from typing import Dict
-from torch.utils.data import DataLoader as TorchDataLoader
-from torch import nn
+from typing import Dict, Callable
+from flax.training import train_state
 import numpy as np
-import torch
+import optax
+
+import jax.numpy as jnp
+
+
+Tensor = jnp.ndarray
 
 
 class BasePotentialTrainer(_Base):
@@ -35,31 +41,80 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     def __init__(
         self,
         potential: Potential,
-        optimizer: torch.optim.Optimizer,
-        criterion: nn.MSELoss = nn.MSELoss(),
-        error_metric: ErrorMetric = MSE(),
         save_best_model: bool = True,
-        force_weight: float = 1.0,
-        atom_energy: Dict[str, float] = None,
-        **kwargs,
     ) -> None:
         """
         Initialize trainer.
         """
         self.potential = potential
-        self.optimizer = optimizer
-        self.criterion = criterion
         self.save_best_model = save_best_model
-        self.error_metric = error_metric
-        self.force_weight = force_weight
-        self.atom_energy = atom_energy
-        set_as_attribute(self, kwargs)
 
-        super().__init__()
+        self.criterion: Callable = mse_loss
+        self.optimizer = self.init_optimizer()
+        self.error_metric: ErrorMetric = init_error_metric(
+            self.potential.settings["main_error_metric"]
+        )
+        self.force_weight: float = self.potential.settings["force_weight"]
+        self.atom_energy: Dict[str, float] = self.potential.settings["atom_energy"]
 
-    def fit_one_epoch(
+    def init_optimizer(self):
+        """
+        Prepare optimizer using potential settings.
+
+        :return: optimizer
+        :rtype: torch.optim.Optimizer
+        """
+        settings = self.potential.settings
+
+        if settings["updater_type"] == 0:  # Gradient Descent
+
+            if settings["gradient_type"] == 1:  # Adam
+                optimizer_cls = optax.adam
+                optimizer_cls_kwargs = {
+                    "learning_rate": settings["gradient_adam_eta"],
+                    "b1": settings["gradient_adam_beta1"],
+                    "b2": settings["gradient_adam_beta2"],
+                    "eps": settings["gradient_adam_epsilon"],
+                    # "weight_decay": self.settings["gradient_weight_decay"], # TODO: regularization?
+                }
+            # TODO: self.settings["gradient_type"] == 0:  # fixed Step
+            else:
+                logger.error(
+                    f'Gradient type {settings["gradient_type"]} is not implemented yet',
+                    exception=NotImplementedError,
+                )
+        else:
+            logger.error(
+                f'Unknown updater type {settings["updater_type"]}',
+                exception=NotImplementedError,
+            )
+
+        # TODO: either as a single but global optimizer or multiple optimizers:
+        optimizer = optimizer_cls(**optimizer_cls_kwargs)
+
+        # return {element: optimizer for element in self.elements}
+        return optimizer
+
+    def init_train_state(self):
+
+        # for element in self.potential.elements:
+        # # Initialize the Model
+        # variables = model.init(random_key, jnp.ones(shape))
+
+        # # Create a State
+        # return train_state.TrainState.create(
+        #     apply_fn=model.apply,
+        #     tx=optimizer,
+        #     params=variables["params"],
+        # )
+        pass
+
+    def eval_step(self):
+        pass
+
+    def train_step(
         self,
-        loader: TorchDataLoader,
+        loader,  #: TorchDataLoader,
         epoch_index: int = None,
         validation_mode: bool = False,
         history: Dict = None,
@@ -74,6 +129,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
         nbatch: int = 0
         state: Dict[str, float] = defaultdict(float)
+        error_metric_name = self.error_metric__class__.__name__
+
         # Loop over training structures
         for batch in loader:
 
@@ -138,8 +195,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 logger.print(
                     "Training     "
                     f"loss: {state['train_loss']/nbatch :<12.8E}, "
-                    f"energy [{self.error_metric.__class__.__name__}]: {state['train_energy_error']/nbatch :<12.8E}, "
-                    f"force [{self.error_metric.__class__.__name__}]: {state['train_force_error']/nbatch :<12.8E}",
+                    f"energy [{error_metric_name}]: {state['train_energy_error']/nbatch :<12.8E}, "
+                    f"force [{error_metric_name}]: {state['train_force_error']/nbatch :<12.8E}",
                     end="\r",
                 )
 
@@ -147,8 +204,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             logger.print(
                 "Validation   "
                 f"loss: {state['valid_loss'] :<12.8E}, "
-                f"energy [{self.error_metric.__class__.__name__}]: {state['valid_energy_error']/nbatch :<12.8E}, "
-                f"force [{self.error_metric.__class__.__name__}]: {state['valid_force_error']/nbatch :<12.8E}"
+                f"energy [{error_metric_name}]: {state['valid_energy_error']/nbatch :<12.8E}, "
+                f"force [{error_metric_name}]: {state['valid_force_error']/nbatch :<12.8E}"
             )
         logger.print()
 

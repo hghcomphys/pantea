@@ -8,19 +8,22 @@ from ..descriptors.scaler import DescriptorScaler
 from ..descriptors.asf.radial import G1, G2
 from ..descriptors.asf.angular import G3, G9
 from ..models.nn import NeuralNetworkModel
-from ..utils.batch import create_batch
-from ..utils.profiler import Profiler
 from ..structure.element import ElementMap
-from ..config import device
 from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
-from .metrics import create_error_metric
 from typing import List, Dict, Union
-from torch.utils.data import DataLoader as TorchDataLoader
+from typing import Tuple
 from pathlib import Path
-from torch import Tensor
-import torch
+import jax.numpy as jnp
+import optax
+
+# from ..utils.profiler import Profiler
+# from ..utils.batch import create_batch
+# from ..config import device
+# from torch.utils.data import DataLoader as TorchDataLoader
+
+Tensor = jnp.ndarray
 
 
 class NeuralNetworkPotential(Potential):
@@ -34,7 +37,6 @@ class NeuralNetworkPotential(Potential):
     # TODO: implement structure dumper/writer
     # TODO: split structure from the potential model (in design)
 
-    # Saving formats
     _scaler_save_format: str = "scaling.{:03d}.data"
     _model_save_format: str = "weights.{:03d}.zip"
 
@@ -52,12 +54,14 @@ class NeuralNetworkPotential(Potential):
 
         self.settings.read(self.potfile)
 
-        self.descriptor: Dict[str, Descriptor] = self._init_descriptor()
-        self.scaler: Dict[str, DescriptorScaler] = self._init_scaler()
-        self.model: Dict[str, NeuralNetworkModel] = self._init_model()
-        self.trainer: NeuralNetworkPotentialTrainer = self._init_trainer()
+        self.descriptor: Dict[str, Descriptor] = self.init_descriptor()
+        self.scaler: Dict[str, DescriptorScaler] = self.init_scaler()
+        self.model: Dict[str, NeuralNetworkModel] = self.init_model()
 
-    def _init_descriptor(self) -> Dict[str, Descriptor]:
+        logger.debug("[Setting trainer]")
+        self.trainer = NeuralNetworkPotentialTrainer(self)
+
+    def init_descriptor(self) -> Dict[str, Descriptor]:
         """
         Initialize a **descriptor** for each element and add the relevant radial and angular
         symmetry functions from the potential settings.
@@ -132,7 +136,7 @@ class NeuralNetworkPotential(Potential):
 
         return descriptor
 
-    def _init_scaler(self) -> Dict[str, DescriptorScaler]:
+    def init_scaler(self) -> Dict[str, DescriptorScaler]:
         """
         Initialize a descriptor scaler for each element from the potential settings.
         """
@@ -157,7 +161,7 @@ class NeuralNetworkPotential(Potential):
 
         return scaler
 
-    def _init_model(self) -> Dict[str, NeuralNetworkModel]:
+    def init_model(self) -> Dict[str, NeuralNetworkModel]:
         """
         Initialize a neural network for each element using a dictionary representation of potential settings.
         """
@@ -169,14 +173,17 @@ class NeuralNetworkPotential(Potential):
             self.settings["global_nodes_short"],
             self.settings["global_activation_short"][:-1],
         )
-        output_layer = (1, self.settings["global_activation_short"][-1])
+        output_layer: Tuple[int, str] = (
+            1,
+            self.settings["global_activation_short"][-1],
+        )
         # TODO: what if we want to have a different model architecture for each element
 
         for element in self.settings["elements"]:
             logger.debug(f"Element: {element}")
-            input_size = self.descriptor[element].n_descriptor
+            # input_size = self.descriptor[element].n_descriptor
             model_kwargs = {
-                "input_size": input_size,
+                # "input_size": input_size,
                 "hidden_layers": tuple([(n, t) for n, t in hidden_layers]),
                 "output_layer": output_layer,
                 "weights_range": (
@@ -185,65 +192,8 @@ class NeuralNetworkPotential(Potential):
                 ),
             }
             model[element] = NeuralNetworkModel(**model_kwargs)
-            model[element].to(device.DEVICE)
 
         return model
-
-    def _prepare_optimizer(self) -> torch.optim.Optimizer:
-        """
-        Prepare optimizer using potential settings.
-
-        :return: optimizer
-        :rtype: torch.optim.Optimizer
-        """
-        if self.settings["updater_type"] == 0:  # Gradient Descent
-            if self.settings["gradient_type"] == 1:  # Adam
-                optimizer_cls = torch.optim.Adam
-                optimizer_cls_kwargs = {
-                    "lr": self.settings["gradient_adam_eta"],
-                    "betas": (
-                        self.settings["gradient_adam_beta1"],
-                        self.settings["gradient_adam_beta2"],
-                    ),
-                    "eps": self.settings["gradient_adam_epsilon"],
-                    "weight_decay": self.settings["gradient_weight_decay"],
-                }
-            # self.settings["gradient_type"] == 0:  # TODO: fixed Step
-            else:
-                logger.error(
-                    f'Gradient type {self.settings["gradient_type"]} is not implemented yet',
-                    exception=NotImplementedError,
-                )
-        else:
-            logger.error(
-                f'Unknown updater type {self.settings["updater_type"]}',
-                exception=NotImplementedError,
-            )
-
-        # This can be either as a single or multiple optimizers # TODO: test
-        optimizer = optimizer_cls(
-            [{"params": self.model[element].parameters()} for element in self.elements],
-            **optimizer_cls_kwargs,
-        )
-
-        return optimizer
-
-    def _init_trainer(self) -> NeuralNetworkPotentialTrainer:
-        """
-        This method initializes a trainer instance including optimizer, loss function, criterion, and so on
-        from the potential settings.
-        The trainer is used later for fitting the energy models.
-        """
-        logger.debug("[Setting trainer]")
-
-        return NeuralNetworkPotentialTrainer(
-            potential=self,
-            optimizer=self._prepare_optimizer(),
-            # criterion=nn.MSELoss(),  # TODO: select from potential setting
-            error_metric=create_error_metric(self.settings["main_error_metric"]),
-            force_weight=self.settings["force_weight"],
-            atom_energy=self.settings["atom_energy"],
-        )
 
     # @Profiler.profile
     def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
@@ -263,6 +213,7 @@ class NeuralNetworkPotential(Potential):
             for element in structure.elements:
                 aid = structure.select(element)
                 dsc_val = self.descriptor[element](structure, aid)
+                print(dsc_val.shape)
                 self.scaler[element].fit(dsc_val)
         logger.debug("Finished scaler fitting.")
 
