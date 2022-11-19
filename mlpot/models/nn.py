@@ -33,7 +33,7 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
         """
         Initialize stack of Dense layers and activation functions.
         """
-        self.layers = self._create_network()
+        self.layers = self.create_network()
 
     def _create_layer(self, features: int) -> nn.Dense:
         """
@@ -44,13 +44,7 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
         # TODO: add bias as input argument
         return nn.Dense(features, param_dtype=self.param_dtype)
 
-    def __call__(self, inputs: Tensor) -> Tensor:
-        x = inputs
-        for layer in self.layers:
-            x = layer(x)
-        return x
-
-    def _create_network(self) -> List:
+    def create_network(self) -> List:
         """
         Create a network using provided parameters.
         """
@@ -65,6 +59,12 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
         layers.append(self._activation_function_map[self.output_layer[1]])
 
         return layers
+
+    def __call__(self, inputs: Tensor) -> Tensor:
+        x = inputs
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
     # def save(self, filename: Path) -> None:
     #     """

@@ -66,7 +66,7 @@ class RMSEpa(RMSE):
         return torch.sqrt(self._mse_metric(prediction, target)) / factor
 
 
-def create_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
+def init_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
     """
     An utility function to create a given type of error metric.
 
