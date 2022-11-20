@@ -15,13 +15,10 @@ from .trainer import NeuralNetworkPotentialTrainer
 from typing import List, Dict, Union
 from typing import Tuple
 from pathlib import Path
+from jax import random
+from frozendict import frozendict
 import jax.numpy as jnp
-import optax
 
-# from ..utils.profiler import Profiler
-# from ..utils.batch import create_batch
-# from ..config import device
-# from torch.utils.data import DataLoader as TorchDataLoader
 
 Tensor = jnp.ndarray
 
@@ -56,10 +53,11 @@ class NeuralNetworkPotential(Potential):
 
         self.descriptor: Dict[str, Descriptor] = self.init_descriptor()
         self.scaler: Dict[str, DescriptorScaler] = self.init_scaler()
-        self.model: Dict[str, NeuralNetworkModel] = self.init_model()
+        self.model, self.model_params = self.init_model()
 
+        # TODO: move training outside of the potential
         logger.debug("[Setting trainer]")
-        self.trainer = NeuralNetworkPotentialTrainer(self)
+        self.trainer = NeuralNetworkPotentialTrainer(potential=self)
 
     def init_descriptor(self) -> Dict[str, Descriptor]:
         """
@@ -71,12 +69,12 @@ class NeuralNetworkPotential(Potential):
         descriptor = {}
 
         # Elements
-        logger.info(f"Number of elements: {len(self.settings['elements'])}")
-        for element in self.settings["elements"]:
+        logger.info(f"Number of elements: {self.n_elements}")
+        for element in self.elements:
             logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
 
         # Instantiate ASF for each element
-        for element in self.settings["elements"]:
+        for element in self.elements:
             descriptor[element] = ASF(element)
 
         # Add symmetry functions
@@ -156,34 +154,36 @@ class NeuralNetworkPotential(Potential):
         logger.debug(f"Scaler kwargs={scaler_kwargs}")
 
         # Assign an ASF scaler to each element
-        for element in self.settings["elements"]:
+        for element in self.elements:
             scaler[element] = DescriptorScaler(**scaler_kwargs)
 
         return scaler
 
-    def init_model(self) -> Dict[str, NeuralNetworkModel]:
+    def init_model(self) -> Tuple[Dict[str, NeuralNetworkModel], frozendict]:
         """
         Initialize a neural network for each element using a dictionary representation of potential settings.
         """
         logger.debug("[Setting models]")
-        model = dict()
+        model: Dict[str, NeuralNetworkModel] = dict()
+        model_params: frozendict = dict()
 
-        # Instantiate neural network model for each element
-        hidden_layers = zip(
-            self.settings["global_nodes_short"],
-            self.settings["global_activation_short"][:-1],
-        )
-        output_layer: Tuple[int, str] = (
-            1,
-            self.settings["global_activation_short"][-1],
-        )
-        # TODO: what if we want to have a different model architecture for each element
+        random_keys = random.split(random.PRNGKey(0), self.n_elements)
 
-        for element in self.settings["elements"]:
+        for i, element in enumerate(self.elements):
+
             logger.debug(f"Element: {element}")
-            # input_size = self.descriptor[element].n_descriptor
+
+            # TODO: what if we have a different model architecture for each element
+            hidden_layers = zip(
+                self.settings["global_nodes_short"],
+                self.settings["global_activation_short"][:-1],
+            )
+            output_layer: Tuple[int, str] = (
+                1,
+                self.settings["global_activation_short"][-1],
+            )
+
             model_kwargs = {
-                # "input_size": input_size,
                 "hidden_layers": tuple([(n, t) for n, t in hidden_layers]),
                 "output_layer": output_layer,
                 "weights_range": (
@@ -193,7 +193,12 @@ class NeuralNetworkPotential(Potential):
             }
             model[element] = NeuralNetworkModel(**model_kwargs)
 
-        return model
+            model_params[element] = model[element].init(
+                random_keys[i],
+                jnp.ones((1, self.descriptor[element].n_symmetry_functions)),
+            )["params"]
+
+        return model, model_params
 
     # @Profiler.profile
     def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
@@ -213,7 +218,7 @@ class NeuralNetworkPotential(Potential):
             for element in structure.elements:
                 aid = structure.select(element)
                 dsc_val = self.descriptor[element](structure, aid)
-                print(dsc_val.shape)
+                # print(dsc_val.shape)
                 self.scaler[element].fit(dsc_val)
         logger.debug("Finished scaler fitting.")
 
@@ -325,23 +330,17 @@ class NeuralNetworkPotential(Potential):
         :return: total energy
         :rtype: Tensor
         """
-        structure.set_cutoff_radius(self.r_cutoff)
-
-        # Set model in evaluation model
-        self.eval()
 
         # Loop over elements
-        energy: Tensor = torch.tensor(
-            0.0e0, dtype=structure.dtype, device=structure.device
-        )
+        energy: Tensor = jnp.array(0.0, dtype=structure.dtype)
+
         for element in self.elements:
-            aids = structure.select(element).detach()
+            aids = structure.select(element)  # TODO: use mask
             x = self.descriptor[element](structure, aid=aids)
             x = self.scaler[element](x, warnings=True)
-            x = self.model[element](x)
-            # FIXME: float type neural network
-            x = torch.sum(x, dim=0)
-            energy = energy + x
+            x = self.model[element].apply({"params": self.model_params[element]}, x)
+            x = jnp.sum(x, axis=0)
+            energy += x
 
         return energy
 
@@ -369,6 +368,10 @@ class NeuralNetworkPotential(Potential):
     @property
     def elements(self) -> List[str]:
         return self.settings["elements"]
+
+    @property
+    def n_elements(self) -> int:
+        return len(self.elements)
 
     @property
     def r_cutoff(self) -> float:
