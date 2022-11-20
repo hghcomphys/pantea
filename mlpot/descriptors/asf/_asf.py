@@ -138,7 +138,7 @@ def _calculate_descriptor_per_atom(
     """
     Compute descriptor values per atom in the structure (via atom id).
     """
-    result = jnp.empty(asf.n_descriptor, dtype=dtype)
+    result = jnp.empty(asf.n_symmetry_functions, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
 
@@ -150,7 +150,9 @@ def _calculate_descriptor_per_atom(
         )
 
     # Loop over the angular terms
-    for index, angular in enumerate(asf._angular, start=asf.n_radial):
+    for index, angular in enumerate(
+        asf._angular, start=asf.n_radial_symmetry_functions
+    ):
 
         result = result.at[index].set(
             _calculate_angular_asf_per_atom(

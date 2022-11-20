@@ -70,7 +70,7 @@ def _grad_func_asf(
     emap: Dict[str, int],
 ) -> Tensor:
 
-    if asf_index < asf.n_radial:
+    if asf_index < asf.n_radial_symmetry_functions:
         grad_value = _grad_func_asf_radial(
             asf._radial[asf_index],
             position[aid],
@@ -82,7 +82,7 @@ def _grad_func_asf(
         )
     else:
         grad_value = _grad_func_asf_angular(
-            asf._angular[asf_index - asf.n_radial],
+            asf._angular[asf_index - asf.n_radial_symmetry_functions],
             position[aid],
             aid,
             position,

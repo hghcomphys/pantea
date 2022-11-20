@@ -67,10 +67,11 @@ class AtomicSymmetryFunction(Descriptor):
         Calculate descriptor values for the input given structure and atom id(s).
         """
         # Check number of symmetry functions
-        if self.n_descriptor == 0:
+        if self.n_symmetry_functions == 0:
             logger.warning(
-                f"No symmetry function defined yet: radial={self.n_radial}"
-                f", angular={self.n_angular}"
+                f"No symmetry function defined yet:"
+                f" radial={self.n_radial_symmetry_functions}"
+                f", angular={self.n_angular_symmetry_functions}"
             )
 
         if aid is None:
@@ -104,14 +105,15 @@ class AtomicSymmetryFunction(Descriptor):
         asf_index: int,
         aid: Optional[Tensor] = None,
     ):
-        if asf_index > self.n_descriptor - 1:
+        if asf_index > self.n_symmetry_functions - 1:
             logger.error(
-                f"Unexpected ASF array index {asf_index}. The index must be between [0, {self.n_descriptor})",
+                f"Unexpected ASF array index {asf_index}."
+                f" The index must be between [0, {self.n_symmetry_functions})",
                 ValueError,
             )
 
         if aid is None:
-            aid = jnp.arange(structure.natoms)
+            aid = jnp.arange(structure.n_atoms)
 
         return _vmap_grad_func_asf(
             self,
@@ -124,16 +126,16 @@ class AtomicSymmetryFunction(Descriptor):
         )
 
     @property
-    def n_radial(self) -> int:
+    def n_radial_symmetry_functions(self) -> int:
         return len(self._radial)
 
     @property
-    def n_angular(self) -> int:
+    def n_angular_symmetry_functions(self) -> int:
         return len(self._angular)
 
     @property
-    def n_descriptor(self) -> int:
-        return self.n_radial + self.n_angular
+    def n_symmetry_functions(self) -> int:
+        return self.n_radial_symmetry_functions + self.n_angular_symmetry_functions
 
     @property
     def r_cutoff(self) -> float:
@@ -146,8 +148,9 @@ class AtomicSymmetryFunction(Descriptor):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(element='{self.element}', n_radial={self.n_radial}"
-            f", n_angular={self.n_angular})"
+            f"{self.__class__.__name__}(element='{self.element}'"
+            f", radial={self.n_radial_symmetry_functions}"
+            f", angular={self.n_angular_symmetry_functions})"
         )
 
 

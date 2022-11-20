@@ -30,6 +30,6 @@ def _calculate_cutoff_mask(
     r_cutoff: Tensor,
 ) -> Tensor:
     # Tensors no need to be differentiable here
-    aids = jnp.arange(structure.natoms)  # all atoms
+    aids = jnp.arange(structure.n_atoms)  # all atoms
     rij, _ = structure.calculate_distance(aids)
     return _vmap_calculate_neighbor_mask(aids, rij, r_cutoff)

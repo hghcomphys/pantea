@@ -226,7 +226,7 @@ class Structure(_Base):
         return jnp.nonzero(self.atype == self.element_map[element])[0]
 
     @property
-    def natoms(self) -> int:
+    def n_atoms(self) -> int:
         return self.position.shape[0]
 
     @property
@@ -238,7 +238,7 @@ class Structure(_Base):
         return self.neighbor.r_cutoff
 
     def __repr__(self) -> str:
-        return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+        return f"Structure(n_atoms={self.n_atoms}, elements={self.elements}, dtype={self.dtype})"
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -297,13 +297,13 @@ class Structure(_Base):
             result["energy_RMSE"] = jnp.sqrt(jnp.mean(eng_diff**2))
         if "rmsepa" in errors:
             result["force_RMSEpa"] = jnp.sqrt(jnp.mean(frc_diff**2))
-            result["energy_RMSEpa"] = jnp.sqrt(jnp.mean(eng_diff**2)) / self.natoms
+            result["energy_RMSEpa"] = jnp.sqrt(jnp.mean(eng_diff**2)) / self.n_atoms
         if "mse" in errors:
             result["force_MSE"] = jnp.mean(frc_diff**2)
             result["energy_MSE"] = jnp.mean(eng_diff**2)
         if "msepa" in errors:
             result["force_MSEpa"] = jnp.mean(frc_diff**2)
-            result["energy_MSEpa"] = jnp.mean(eng_diff**2) / self.natoms
+            result["energy_MSEpa"] = jnp.mean(eng_diff**2) / self.n_atoms
         if return_difference:
             result["frc_diff"] = frc_diff
             result["eng_diff"] = eng_diff
