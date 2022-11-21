@@ -19,7 +19,7 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
     hidden_layers: Tuple[Tuple[int, str]]
     output_layer: Tuple[int, str] = (1, "l")
     weights_range: Tuple[int, int] = None
-    param_dtype: jnp.dtype = jnp.float32  # FIXME
+    param_dtype: jnp.dtype = jnp.float32  # FIXME:
 
     # see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
     _activation_function_map: Dict[str, Callable] = frozendict(
@@ -81,6 +81,6 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(input_size={self.input_size}"
-            f", hidden_layers={self.hidden_layers}, output_layer={self.output_layer})"
+            f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
+            f", output_layer={self.output_layer})"
         )
