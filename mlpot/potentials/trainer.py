@@ -10,6 +10,9 @@ from .metrics import init_error_metric
 from collections import defaultdict
 from typing import Dict, Callable, Tuple
 from flax.training.train_state import TrainState
+from frozendict import frozendict
+from functools import partial
+from jax import jit, grad
 import numpy as np
 import optax
 
@@ -97,6 +100,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     def init_train_state(self) -> Dict:
 
         train_state: Dict[str, TrainState] = dict()
+
         for element in self.potential.elements:
             train_state[element] = TrainState.create(
                 apply_fn=self.potential.model[element].apply,
@@ -109,6 +113,59 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     def eval_step(self, batch):
         pass
 
+    @partial(jit, static_argnums=(0,))  # FIXME
+    def train_step(
+        self,
+        state: Tuple[TrainState],
+        batch: Tuple[Tensor],
+    ):
+        dsc, force, energy = batch
+
+        def loss_fn(params: Tuple[frozendict]):
+            logits = jnp.array(0.0)
+            for s, p, x in zip(state, params, dsc):
+                logits += jnp.sum(s.apply_fn({"params": p}, x), axis=0)
+            loss = self.criterion(logits=logits, labels=energy)
+            return loss, logits
+
+        grad_fn = grad(loss_fn, has_aux=True)
+        grads, logits = grad_fn(tuple(s.params for s in state))
+
+        state = tuple(s.apply_gradients(grads=g) for s, g in zip(state, grads))
+        metrics = mse_loss(logits=logits, labels=energy)  # FIXME
+
+        return state, metrics
+
+    def fit(
+        self,
+        dataset: StructureDataset,
+        **kwargs,
+    ):
+        history = defaultdict(list)
+
+        # TODO: optimize (mask?), improve design
+        def calc_asf(structure) -> Tuple[Tensor]:
+            dsc = list()
+            for element in self.potential.elements:
+                aids = structure.select(element)
+                x = self.potential.descriptor[element](structure, aid=aids)
+                x = self.potential.scaler[element](x)
+                dsc.append(x)
+            return tuple(dsc)
+
+        state = tuple(self.train_state[element] for element in self.potential.elements)
+        for epoch in range(100):
+            for structure in dataset:
+                batch = calc_asf(structure), structure.force, structure.total_energy
+                state, metrics = self.train_step(state, batch)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}, loss={metrics}")
+            history["epoch"].append(epoch)
+            history["metrics_train"].append(metrics)
+
+        return history
+
     # def train_step(
     #     self,
     #     state: Dict[str, TrainState],
@@ -117,10 +174,6 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     #     # validation_mode: bool = False,
     #     # history: Dict = None,
     # ) -> Dict[str, float]:
-
-    #     def loss_fn(state):
-    #         logits = state.apply_fn({'params': params}, x)
-    #         self.criterion()
 
     #     if validation_mode:
     #         self.potential.eval()
