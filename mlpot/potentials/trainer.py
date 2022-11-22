@@ -8,7 +8,7 @@ from .loss import mse_loss
 from .metrics import ErrorMetric
 from .metrics import init_error_metric
 from collections import defaultdict
-from typing import Dict, Callable, Tuple
+from typing import Dict, Callable, Tuple, List
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from functools import partial
@@ -53,11 +53,10 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             self.potential.settings["main_error_metric"]
         )
 
+        self.optimizer = self.init_optimizer()
+
         # self.force_weight: float = self.potential.settings["force_weight"]
         # self.atom_energy: Dict[str, float] = self.potential.settings["atom_energy"]
-
-        self.optimizer = self.init_optimizer()
-        self.train_state = self.init_train_state()
 
     def init_optimizer(self) -> Dict:
         """
@@ -97,18 +96,20 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         # return {element: optimizer for element in self.elements}
         return optimizer
 
-    def init_train_state(self) -> Dict:
+    def init_train_state(self) -> Tuple:
+        """
+        Create train state for each element.
+        """
 
-        train_state: Dict[str, TrainState] = dict()
+        def generate_train_state():
+            for element in self.potential.elements:
+                yield TrainState.create(
+                    apply_fn=self.potential.model[element].apply,
+                    params=self.potential.model_params[element],
+                    tx=self.optimizer,  # [element]?
+                )
 
-        for element in self.potential.elements:
-            train_state[element] = TrainState.create(
-                apply_fn=self.potential.model[element].apply,
-                params=self.potential.model_params[element],
-                tx=self.optimizer,  # [element]?
-            )
-
-        return train_state
+        return tuple(state for state in generate_train_state())
 
     def eval_step(self, batch):
         pass
@@ -136,12 +137,25 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
         return state, metrics
 
-    def fit(
-        self,
-        dataset: StructureDataset,
-        **kwargs,
-    ):
+    def fit(self, dataset: StructureDataset, **kwargs):
+
         history = defaultdict(list)
+
+        # def calc_asf_mask(
+        #     mask: Tensor
+
+        # ):
+        #     for element in self.potential.elements:
+
+        #         _calculate_descriptor(
+        #             self.potential.descriptor[element],
+        #             aid,
+        #             structure.position,
+        #             structure.atype,
+        #             structure.box.lattice,
+        #             structure.dtype,
+        #             structure.element_map.element_to_atype,
+        #         )
 
         # TODO: optimize (mask?), improve design
         def calc_asf(structure) -> Tuple[Tensor]:
@@ -153,8 +167,9 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 dsc.append(x)
             return tuple(dsc)
 
-        state = tuple(self.train_state[element] for element in self.potential.elements)
+        state = self.init_train_state()
         for epoch in range(100):
+
             for structure in dataset:
                 batch = calc_asf(structure), structure.force, structure.total_energy
                 state, metrics = self.train_step(state, batch)
@@ -163,6 +178,10 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 print(f"Epoch {epoch}, loss={metrics}")
             history["epoch"].append(epoch)
             history["metrics_train"].append(metrics)
+
+            # update model params
+            for element, train_state in zip(self.potential.elements, state):
+                self.potential.model_params[element] = train_state.params
 
         return history
 
