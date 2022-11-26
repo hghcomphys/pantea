@@ -69,7 +69,12 @@ def _calculate_angular_asf_per_atom(
         (diff_i, dist_i, mask_cutoff_and_atype_ij),
     )
     # correct double-counting
-    total = lax.cond(at_j == at_k, lambda x: 0.5 * x, lambda x: x, total)
+    total = lax.cond(
+        at_j == at_k,
+        lambda x: x * 0.5,
+        lambda x: x,
+        total,
+    )
 
     return total
 

@@ -124,8 +124,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
         def loss_fn(params: Tuple[frozendict]):
             logits = jnp.array(0.0)
-            for s, p, x in zip(state, params, dsc):
-                logits += jnp.sum(s.apply_fn({"params": p}, x), axis=0)
+            for s, p, d in zip(state, params, dsc):
+                logits += jnp.sum(s.apply_fn({"params": p}, d), axis=0)
             loss = self.criterion(logits=logits, labels=energy)
             return loss, logits
 
