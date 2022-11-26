@@ -4,16 +4,21 @@ import jax
 import jax.numpy as jnp
 from functools import partial
 
-Tensor = jnp.ndarray
-
 
 class AngularSymmetryFunction(SymmetryFunction):
     """
     Three body symmetry function.
-    TODO: add other variant of angular symmetry functions (see N2P2 documentation).
     """
 
-    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    # TODO: add other variant of angular symmetry functions (see N2P2 documentation).
+
+    def __call__(
+        self,
+        rij: jnp.ndarray,
+        rik: jnp.ndarray,
+        rjk: jnp.ndarray,
+        cost: jnp.ndarray,
+    ) -> jnp.ndarray:
         raise NotImplementedError
 
 
@@ -38,7 +43,13 @@ class G3(AngularSymmetryFunction):
         super().__init__(cfn)
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    def __call__(
+        self,
+        rij: jnp.ndarray,
+        rik: jnp.ndarray,
+        rjk: jnp.ndarray,
+        cost: jnp.ndarray,
+    ) -> jnp.ndarray:
         # TODO: r_shift, define params argument instead
         return (
             self._scale_factor
@@ -57,7 +68,13 @@ class G9(G3):  # AngularSymmetryFunction
     """
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def __call__(self, rij: Tensor, rik: Tensor, rjk: Tensor, cost: Tensor) -> Tensor:
+    def __call__(
+        self,
+        rij: jnp.ndarray,
+        rik: jnp.ndarray,
+        rjk: jnp.ndarray,
+        cost: jnp.ndarray,
+    ) -> jnp.ndarray:
         # TODO: r_shift, define params argument instead
         return (
             self._scale_factor

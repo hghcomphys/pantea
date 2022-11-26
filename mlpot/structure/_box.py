@@ -1,11 +1,9 @@
 import jax
 import jax.numpy as jnp
 
-Tensor = jnp.ndarray
-
 
 @jax.jit
-def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
+def _apply_pbc(dx: jnp.ndarray, lattice: jnp.ndarray) -> jnp.ndarray:
     """
     [Kernel]
     Apply periodic boundary condition (PBC) along x,y, and z directions.
@@ -14,11 +12,11 @@ def _apply_pbc(dx: Tensor, lattice: Tensor) -> Tensor:
     this method may not work as expected, see shift_inside_box().
 
     :param dx: Position difference
-    :type dx: Tensor
+    :type dx: jnp.ndarray
     :param lattice: lattice matrix
-    :type lattice: Tensor
+    :type lattice: jnp.ndarray
     :return: PBC applied position
-    :rtype: Tensor
+    :rtype: jnp.ndarray
     """
     l = lattice.diagonal()
     dx = jnp.where(dx > 0.5e0 * l, dx - l, dx)

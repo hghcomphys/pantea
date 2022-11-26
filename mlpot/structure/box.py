@@ -6,8 +6,6 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-Tensor = jnp.ndarray
-
 
 class Box(_Base):
     """
@@ -19,8 +17,8 @@ class Box(_Base):
 
     def __init__(
         self,
-        lattice: Tensor = None,
-        dtype: jnp.dtype = jnp.float32,  # FIXME
+        lattice: jnp.ndarray = None,
+        dtype: jnp.dtype = _dtype.FLOATX,
     ) -> None:
         """
         Initialize simulation box (super-cell).
@@ -51,40 +49,40 @@ class Box(_Base):
         return True
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def apply_pbc(self, dx: Tensor) -> Tensor:
+    def apply_pbc(self, dx: jnp.ndarray) -> jnp.ndarray:
         """
         Apply the periodic boundary condition (PBC) on input tensor.
 
         :param dx: Position difference
-        :type dx: Tensor
+        :type dx: jnp.ndarray
         :return: PBC applied position difference
-        :rtype: Tensor
+        :rtype: jnp.ndarray
         """
         return _apply_pbc(dx, self.lattice)
 
-    def shift_inside_box(self, x: Tensor) -> Tensor:
+    def shift_inside_box(self, x: jnp.ndarray) -> jnp.ndarray:
         """
         Shift the input atom coordinates inside the PBC simulation box.
 
         :param x: atom position
-        :type x: Tensor
+        :type x: jnp.ndarray
         :return: moved atom position
-        :rtype: Tensor
+        :rtype: jnp.ndarray
         """
         return jnp.remainder(x, self.length)
 
     @property
-    def lx(self) -> Tensor:
+    def lx(self) -> jnp.ndarray:
         return self.lattice[0, 0]
 
     @property
-    def ly(self) -> Tensor:
+    def ly(self) -> jnp.ndarray:
         return self.lattice[1, 1]
 
     @property
-    def lz(self) -> Tensor:
+    def lz(self) -> jnp.ndarray:
         return self.lattice[2, 2]
 
     @property
-    def length(self) -> Tensor:
+    def length(self) -> jnp.ndarray:
         return self.lattice.diagonal()

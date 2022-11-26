@@ -3,8 +3,6 @@ from ..base import _Base
 from ._neighbor import _calculate_cutoff_mask
 import jax.numpy as jnp
 
-Tensor = jnp.ndarray
-
 
 class Neighbor(_Base):
     """
@@ -25,7 +23,7 @@ class Neighbor(_Base):
         """
         self.r_cutoff = r_cutoff
         self.r_cutoff_updated = False
-        self.mask: Tensor = None
+        self.mask: jnp.ndarray = None
         super().__init__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:

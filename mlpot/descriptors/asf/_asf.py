@@ -8,17 +8,14 @@ from jax import jit, vmap, lax
 import jax.numpy as jnp
 
 
-Tensor = jnp.ndarray
-
-
 @partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_radial_asf_per_atom(
     radial: Tuple[RadialSymmetryFunction, str, str],
-    aid: Tensor,  # must be a single atom index
-    atype: Tensor,
-    dist_i: Tensor,
+    aid: jnp.ndarray,  # must be a single atom index
+    atype: jnp.ndarray,
+    dist_i: jnp.ndarray,
     emap: Dict,
-) -> Tensor:
+) -> jnp.ndarray:
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -37,13 +34,13 @@ def _calculate_radial_asf_per_atom(
 @partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_angular_asf_per_atom(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
-    aid: Tensor,  # must be a single atom index
-    atype: Tensor,
-    diff_i: Tensor,
-    dist_i: Tensor,
-    lattice: Tensor,
+    aid: jnp.ndarray,  # must be a single atom index
+    atype: jnp.ndarray,
+    diff_i: jnp.ndarray,
+    dist_i: jnp.ndarray,
+    lattice: jnp.ndarray,
     emap: Dict,
-) -> Tensor:
+) -> jnp.ndarray:
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -81,14 +78,14 @@ def _calculate_angular_asf_per_atom(
 
 # Called by jax.lax.scan (no need for @jax.jit)
 def _inner_loop_over_angular_asf_terms(
-    total: Tensor,
-    inputs: Tuple[Tensor],
-    diff_i: Tensor,
-    dist_i: Tensor,
-    mask_ik: Tensor,
-    lattice: Tensor,
+    total: jnp.ndarray,
+    inputs: Tuple[jnp.ndarray],
+    diff_i: jnp.ndarray,
+    dist_i: jnp.ndarray,
+    mask_ik: jnp.ndarray,
+    lattice: jnp.ndarray,
     kernel: Callable,
-) -> Tuple[Tensor, Tensor]:
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
 
     # Scan occurs along the leading axis
     Rij, rij, mask_ij = inputs
@@ -117,7 +114,6 @@ def _inner_loop_over_angular_asf_terms(
         0.0,
     )  # second tuple output for Rjk
 
-    # TODO: using jax.lax.cond?
     value = jnp.where(
         mask_ij,
         jnp.sum(
@@ -133,13 +129,13 @@ def _inner_loop_over_angular_asf_terms(
 @partial(jit, static_argnums=(0, 5))  # FIXME
 def _calculate_descriptor_per_atom(
     asf,
-    aid: Tensor,  # must be a single atom index
-    position: Tensor,
-    atype: Tensor,
-    lattice: Tensor,
+    aid: jnp.ndarray,  # must be a single atom index
+    position: jnp.ndarray,
+    atype: jnp.ndarray,
+    lattice: jnp.ndarray,
     dtype: jnp.dtype,
     emap: Dict,
-) -> Tensor:
+) -> jnp.ndarray:
     """
     Compute descriptor values per atom in the structure (via atom id).
     """

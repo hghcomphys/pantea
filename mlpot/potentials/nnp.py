@@ -20,9 +20,6 @@ from frozendict import frozendict
 import jax.numpy as jnp
 
 
-Tensor = jnp.ndarray
-
-
 class NeuralNetworkPotential(Potential):
     """
     A suitcase class of high-dimensional neural network potential (HDNNP).
@@ -41,9 +38,6 @@ class NeuralNetworkPotential(Potential):
         """
         Initialize a HDNNP potential instance by reading the potential file and
         creating descriptors, scalers, models, and trainer.
-
-        Args:
-            potfile (Path): A file path to potential file.
         """
         self.potfile = Path(potfile)
         self.settings = NeuralNetworkPotentialSettings()
@@ -61,7 +55,7 @@ class NeuralNetworkPotential(Potential):
 
     def init_descriptor(self) -> Dict[str, Descriptor]:
         """
-        Initialize a **descriptor** for each element and add the relevant radial and angular
+        Initialize descriptor for each element and add the relevant radial and angular
         symmetry functions from the potential settings.
         """
         # TODO: add logging
@@ -321,18 +315,18 @@ class NeuralNetworkPotential(Potential):
         for element in self.elements:
             self.model[element].eval()
 
-    def __call__(self, structure: Structure) -> Tensor:
+    def __call__(self, structure: Structure) -> jnp.ndarray:
         """
         Return the total energy of the input structure.
 
         :param structure: Structure
         :type structure: Structure
         :return: total energy
-        :rtype: Tensor
+        :rtype: jnp.ndarray
         """
 
         # Loop over elements
-        energy: Tensor = jnp.array(0.0, dtype=structure.dtype)
+        energy: jnp.ndarray = jnp.array(0.0, dtype=structure.dtype)
 
         for element in self.elements:
             aids = structure.select(element)  # TODO: use mask

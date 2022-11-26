@@ -11,16 +11,14 @@ import itertools
 import jax.numpy as jnp
 
 
-Tensor = jnp.ndarray
-
-
 class AtomicSymmetryFunction(Descriptor):
     """
     Atomic Symmetry Function (ASF) descriptor.
     ASF is a vector of different radial and angular terms which describe the chemical environment of an atom.
-    TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
-    See N2P2 -> https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
     """
+
+    # TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
+    # See N2P2 -> https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
     def __init__(self, element: str) -> None:
         super().__init__(element)  # central element
@@ -37,7 +35,6 @@ class AtomicSymmetryFunction(Descriptor):
         """
         This method adds an input symmetry function to the list of ASFs
         and assign it to the given neighbor element(s).
-        # TODO: tuple of dict? (tuple is fine if it's used internally)
         """
         if isinstance(symmetry_function, RadialSymmetryFunction):
             self._radial.append(
@@ -62,7 +59,11 @@ class AtomicSymmetryFunction(Descriptor):
                 exception=TypeError,
             )
 
-    def __call__(self, structure: Structure, aid: Optional[Tensor] = None) -> Tensor:
+    def __call__(
+        self,
+        structure: Structure,
+        aid: Optional[jnp.ndarray] = None,
+    ) -> jnp.ndarray:
         """
         Calculate descriptor values for the input given structure and atom id(s).
         """
@@ -103,7 +104,7 @@ class AtomicSymmetryFunction(Descriptor):
         self,
         structure: Structure,
         asf_index: int,
-        aid: Optional[Tensor] = None,
+        aid: Optional[jnp.ndarray] = None,
     ):
         if asf_index > self.n_symmetry_functions - 1:
             logger.error(
@@ -154,4 +155,5 @@ class AtomicSymmetryFunction(Descriptor):
         )
 
 
+# Define ASF alias
 ASF = AtomicSymmetryFunction

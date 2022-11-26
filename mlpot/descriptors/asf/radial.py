@@ -4,8 +4,6 @@ import jax
 import jax.numpy as jnp
 from functools import partial
 
-Tensor = jnp.ndarray
-
 
 class RadialSymmetryFunction(SymmetryFunction):
     """
@@ -16,7 +14,7 @@ class RadialSymmetryFunction(SymmetryFunction):
     TODO: add logging when initializing each symmetry function.
     """
 
-    def __call__(self, rij: Tensor) -> Tensor:
+    def __call__(self, rij: jnp.ndarray) -> jnp.ndarray:
         raise NotImplementedError
 
 
@@ -29,7 +27,7 @@ class G1(RadialSymmetryFunction):
         super().__init__(cfn)
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def __call__(self, rij: Tensor) -> Tensor:
+    def __call__(self, rij: jnp.ndarray) -> jnp.ndarray:
         return self.cfn(rij)
 
 
@@ -44,5 +42,5 @@ class G2(RadialSymmetryFunction):
         super().__init__(cfn)
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
-    def __call__(self, rij: Tensor) -> Tensor:
+    def __call__(self, rij: jnp.ndarray) -> jnp.ndarray:
         return jnp.exp(-self.eta * (rij - self.r_shift) ** 2) * self.cfn(rij)

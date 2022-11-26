@@ -1,14 +1,11 @@
 from ..logger import logger
 from ..config import dtype as _dtype
-from ..config import device as _device
 from .base import _Base
 from pathlib import Path
+from typing import Optional
 import jax
 import numpy as np
 import jax.numpy as jnp
-from functools import partial
-
-Tensor = jnp.ndarray
 
 
 class DescriptorScaler(_Base):
@@ -23,26 +20,25 @@ class DescriptorScaler(_Base):
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-        dtype: jnp.dtype = jnp.float32,  # FIXME
+        dtype: Optional[jnp.dtype] = _dtype.FLOATX,
     ) -> None:
         """
         Initialize scaler including scaler type and min/max values.
         """
-        # TODO: remove dtype and device input arguments
         # Set min/max range for scaler
         self.scale_type = scale_type
         self.scale_min = scale_min
         self.scale_max = scale_max
-        self.dtype = dtype if dtype else _dtype.FLOATX
+        self.dtype = dtype
         logger.debug(f"Initializing {self}")
 
         # Statistical parameters
         self.nsamples: int = 0  # number of samples
         self.dimension: int = None  # dimension of each sample
-        self.mean: Tensor = None  # mean array of all fitted descriptor values
-        self.sigma: Tensor = None  # standard deviation
-        self.min: Tensor = None  # minimum
-        self.max: Tensor = None  # maximum
+        self.mean: jnp.ndarray = None  # mean array of all fitted descriptor values
+        self.sigma: jnp.ndarray = None  # standard deviation
+        self.min: jnp.ndarray = None  # minimum
+        self.max: jnp.ndarray = None  # maximum
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: int = None
@@ -50,7 +46,7 @@ class DescriptorScaler(_Base):
         # Set scaler type function
         self._transform = getattr(self, f"_{self.scale_type}")
 
-    def fit(self, data: Tensor) -> None:
+    def fit(self, data: jnp.ndarray) -> None:
         """
         This method fits the scaler parameters based on the given input tensor.
         It also works also in a batch-wise form.
@@ -93,19 +89,20 @@ class DescriptorScaler(_Base):
             self.min = jnp.minimum(self.min, new_min)
             self.nsamples += n
 
-    def __call__(self, x: Tensor, warnings: bool = False) -> Tensor:
+    def __call__(self, x: jnp.ndarray, warnings: bool = False) -> jnp.ndarray:
         """
         Transform the input descriptor values base on the selected scaler type.
-        This method has to be called when fit method is called ``batch-wise`` over all descriptor values,
+        This method has to be called when fit method was already applied batch-wise over all descriptor values,
         or statistical parameters are read from a saved file.
 
-        Args:
-            x (Tensor): input
-            warnings (bool): input
-
-        Returns:
-            Tensor: scaled input
+        :param x: descriptor values
+        :type x: jnp.ndarray
+        :param warnings: enable warnings, defaults to False
+        :type warnings: bool, optional
+        :return: scaled descriptor values
+        :rtype: jnp.ndarray
         """
+
         if warnings:
             self._check_warnings(x)
 
@@ -118,14 +115,15 @@ class DescriptorScaler(_Base):
             f"Setting the maximum number of scaler warnings: {self.max_number_of_warnings}"
         )
 
-    def _check_warnings(self, x: Tensor) -> None:
+    def _check_warnings(self, x: jnp.ndarray) -> None:
         """
         Check whether the output scaler values exceed the predefined min/max range values or not.
         if so, it keeps counting the number of warnings and raises an error if it exceeds the maximum number.
-        out of range descriptor values is an indication of descriptor extrapolation which has to be avoided.
+        An out of range descriptor value is in fact an indication of
+        the descriptor extrapolation which has to be avoided.
 
         :param val: scaled values of descriptor
-        :type val: Tensor
+        :type val: jnp.ndarray
         """
         if self.max_number_of_warnings is None:
             return
@@ -143,23 +141,20 @@ class DescriptorScaler(_Base):
                 f"{self.number_of_warnings} (max={self.max_number_of_warnings})"
             )
 
-    def _center(self, x: Tensor) -> Tensor:
-        """
-        Subtract the mean value from the input tensor.
-        """
+    def _center(self, x: jnp.ndarray) -> jnp.ndarray:
         return x - self.mean
 
-    def _scale(self, x: Tensor) -> Tensor:
+    def _scale(self, x: jnp.ndarray) -> jnp.ndarray:
         return self.scale_min + (self.scale_max - self.scale_min) * (x - self.min) / (
             self.max - self.min
         )
 
-    def _scale_center(self, x: Tensor) -> Tensor:
+    def _scale_center(self, x: jnp.ndarray) -> jnp.ndarray:
         return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / (
             self.max - self.min
         )
 
-    def _scale_center_sigma(self, x: Tensor) -> Tensor:
+    def _scale_center_sigma(self, x: jnp.ndarray) -> jnp.ndarray:
         return (
             self.scale_min
             + (self.scale_max - self.scale_min) * (x - self.mean) / self.sigma
@@ -167,7 +162,7 @@ class DescriptorScaler(_Base):
 
     def save(self, filename: Path) -> None:
         """
-        Save scaler parameters into file.
+        Save scaler parameters into a file.
         """
         with open(str(filename), "w") as file:
             file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
@@ -178,7 +173,7 @@ class DescriptorScaler(_Base):
 
     def load(self, filename: Path) -> None:
         """
-        Load scaler parameters from file.
+        Load scaler parameters from the file.
         """
         data = np.loadtxt(str(filename)).T
         self.nsamples = 1

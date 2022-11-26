@@ -1,8 +1,7 @@
 from ..logger import logger
-from ..config import dtype, device
+from ..config import dtype as _dtype
 from typing import Dict, Any
-from torch import Tensor
-import torch
+import jax.numpy as jnp
 
 
 def set_as_attribute(
@@ -25,15 +24,9 @@ def set_as_attribute(
         setattr(obj, attr_name, item)
 
 
-def cast_to_tensor(x) -> Tensor:
+def cast_to_tensor(x, dtype: jnp.dtype = _dtype.FLOATX) -> jnp.ndarray:
     """
     An utility function to cast input variable (scalar, array, etc)
     to torch tensor with predefined data and device types.
-
-    Args:
-        x (Any): input variable (e.g. scaler, array)
-
-    Returns:
-        Tensor: casted input to a tensor
     """
-    return torch.tensor(x, dtype=dtype.FLOATX, device=device.DEVICE)
+    return jnp.asarray(x, dtype=dtype)

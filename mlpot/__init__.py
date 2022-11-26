@@ -1,15 +1,11 @@
 """
-MLPOT - A Framework for Developing Machine Learning Interatomic Potential
-=========================================================================
+MLPOT - A machine-learning framework for development of interatomic potential
+=============================================================================
 
-MLPOT is a software _framework_ written in Python to facilitate the development of emerging 
-machine learning interatomic potentials. It is intended to help researchers to quickly construct 
-their ML-based potentials and allowing to perform large-scale molecular dynamics simulations 
-of complex materials in computational physics and chemistry.
-
-The core implementation of MLPOT is based on the PyTorch package, and its C++ API, which 
-provides two high-level features including optimized tensor computation and automatic 
-differentiation.
+MLPOT is a Python package to facilitate development of the emerging machine-learning (ML)
+interatomic potentials in computational physics and chemistry. Such potentials are essential
+for performing large-scale molecular dynamics (MD) simulations of complex materials at the
+atomic scale and with ab initio accuracy.
 """
 
 from .logger import *

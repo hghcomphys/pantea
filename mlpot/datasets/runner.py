@@ -3,16 +3,15 @@ from ..logger import logger
 from ..utils.tokenize import tokenize
 from .base import StructureDataset
 from .transformer import Transformer, ToStructure
-from typing import TextIO, Dict
+from typing import TextIO, Dict, List, Union
 from collections import defaultdict
 from pathlib import Path
-import torch
 
 
 class RunnerStructureDataset(StructureDataset):
     """
     Structure dataset for RuNNer data file format.
-    The input structure file contains snapshots of atoms inside a simulation box.
+    The input structure file contains atoms info inside a simulation box.
 
     Each snapshot includes per-atom and collective properties:
     - per-atom properties include the element name, atom coordinates, energy, charge, and force components.
@@ -21,25 +20,26 @@ class RunnerStructureDataset(StructureDataset):
     See https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
     """
 
-    # TODO: Dataset training and validation split method/utils function
-    # TODO: logging
+    # TODO: add logging
 
     def __init__(
         self,
         filename: Path,
         transform: Transformer = ToStructure(),
         persist: bool = False,
-        # download: bool = False,  # TODO
+        # TODO: download: bool = False,
     ) -> None:
         """
         Initialize RuNNer structure dataset.
 
-        Args:
-            filename (Path): Path to the RuNNer structure file.
-            transform (Transformer, optional): Optional transform to be applied on a structure. Defaults to None.
-            persist (bool, optional): Persist structure into memory. Defaults to False to reduce memory footprint.
-            Also it avoids unnecessary data transfer between CPU and GPU.
+        :param filename: Path
+        :type filename: RuNNer structure file anme
+        :param transform: transform to be applied on a structure, defaults to ToStructure()
+        :type transform: Transformer, optional
+        :param persist: Persist structure data in the memory, defaults to False
+        :type persist: bool, optional
         """
+
         self.filename = Path(filename)
         self.transform = transform  # transform after loading each sample
         self.persist = persist  # enabling caching
@@ -57,34 +57,13 @@ class RunnerStructureDataset(StructureDataset):
                 n_structures += 1
         return n_structures
 
-    def __getitem__(self, index: int) -> Dict:
+    def __getitem__(self, index: Union[int, List[int]]) -> Dict:
         """
         Return i-th structure form the.
         This is a lazy load. Data is read from the file only if this method is called.
         Multiple-indexing with some limitations is possible.
-
-        This method is used by Torch Dataloader to create mini-batch of data in a most efficient way
-        (multiple workers, pinned memory, shuffling, batching, etc).
-
-        Args:
-            index (int): Index of structure.
-
-        Returns:
-            Dict: Data structure
         """
         # TODO: assert range of index
-
-        if torch.is_tensor(index):
-            # TODO: what if indices are on GPU?
-            index = index.tolist()
-
-        # TODO: start and stop has to be explicitly given
-        if isinstance(index, slice):
-            if index.step is None:
-                index = list(range(index.start, index.stop))
-            else:
-                index = list(range(index.start, index.stop, index.step))
-
         if isinstance(index, list):
             return [self._read_cache(idx) for idx in index]
 
@@ -104,6 +83,7 @@ class RunnerStructureDataset(StructureDataset):
             sample = self[self._current_index]
             self._current_index += 1
             return sample
+
         self._current_index = 0
         raise StopIteration
 
@@ -139,12 +119,12 @@ class RunnerStructureDataset(StructureDataset):
         """
         This method reads the next structure from the input file.
 
-        Args:
-            file (TextIO): Input structure file handler
-
-        Returns:
-            Dict: Sample of dataset.
+        :param file: input structure file handler
+        :type file: TextIO
+        :return: sample of dataset
+        :rtype: Dict
         """
+
         sample = defaultdict(list)
         # Read next structure
         while True:

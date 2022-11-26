@@ -9,20 +9,17 @@ from jax import jit, grad, vmap
 import jax.numpy as jnp
 
 
-Tensor = jnp.ndarray
-
-
 # A help function to calculate gradient of radial ASF respect to x
 @partial(jit, static_argnums=(0,))  # FIXME
 def _func_asf_radial(
     radial: Tuple[RadialSymmetryFunction, str, str],
-    x: Tensor,
-    aid: Tensor,
-    position: Tensor,
-    lattice: Tensor,
-    atype: Tensor,
+    x: jnp.ndarray,
+    aid: jnp.ndarray,
+    position: jnp.ndarray,
+    lattice: jnp.ndarray,
+    atype: jnp.ndarray,
     emap: Dict,
-) -> Tensor:
+) -> jnp.ndarray:
 
     dist_i, _ = _calculate_distance_per_atom(x, position, lattice)
 
@@ -33,13 +30,13 @@ def _func_asf_radial(
 @partial(jit, static_argnums=(0,))  # FIXME
 def _func_asf_angular(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
-    x: Tensor,
-    aid: Tensor,
-    position: Tensor,
-    lattice: Tensor,
-    atype: Tensor,
+    x: jnp.ndarray,
+    aid: jnp.ndarray,
+    position: jnp.ndarray,
+    lattice: jnp.ndarray,
+    atype: jnp.ndarray,
     emap: Dict,
-) -> Tensor:
+) -> jnp.ndarray:
 
     dist_i, diff_i = _calculate_distance_per_atom(x, position, lattice)
 
@@ -63,12 +60,12 @@ _grad_func_asf_angular = jit(
 def _grad_func_asf(
     asf,
     asf_index: int,
-    aid: Tensor,
-    position: Tensor,
-    lattice: Tensor,
-    atype: Tensor,
+    aid: jnp.ndarray,
+    position: jnp.ndarray,
+    lattice: jnp.ndarray,
+    atype: jnp.ndarray,
     emap: Dict[str, int],
-) -> Tensor:
+) -> jnp.ndarray:
 
     if asf_index < asf.n_radial_symmetry_functions:
         grad_value = _grad_func_asf_radial(
@@ -99,7 +96,7 @@ _vmap_grad_func_asf = vmap(
     in_axes=(None, None, 0, None, None, None, None),
 )
 
-# TODO: nested vmap over asf_index
+# FIXME: nested vmap over asf_index
 # _vmap2_grad_func_asf = vmap(
 #     _vmap_grad_func_asf,
 #     in_axes=(None, None, 0, None, None, None, None),

@@ -1,13 +1,9 @@
 from ..logger import logger
 from .base import BaseModel
 from typing import Tuple, List, Dict, Callable
-from pathlib import Path
 from frozendict import frozendict
 from flax import linen as nn
 import jax.numpy as jnp
-
-
-Tensor = jnp.ndarray
 
 
 class NeuralNetworkModel(nn.Module):  # BaseModel
@@ -60,7 +56,7 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
 
         return layers
 
-    def __call__(self, inputs: Tensor) -> Tensor:
+    def __call__(self, inputs: jnp.ndarray) -> jnp.ndarray:
         x = inputs
         for layer in self.layers:
             x = layer(x)

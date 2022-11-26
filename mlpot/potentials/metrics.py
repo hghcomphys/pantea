@@ -1,8 +1,7 @@
 from ..logger import logger
 from ..base import _Base
-from torch import Tensor
 from typing import Mapping
-import torch
+import jax.numpy as jnp
 
 
 class ErrorMetric(_Base):
@@ -11,11 +10,15 @@ class ErrorMetric(_Base):
     Note: gradient calculations is disabled for all error metrics.
     """
 
-    def __init__(self, **kwargs):
-        self._mse_metric = torch.nn.MSELoss(**kwargs)
+    def __init__(self):
+        def mse(*, prediction: jnp.ndarray, target: jnp.ndarray):
+            return ((target - prediction) ** 2).mean()
 
-    @torch.no_grad()
-    def __call__(self, prediction: Tensor, target: Tensor, factor=None) -> Tensor:
+        self._mse_metric = mse
+
+    def __call__(
+        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
+    ) -> jnp.ndarray:
         raise NotImplementedError()
 
     def __repr__(self) -> str:
@@ -27,9 +30,10 @@ class MSE(ErrorMetric):
     Mean squared error metric
     """
 
-    @torch.no_grad()
-    def __call__(self, prediction: Tensor, target: Tensor, factor=None) -> Tensor:
-        return self._mse_metric(prediction, target)
+    def __call__(
+        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
+    ) -> jnp.ndarray:
+        return self._mse_metric(prediction=prediction, target=target)
 
 
 class RMSE(MSE):
@@ -37,9 +41,10 @@ class RMSE(MSE):
     Root mean squared error metric
     """
 
-    @torch.no_grad()
-    def __call__(self, prediction: Tensor, target: Tensor, factor=None) -> Tensor:
-        return torch.sqrt(self._mse_metric(prediction, target))
+    def __call__(
+        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
+    ) -> jnp.ndarray:
+        return jnp.sqrt(self._mse_metric(prediction=prediction, target=target))
 
 
 class MSEpa(MSE):
@@ -49,9 +54,10 @@ class MSEpa(MSE):
     MSE of force
     """
 
-    @torch.no_grad()
-    def __call__(self, prediction: Tensor, target: Tensor, factor: int = 1) -> Tensor:
-        return self._mse_metric(prediction, target) / factor
+    def __call__(
+        self, prediction: jnp.ndarray, target: jnp.ndarray, factor: int = 1
+    ) -> jnp.ndarray:
+        return self._mse_metric(prediction=prediction, target=target) / factor
 
 
 class RMSEpa(RMSE):
@@ -61,9 +67,10 @@ class RMSEpa(RMSE):
     RMSE of force
     """
 
-    @torch.no_grad()
-    def __call__(self, prediction: Tensor, target: Tensor, factor: int = 1) -> Tensor:
-        return torch.sqrt(self._mse_metric(prediction, target)) / factor
+    def __call__(
+        self, prediction: jnp.ndarray, target: jnp.ndarray, factor: int = 1
+    ) -> jnp.ndarray:
+        return jnp.sqrt(self._mse_metric(prediction=prediction, target=target)) / factor
 
 
 def init_error_metric(metric_type: str, **kwargs) -> ErrorMetric:

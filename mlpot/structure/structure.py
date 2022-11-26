@@ -14,8 +14,6 @@ import jax
 import jax.numpy as jnp
 from functools import partial
 
-Tensor = jnp.ndarray
-
 
 class Structure(_Base):
     """
@@ -74,7 +72,7 @@ class Structure(_Base):
         self.requires_neighbor_update = True
 
         self.element_map: ElementMap = kwargs.get("element_map", None)
-        self.tensors: Dict[str, Tensor] = kwargs.get("tensors", None)
+        self.tensors: Dict[str, jnp.ndarray] = kwargs.get("tensors", None)
         self.box: Box = kwargs.get("box", None)
         self.neighbor: Neighbor = kwargs.get("neighbor", None)
 
@@ -94,7 +92,7 @@ class Structure(_Base):
         if self.tensors:
             set_as_attribute(self, self.tensors)
 
-        if self.box:  # TODO: torch.no_grad()
+        if self.box:
             logger.debug("Shift all atoms into the PBC simulation box")
             self.position = self.box.shift_inside_box(self.position)
 
@@ -139,7 +137,7 @@ class Structure(_Base):
         Create a simulation box object using the provided lattice tensor.
 
         :param lattice: 3x3 lattice matrix
-        :type lattice: Tensor
+        :type lattice: jnp.ndarray
         """
         if len(lattice) > 0:
             self.box = Box(lattice)
@@ -147,7 +145,7 @@ class Structure(_Base):
             logger.debug("No lattice info were found in structure")
             self.box = Box()
 
-    def _prepare_atype_tensor(self, elements: List[str]) -> Tensor:
+    def _prepare_atype_tensor(self, elements: List[str]) -> jnp.ndarray:
         """
         Set atom types using the element map
         """
@@ -195,9 +193,9 @@ class Structure(_Base):
     @partial(jax.jit, static_argnums=(0,))  # FIXME
     def calculate_distance(
         self,
-        aid: Tensor,
-        neighbor_index: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor]:
+        aid: jnp.ndarray,
+        neighbor_index: Optional[jnp.ndarray] = None,
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """
         Return distances between a specific atom and given neighboring atoms in the structure,
         and corresponding position difference.
@@ -214,14 +212,14 @@ class Structure(_Base):
         return jnp.squeeze(dis), jnp.squeeze(dx)
 
     # TODO: jit
-    def select(self, element: str) -> Tensor:
+    def select(self, element: str) -> jnp.ndarray:
         """
         Return all atom ids with atom type same as the input element.
 
         :param element: element
         :type element: str
         :return: atom indices
-        :rtype: Tensor
+        :rtype: jnp.ndarray
         """
         return jnp.nonzero(self.atype == self.element_map[element])[0]
 
@@ -310,16 +308,16 @@ class Structure(_Base):
 
         return result
 
-    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Tensor:
+    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> jnp.ndarray:
         """
         Return a tensor of energy offset.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[str, float]
         :return: energy offset
-        :rtype: Tensor
+        :rtype: jnp.ndarray
         """
-        energy_offset: Tensor = jnp.empty_like(self.energy)
+        energy_offset: jnp.ndarray = jnp.empty_like(self.energy)
         for element in self.elements:  # TODO: optimize item assignment
             energy_offset = energy_offset.at[self.select(element)].set(
                 atom_energy[element]

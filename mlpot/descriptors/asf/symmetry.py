@@ -3,8 +3,6 @@ from ...base import _Base
 from .cutoff import CutoffFunction
 import jax.numpy as jnp
 
-Tensor = jnp.ndarray
-
 
 class SymmetryFunction(_Base):
     """
@@ -16,7 +14,7 @@ class SymmetryFunction(_Base):
         self.cfn = cfn
         logger.debug(repr(self))
 
-    def __call__(self, *args, **kwargs) -> Tensor:
+    def __call__(self, *args, **kwargs) -> jnp.ndarray:
         raise NotImplementedError
 
     def __repr__(self) -> str:

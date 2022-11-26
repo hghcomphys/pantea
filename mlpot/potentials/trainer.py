@@ -1,25 +1,18 @@
 from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
-from ..utils.gradient import gradient
-from ..utils.attribute import set_as_attribute
 from ..base import _Base
 from .loss import mse_loss
 from .metrics import ErrorMetric
 from .metrics import init_error_metric
 from collections import defaultdict
-from typing import Dict, Callable, Tuple, List
+from typing import Dict, Callable, Tuple
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from functools import partial
 from jax import jit, grad
-import numpy as np
-import optax
-
 import jax.numpy as jnp
-
-
-Tensor = jnp.ndarray
+import optax
 
 
 class BasePotentialTrainer(_Base):
@@ -118,7 +111,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     def train_step(
         self,
         state: Tuple[TrainState],
-        batch: Tuple[Tensor],
+        batch: Tuple[jnp.ndarray],
     ):
         dsc, force, energy = batch
 
@@ -142,7 +135,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         history = defaultdict(list)
 
         # def calc_asf_mask(
-        #     mask: Tensor
+        #     mask: jnp.ndarray
 
         # ):
         #     for element in self.potential.elements:
@@ -158,7 +151,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         #         )
 
         # TODO: optimize (mask?), improve design
-        def calc_asf(structure) -> Tuple[Tensor]:
+        def calc_asf(structure) -> Tuple[jnp.ndarray]:
             dsc = list()
             for element in self.potential.elements:
                 aids = structure.select(element)
@@ -304,7 +297,8 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     #     validation_dataset = kwargs.get("validation_dataset", None)
 
     #     # Prepare structure dataset and loader for training elemental models
-    #     # dataset_ = dataset.copy() # because of having new r_cutoff specific to the potential, no structure data will be copied
+    #     # dataset_ = dataset.copy()
+    # # because of having new r_cutoff specific to the potential, no structure data will be copied
     #     # dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)
 
     #     # TODO: further optimization using the existing parameters in TorchDataloader

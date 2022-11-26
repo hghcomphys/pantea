@@ -158,8 +158,8 @@ class ElementMap(_Base):
     def __getitem__(self, item: Union[str, int]) -> Union[int, str]:
         """
         Map an element to the atom type and vice versa.
-        TODO: raise an error when element type or atom type is unknown
         """
+        # TODO: raise an error when element type or atom type is unknown
         if isinstance(item, int):
             return self._atom_type_to_elem[item]
         elif isinstance(item, str):

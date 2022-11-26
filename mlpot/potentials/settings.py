@@ -54,7 +54,7 @@ class NeuralNetworkPotentialSettings(Settings):
         See N2P2 -> https://compphysvienna.github.io/n2p2/topics/keywords.html
         """
         # TODO: DRY, read keyword with map lambda function
-        logger.debug(f"[Reading settings]")
+        logger.debug("[Reading settings]")
 
         # Read settings from file
         filename = Path(filename)

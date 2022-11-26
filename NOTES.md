@@ -2,17 +2,6 @@
 
 Technical notes regarding implementation, validation, references, etc.
 
-<!--
-TODO:
-- [ ] define a customized exception class that handles internal error messages and also python exceptions
-- [ ] improve CFG design e.g. config file, defaults values, on-the-fly settings.
-- [ ] optimize memory allocation of neighbor list atoms and avoiding redundant tensor creation (use torch.resizes)
-- [ ] optimize neighbor list update for large number of atoms (not used for training but MD simulations)
-- [ ] utilize torch multi-thread or distributed torch
-- [ ] optimize code performance regarding python dynamic types (torch script, cython)
-- [ ] parallelize descriptor calculations using vectorization or thread pool
--->
-
 ## Utils
 
 ### How big is the code?

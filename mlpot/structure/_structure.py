@@ -4,15 +4,13 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-Tensor = jnp.ndarray
-
 
 @jax.jit
 def _calculate_distance_per_atom(
-    x_atom: Tensor,
-    x_neighbors: Tensor,
-    lattice: Tensor = None,
-) -> Tuple[Tensor, Tensor]:
+    x_atom: jnp.ndarray,
+    x_neighbors: jnp.ndarray,
+    lattice: jnp.ndarray = None,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     [Kernel]
     Calculate a tensor of distances to all atoms existing in the structure from a given atom.
@@ -40,13 +38,13 @@ _vmap_calculate_distance = jax.vmap(
 
 @jax.jit
 def _calculate_distance(
-    x_atom: Tensor,
-    x_neighbors: Tensor,
-    lattice: Tensor = None,
-) -> Tuple[Tensor, Tensor]:
+    x_atom: jnp.ndarray,
+    x_neighbors: jnp.ndarray,
+    lattice: jnp.ndarray = None,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     [Kernel]
     Calculate a tensor of distances to all atoms existing in the structure from a given atom.
-    TODO: input pbc flag, using default pbc from global configuration
     """
+    # TODO: input pbc flag, using default pbc from global configuration
     return _vmap_calculate_distance(x_atom, x_neighbors, lattice)
