@@ -1,6 +1,7 @@
 from ..logger import logger
 from ..potentials.base import Potential
 from ..datasets.base import StructureDataset
+from ..descriptors.asf._asf import _calculate_descriptor
 from ..base import _Base
 from .loss import mse_loss
 from .metrics import ErrorMetric
@@ -89,7 +90,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         # return {element: optimizer for element in self.elements}
         return optimizer
 
-    def init_train_state(self) -> Tuple:
+    def init_train_state(self) -> Tuple[TrainState]:
         """
         Create train state for each element.
         """
@@ -108,266 +109,160 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
         pass
 
     @partial(jit, static_argnums=(0,))  # FIXME
-    def train_step(
+    def train_step_energy(
         self,
         state: Tuple[TrainState],
         batch: Tuple[jnp.ndarray],
     ):
-        dsc, force, energy = batch
+        descriptors, total_energy = batch
 
         def loss_fn(params: Tuple[frozendict]):
-            logits = jnp.array(0.0)
-            for s, p, d in zip(state, params, dsc):
-                logits += jnp.sum(s.apply_fn({"params": p}, d), axis=0)
-            loss = self.criterion(logits=logits, labels=energy)
-            return loss, logits
+            energy = 0.0
+            for s, p, d in zip(state, params, descriptors):
+                energy += jnp.sum(s.apply_fn({"params": p}, d))
+            loss = self.criterion(
+                logits=energy, labels=total_energy
+            )  # FIXME: divide by n_atoms
+            return loss, energy
 
         grad_fn = grad(loss_fn, has_aux=True)
-        grads, logits = grad_fn(tuple(s.params for s in state))
+        grads, energy = grad_fn(tuple(s.params for s in state))
 
         state = tuple(s.apply_gradients(grads=g) for s, g in zip(state, grads))
-        metrics = mse_loss(logits=logits, labels=energy)  # FIXME
+        metrics = mse_loss(
+            logits=energy, labels=total_energy
+        )  # FIXME: divide by n_atoms
+
+        return state, metrics
+
+    @partial(jit, static_argnums=(0, 1))  # FIXME
+    def train_step_force(
+        self,
+        static_args: Tuple,
+        state: Tuple[TrainState],
+        batch: Tuple[Tuple, Tuple[jnp.ndarray]],
+    ) -> Tuple:
+
+        xbatch, target_forces = batch
+
+        def loss_fn(
+            params: Tuple[frozendict],
+        ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray]]:
+            """
+            loss function
+            """
+
+            def energy_fn(positions: Tuple[jnp.array]) -> jnp.ndarray:
+                energy = jnp.array(0.0)
+                for st, pr, inputs, position, static_inputs in zip(
+                    state, params, xbatch, positions, static_args
+                ):
+                    asf, scaler, dtype = static_inputs
+                    aid, _, atype, lattice, emap = inputs
+                    dsc = _calculate_descriptor(
+                        asf, aid, position, atype, lattice, dtype, emap
+                    )
+                    scaled_dsc = scaler(dsc)
+                    energy += jnp.sum(st.apply_fn({"params": pr}, scaled_dsc))
+                return energy
+
+            gard_energy_fn = grad(energy_fn)
+
+            positions: Tuple[jnp.ndarray] = tuple(inputs[1] for inputs in xbatch)
+            grad_energies: Tuple[jnp.ndarray] = gard_energy_fn(positions)
+            # FIXME: update descriptor interface to accept pos instead of aid
+            forces: Tuple[jnp.ndarray] = tuple(
+                -1 * grad_energy[inputs[0]]  # grad[aid]
+                for grad_energy, inputs in zip(grad_energies, xbatch)
+            )
+
+            loss = jnp.array(0.0)
+            for force, target_force in zip(forces, target_forces):
+                loss += self.criterion(logits=force, labels=target_force)
+            loss /= len(forces)
+
+            return loss, forces
+
+        grad_fn = grad(loss_fn, has_aux=True)
+        grads, forces = grad_fn(tuple(s.params for s in state))
+
+        state = tuple(st.apply_gradients(grads=gr) for st, gr in zip(state, grads))
+
+        metrics = jnp.array(0.0)
+        for force, target_force in zip(forces, target_forces):
+            metrics += mse_loss(logits=force, labels=target_force)
+        metrics /= len(forces)
 
         return state, metrics
 
     def fit(self, dataset: StructureDataset, **kwargs):
 
-        history = defaultdict(list)
-
-        # def calc_asf_mask(
-        #     mask: jnp.ndarray
-
-        # ):
-        #     for element in self.potential.elements:
-
-        #         _calculate_descriptor(
-        #             self.potential.descriptor[element],
-        #             aid,
-        #             structure.position,
-        #             structure.atype,
-        #             structure.box.lattice,
-        #             structure.dtype,
-        #             structure.element_map.element_to_atype,
-        #         )
-
         # TODO: optimize (mask?), improve design
-        def calc_asf(structure) -> Tuple[jnp.ndarray]:
-            dsc = list()
-            for element in self.potential.elements:
-                aids = structure.select(element)
-                x = self.potential.descriptor[element](structure, aid=aids)
-                x = self.potential.scaler[element](x)
-                dsc.append(x)
-            return tuple(dsc)
+        def calculate_asf(structure) -> Tuple[jnp.ndarray]:
+            def generate_element_asf():
+                for element in self.potential.elements:
+                    aid = structure.select(element)
+                    x = self.potential.descriptor[element](structure, aid=aid)
+                    x = self.potential.scaler[element](x)
+                    yield x
 
+            return tuple(asf for asf in generate_element_asf())
+
+        def prepare_inputs(structure) -> Tuple[Tuple]:
+            def extract_inputs():
+                for element in self.potential.elements:
+                    yield (
+                        structure.select(element),  # aid
+                        structure.position,
+                        structure.atype,
+                        structure.box.lattice,
+                        structure.element_map.element_to_atype,
+                    )
+
+            return tuple(inputs for inputs in extract_inputs())
+
+        def prepare_static_inputs(structure):
+            def extract_static_inputs():
+                for element in self.potential.elements:
+                    yield (
+                        self.potential.descriptor[element],
+                        self.potential.scaler[element],
+                        structure.dtype,
+                    )
+
+            return tuple(inputs for inputs in extract_static_inputs())
+
+        def prepare_forces(structure) -> Tuple[jnp.ndarray]:
+            def extract_force():
+                for element in self.potential.elements:
+                    aid = structure.select(element)
+                    yield structure.force[aid]
+
+            return tuple(force for force in extract_force())
+
+        history = defaultdict(list)
         state = self.init_train_state()
-        for epoch in range(100):
+        for epoch in range(50):
 
             for structure in dataset:
-                batch = calc_asf(structure), structure.force, structure.total_energy
-                state, metrics = self.train_step(state, batch)
 
-            if epoch % 10 == 0:
+                batch = calculate_asf(structure), structure.total_energy
+                state, metrics = self.train_step_energy(state, batch)
+
+                static_args = prepare_static_inputs(structure)
+                batch = prepare_inputs(structure), prepare_forces(structure)
+                state, metrics = self.train_step_force(static_args, state, batch)
+
+            if epoch % 1 == 0:
                 print(f"Epoch {epoch}, loss={metrics}")
             history["epoch"].append(epoch)
             history["metrics_train"].append(metrics)
 
-            # update model params
+            # Update model params
             for element, train_state in zip(self.potential.elements, state):
                 self.potential.model_params[element] = train_state.params
 
         return history
-
-    # def train_step(
-    #     self,
-    #     state: Dict[str, TrainState],
-    #     batch,
-    #     # epoch_index: int = None,
-    #     # validation_mode: bool = False,
-    #     # history: Dict = None,
-    # ) -> Dict[str, float]:
-
-    #     if validation_mode:
-    #         self.potential.eval()
-    #         prefix = "valid"
-    #     else:
-    #         self.potential.train()
-    #         prefix = "train"
-
-    #     nbatch: int = 0
-    #     state: Dict[str, float] = defaultdict(float)
-    #     error_metric_name = self.error_metric__class__.__name__
-
-    #     # Loop over training structures
-    #     for batch in loader:
-
-    #         # Reset optimizer
-    #         if not validation_mode:
-    #             self.optimizer.zero_grad(set_to_none=True)
-
-    #         # TODO: what if batch size > 1
-    #         # TODO: spawn process
-    #         structure = batch[0]
-    #         # ---
-    #         structure.set_cutoff_radius(self.potential.r_cutoff)
-    #         if self.atom_energy:
-    #             structure.remove_energy_offset(self.atom_energy)
-
-    #         # Predict energy and force
-    #         energy = self.potential(structure)  # total energy
-    #         force = -gradient(energy, structure.position)
-
-    #         # TODO: further investigation of possible input arguments to optimize grad calculations
-    #         # torch._C._debug_only_display_vmap_fallback_warnings(True)
-    #         # force = grad(energy, [structure.position],
-    #         #             #grad_outputs = torch.ones_like(structure.position),
-    #         #             # is_grads_batched = True,
-    #         #             # create_graph = True,
-    #         #             retain_graph=True,
-    #         #   )[0]
-
-    #         # Energy and force losses
-    #         eng_loss = self.criterion(
-    #             energy / structure.n_atoms, structure.total_energy / structure.n_atoms
-    #         )  # TODO: optimize division
-    #         frc_loss = self.criterion(force, structure.force)
-    #         loss = eng_loss + self.force_weight * frc_loss
-
-    #         # Error metrics
-    #         eng_error = self.error_metric(
-    #             energy, structure.total_energy, structure.n_atoms
-    #         )
-    #         frc_error = self.error_metric(force, structure.force)
-
-    #         # ---
-    #         if self.atom_energy:
-    #             structure.add_energy_offset(self.atom_energy)
-
-    #         # Update weights
-    #         if not validation_mode and (epoch_index is None or epoch_index > 0):
-    #             loss.backward(retain_graph=True)
-    #             self.optimizer.step()
-
-    #         # Accumulate energy and force loss and error values
-    #         state[f"{prefix}_energy_loss"] += eng_loss.item()
-    #         state[f"{prefix}_force_loss"] += frc_loss.item()
-    #         state[f"{prefix}_loss"] += loss.item()
-    #         state[f"{prefix}_energy_error"] += eng_error.item()
-    #         state[f"{prefix}_force_error"] += frc_error.item()
-
-    #         # Increment number of batches
-    #         nbatch += 1
-
-    #         if not validation_mode:
-    #             logger.print(
-    #                 "Training     "
-    #                 f"loss: {state['train_loss']/nbatch :<12.8E}, "
-    #                 f"energy [{error_metric_name}]: {state['train_energy_error']/nbatch :<12.8E}, "
-    #                 f"force [{error_metric_name}]: {state['train_force_error']/nbatch :<12.8E}",
-    #                 end="\r",
-    #             )
-
-    #     if validation_mode:
-    #         logger.print(
-    #             "Validation   "
-    #             f"loss: {state['valid_loss'] :<12.8E}, "
-    #             f"energy [{error_metric_name}]: {state['valid_energy_error']/nbatch :<12.8E}, "
-    #             f"force [{error_metric_name}]: {state['valid_force_error']/nbatch :<12.8E}"
-    #         )
-    #     logger.print()
-
-    #     # Mean values of loss and errors.
-    #     for item in state:
-    #         state[item] /= nbatch
-
-    #     if history is not None:
-    #         for item, value in state.items():
-    #             history[item].append(value)
-
-    #     return state
-
-    # def fit(self, dataset: StructureDataset, **kwargs) -> Dict:
-    #     """
-    #     Fit models.
-    #     """
-    #     # TODO: more arguments to have better control on training
-    #     epochs = kwargs.get("epochs", 1)
-    #     # TODO: add validation split from potential settings
-    #     validation_split = kwargs.get("validation_split", None)
-    #     validation_dataset = kwargs.get("validation_dataset", None)
-
-    #     # Prepare structure dataset and loader for training elemental models
-    #     # dataset_ = dataset.copy()
-    # # because of having new r_cutoff specific to the potential, no structure data will be copied
-    #     # dataset_.transform = ToStructure(r_cutoff=self.potential.r_cutoff)
-
-    #     # TODO: further optimization using the existing parameters in TorchDataloader
-    #     # workers, pinned memory, etc.
-    #     params = {
-    #         "batch_size": 1,
-    #         # "shuffle": True,
-    #         # "num_workers": 4,
-    #         # "prefetch_factor": 3,
-    #         # "pin_memory": True,
-    #         # "persistent_workers": True,
-    #         "collate_fn": lambda batch: batch,
-    #     }
-
-    #     if validation_dataset:
-    #         # Setting loaders
-    #         train_loader = TorchDataLoader(dataset, shuffle=True, **params)
-    #         valid_loader = TorchDataLoader(validation_dataset, shuffle=False, **params)
-    #         # Logging
-    #         logger.debug("Using separate training and validation datasets")
-    #         logger.print(f"Number of structures (training)  : {len(dataset)}")
-    #         logger.print(
-    #             f"Number of structures (validation): {len(validation_dataset)}"
-    #         )
-    #         logger.print()
-
-    #     elif validation_split:
-    #         nsamples = len(dataset)
-    #         split = int(np.floor(validation_split * nsamples))
-    #         train_dataset, valid_dataset = torch.utils.data.random_split(
-    #             dataset, lengths=[nsamples - split, split]
-    #         )
-    #         # Setting loaders
-    #         train_loader = TorchDataLoader(train_dataset, shuffle=True, **params)
-    #         valid_loader = TorchDataLoader(valid_dataset, shuffle=False, **params)
-    #         # Logging
-    #         logger.debug("Splitting dataset into training and validation subsets")
-    #         logger.print(
-    #             f"Number of structures (training)  : {nsamples - split} of {nsamples}"
-    #         )
-    #         logger.print(
-    #             f"Number of structures (validation): {split} ({validation_split:0.2%} split)"
-    #         )
-    #         logger.print()
-
-    #     else:
-    #         train_loader = TorchDataLoader(dataset, shuffle=True, **params)
-    #         valid_loader = None
-
-    #     logger.debug("Fitting energy models")
-    #     history = defaultdict(list)
-
-    #     for epoch in range(epochs + 1):
-    #         logger.print(f"[Epoch {epoch}/{epochs}]")
-
-    #         # Train model for one epoch
-    #         self.fit_one_epoch(train_loader, epoch, history=history)
-
-    #         # Evaluate model on validation data
-    #         if valid_loader is not None:
-    #             self.fit_one_epoch(
-    #                 valid_loader, epoch, history=history, validation_mode=True
-    #             )
-
-    #     # TODO: save the best model
-    #     if self.save_best_model:
-    #         self.potential.save_model()
-
-    #     return history
 
     def __repr__(self) -> str:
         return (
