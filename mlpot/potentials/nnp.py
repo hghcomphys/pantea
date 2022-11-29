@@ -326,7 +326,7 @@ class NeuralNetworkPotential(Potential):
         """
 
         # Loop over elements
-        energy: jnp.ndarray = jnp.array(0.0, dtype=structure.dtype)
+        total_energy: jnp.ndarray = jnp.array(0.0, dtype=structure.dtype)
 
         for element in self.elements:
             aids = structure.select(element)  # TODO: use mask
@@ -334,9 +334,9 @@ class NeuralNetworkPotential(Potential):
             x = self.scaler[element](x, warnings=True)
             x = self.model[element].apply({"params": self.model_params[element]}, x)
             x = jnp.sum(x, axis=0)
-            energy += x
+            total_energy += x
 
-        return energy
+        return total_energy
 
     def set_extrapolation_warnings(self, threshold: Union[int, None]) -> None:
         """
