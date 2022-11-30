@@ -11,7 +11,6 @@ import jax.numpy as jnp
 @partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_radial_asf_per_atom(
     radial: Tuple[RadialSymmetryFunction, str, str],
-    aid: jnp.ndarray,  # must be a single atom index
     atype: jnp.ndarray,
     dist_i: jnp.ndarray,
     emap: Dict,
@@ -19,7 +18,7 @@ def _calculate_radial_asf_per_atom(
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-        aid, dist_i, jnp.asarray(radial[0].r_cutoff)
+        dist_i, jnp.asarray(radial[0].r_cutoff)
     )
     # get the corresponding neighboring atom types
     mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[radial[2]])
@@ -34,7 +33,6 @@ def _calculate_radial_asf_per_atom(
 @partial(jit, static_argnums=(0,))  # FIXME
 def _calculate_angular_asf_per_atom(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
-    aid: jnp.ndarray,  # must be a single atom index
     atype: jnp.ndarray,
     diff_i: jnp.ndarray,
     dist_i: jnp.ndarray,
@@ -44,7 +42,7 @@ def _calculate_angular_asf_per_atom(
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
-        aid, dist_i, jnp.asarray(angular[0].r_cutoff)
+        dist_i, jnp.asarray(angular[0].r_cutoff)
     )
     # mask for neighboring element j
     at_j = emap[angular[2]]
@@ -129,8 +127,8 @@ def _inner_loop_over_angular_asf_terms(
 @partial(jit, static_argnums=(0, 5))  # FIXME
 def _calculate_descriptor_per_atom(
     asf,
-    aid: jnp.ndarray,  # must be a single atom index
-    position: jnp.ndarray,
+    position_atom: jnp.ndarray,  # must be a single atom
+    position_neighbors: jnp.ndarray,
     atype: jnp.ndarray,
     lattice: jnp.ndarray,
     dtype: jnp.dtype,
@@ -141,13 +139,15 @@ def _calculate_descriptor_per_atom(
     """
     result = jnp.empty(asf.n_symmetry_functions, dtype=dtype)
 
-    dist_i, diff_i = _calculate_distance_per_atom(position[aid], position, lattice)
+    dist_i, diff_i = _calculate_distance_per_atom(
+        position_atom, position_neighbors, lattice
+    )
 
     # Loop over the radial terms
     for index, radial in enumerate(asf._radial):
 
         result = result.at[index].set(
-            _calculate_radial_asf_per_atom(radial, aid, atype, dist_i, emap)
+            _calculate_radial_asf_per_atom(radial, atype, dist_i, emap)
         )
 
     # Loop over the angular terms
@@ -157,7 +157,7 @@ def _calculate_descriptor_per_atom(
 
         result = result.at[index].set(
             _calculate_angular_asf_per_atom(
-                angular, aid, atype, diff_i, dist_i, lattice, emap
+                angular, atype, diff_i, dist_i, lattice, emap
             )
         )
 
