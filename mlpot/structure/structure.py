@@ -55,18 +55,7 @@ class Structure(_Base):
         **kwargs,
     ) -> None:
         """
-        Initialize structure including tensors, neighbor list atoms, simulation box, etc.
-
-        :param data: A dictionary representation of atomic data including position, charge, energy, etc.
-        :type data: Dict
-        :param dtype: Data type of internal tensors which represent structure, defaults to None
-        :type dtype: torch.dtype, optional
-        :param device: Device on which tensors are allocated, defaults to None
-        :param r_cutoff: Cutoff radius for calculating the neighbor list, defaults to None
-        :type r_cutoff: float, optional
-        :type device: torch.device, optional
-        :param position_grad: whether the position tensor is differentiable or not, defaults to True
-        :type position_grad: bool, optional
+        Initialize structure including tensors, simulation box, neighbor list, etc.
         """
         self.dtype = dtype if dtype else _dtype.FLOATX
         self.requires_neighbor_update = True

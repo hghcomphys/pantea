@@ -2,6 +2,7 @@ from ..logger import logger
 from ..base import _Base
 from ..config import dtype as _dtype
 from ._box import _apply_pbc
+from typing import Optional
 from functools import partial
 import jax
 import jax.numpy as jnp
@@ -17,7 +18,7 @@ class Box(_Base):
 
     def __init__(
         self,
-        lattice: jnp.ndarray = None,
+        lattice: Optional[jnp.ndarray] = None,
         dtype: jnp.dtype = _dtype.FLOATX,
     ) -> None:
         """
@@ -27,7 +28,7 @@ class Box(_Base):
         :param dtype: Data type of internal tensors which represent structure, defaults to None
         :type dtype: torch.dtype, optional
         """
-        self.dtype = dtype if dtype else _dtype.FLOATX
+        self.dtype = dtype
 
         self.lattice = None
         if lattice is not None:

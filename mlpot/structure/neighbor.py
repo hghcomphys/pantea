@@ -1,4 +1,5 @@
 from ..logger import logger
+from typing import Optional
 from ..base import _Base
 from ._neighbor import _calculate_cutoff_mask
 import jax.numpy as jnp
@@ -14,7 +15,7 @@ class Neighbor(_Base):
     For MD simulations, re-neighboring the list is required every few steps (e.g. by defining a skin radius).
     """
 
-    def __init__(self, r_cutoff: float = None) -> None:
+    def __init__(self, r_cutoff: Optional[float] = None) -> None:
         """
         Initialize the neighbor list.
 
@@ -22,8 +23,8 @@ class Neighbor(_Base):
         :type r_cutoff: float, optional
         """
         self.r_cutoff = r_cutoff
-        self.r_cutoff_updated = False
-        self.mask: jnp.ndarray = None
+        self.r_cutoff_updated: bool = False
+        self.mask: Optional[jnp.ndarray] = None
         super().__init__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
@@ -43,11 +44,11 @@ class Neighbor(_Base):
         indices for the input structure.
         """
         # TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
-        if not self.r_cutoff:
+        if self.r_cutoff is None:
             logger.debug("Skipped updating the neighbor list (no cutoff radius)")
             return
 
-        if not structure.requires_neighbor_update and not self.r_cutoff_updated:
+        if (not structure.requires_neighbor_update) and (not self.r_cutoff_updated):
             logger.debug("Skipped updating the neighbor list")
             return
 
