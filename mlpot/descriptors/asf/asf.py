@@ -106,10 +106,17 @@ class AtomicSymmetryFunction(Descriptor):
         asf_index: int,
         atom_index: int,
     ):
-        if asf_index > self.n_symmetry_functions - 1:
+        if not (0 <= asf_index < self.n_symmetry_functions):
             logger.error(
-                f"Unexpected ASF array index {asf_index}."
+                f"Unexpected {asf_index=}."
                 f" The index must be between [0, {self.n_symmetry_functions})",
+                ValueError,
+            )
+
+        if not (0 <= atom_index < structure.n_atoms):
+            logger.error(
+                f"Unexpected {asf_index=}."
+                f" The index must be between [0, {structure.n_atoms})",
                 ValueError,
             )
 
