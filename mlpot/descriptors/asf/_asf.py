@@ -127,8 +127,8 @@ def _inner_loop_over_angular_asf_terms(
 @partial(jit, static_argnums=(0, 5))  # FIXME
 def _calculate_descriptor_per_atom(
     asf,
-    position_atom: jnp.ndarray,  # must be a single atom
-    position_neighbors: jnp.ndarray,
+    atom_position: jnp.ndarray,  # must be a single atom position shape=(1, 3)
+    neighbor_positions: jnp.ndarray,
     atype: jnp.ndarray,
     lattice: jnp.ndarray,
     dtype: jnp.dtype,
@@ -140,12 +140,11 @@ def _calculate_descriptor_per_atom(
     result = jnp.empty(asf.n_symmetry_functions, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(
-        position_atom, position_neighbors, lattice
+        atom_position, neighbor_positions, lattice
     )
 
     # Loop over the radial terms
     for index, radial in enumerate(asf._radial):
-
         result = result.at[index].set(
             _calculate_radial_asf_per_atom(radial, atype, dist_i, emap)
         )
@@ -154,7 +153,6 @@ def _calculate_descriptor_per_atom(
     for index, angular in enumerate(
         asf._angular, start=asf.n_radial_symmetry_functions
     ):
-
         result = result.at[index].set(
             _calculate_angular_asf_per_atom(
                 angular, atype, diff_i, dist_i, lattice, emap
