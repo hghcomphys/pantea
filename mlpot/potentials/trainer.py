@@ -120,8 +120,9 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             energy = 0.0
             for s, p, d in zip(state, params, descriptors):
                 energy += jnp.sum(s.apply_fn({"params": p}, d))
+
             loss = self.criterion(
-                logits=energy, labels=total_energy
+                logits=energy, targets=total_energy
             )  # FIXME: divide by n_atoms
             return loss, energy
 
@@ -130,7 +131,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
         state = tuple(s.apply_gradients(grads=g) for s, g in zip(state, grads))
         metrics = mse_loss(
-            logits=energy, labels=total_energy
+            logits=energy, targets=total_energy
         )  # FIXME: divide by n_atoms
 
         return state, metrics
@@ -138,7 +139,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     @partial(jit, static_argnums=(0, 1))  # FIXME
     def train_step_force(
         self,
-        static_args: Tuple,
+        sargs: Tuple,
         state: Tuple[TrainState],
         batch: Tuple[Tuple, Tuple[jnp.ndarray]],
     ) -> Tuple:
@@ -152,45 +153,51 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             loss function
             """
 
-            def energy_fn(positions: Tuple[jnp.array]) -> jnp.ndarray:
+            def energy_fn(xs: Tuple[jnp.array]) -> jnp.ndarray:
+                """
+                A helper function that allows to calculate the total energy gradient
+                respect to the atom positions for each element.
+                """
                 energy = jnp.array(0.0)
-                for st, pr, inputs, position, static_inputs in zip(
-                    state, params, xbatch, positions, static_args
+                for s, p, inputs, static_inputs, x in zip(
+                    state, params, xbatch, sargs, xs
                 ):
+                    _, position, atype, lattice, emap = inputs
                     asf, scaler, dtype = static_inputs
-                    aid, _, atype, lattice, emap = inputs
+
                     dsc = _calculate_descriptor(
-                        asf, aid, position, atype, lattice, dtype, emap
+                        asf, x, position, atype, lattice, dtype, emap
                     )
                     scaled_dsc = scaler(dsc)
-                    energy += jnp.sum(st.apply_fn({"params": pr}, scaled_dsc))
+                    energy += jnp.sum(s.apply_fn({"params": p}, scaled_dsc))
+
                 return energy
 
-            gard_energy_fn = grad(energy_fn)
+            # Get positions for each element
+            positions: Tuple[jnp.ndarray] = tuple(inputs[0] for inputs in xbatch)
 
-            positions: Tuple[jnp.ndarray] = tuple(inputs[1] for inputs in xbatch)
-            grad_energies: Tuple[jnp.ndarray] = gard_energy_fn(positions)
-            # FIXME: update descriptor interface to accept pos instead of aid
+            # Calculate forces for each element based on gradient of the total energy
+            grad_energy_fn = grad(energy_fn)
+            grad_energies: Tuple[jnp.ndarray] = grad_energy_fn(positions)
             forces: Tuple[jnp.ndarray] = tuple(
-                -1 * grad_energy[inputs[0]]  # grad[aid]
-                for grad_energy, inputs in zip(grad_energies, xbatch)
+                -1 * grad_energy for grad_energy in grad_energies
             )
 
+            # TODO: define loss weights for each element
             loss = jnp.array(0.0)
             for force, target_force in zip(forces, target_forces):
-                loss += self.criterion(logits=force, labels=target_force)
+                loss += self.criterion(logits=force, targets=target_force)
             loss /= len(forces)
 
             return loss, forces
 
         grad_fn = grad(loss_fn, has_aux=True)
         grads, forces = grad_fn(tuple(s.params for s in state))
-
-        state = tuple(st.apply_gradients(grads=gr) for st, gr in zip(state, grads))
+        state = tuple(s.apply_gradients(grads=g) for s, g in zip(state, grads))
 
         metrics = jnp.array(0.0)
         for force, target_force in zip(forces, target_forces):
-            metrics += mse_loss(logits=force, labels=target_force)
+            metrics += mse_loss(logits=force, targets=target_force)
         metrics /= len(forces)
 
         return state, metrics
@@ -199,20 +206,21 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
         # TODO: optimize (mask?), improve design
         def calculate_asf(structure) -> Tuple[jnp.ndarray]:
-            def generate_element_asf():
+            def extract_element_asf():
                 for element in self.potential.elements:
                     aid = structure.select(element)
                     x = self.potential.descriptor[element](structure, aid=aid)
                     x = self.potential.scaler[element](x)
                     yield x
 
-            return tuple(asf for asf in generate_element_asf())
+            return tuple(asf for asf in extract_element_asf())
 
         def prepare_inputs(structure) -> Tuple[Tuple]:
             def extract_inputs():
                 for element in self.potential.elements:
+                    aid = structure.select(element)
                     yield (
-                        structure.select(element),  # aid
+                        structure.position[aid],
                         structure.position,
                         structure.atype,
                         structure.box.lattice,
@@ -249,9 +257,9 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
                 batch = calculate_asf(structure), structure.total_energy
                 state, metrics = self.train_step_energy(state, batch)
 
-                static_args = prepare_static_inputs(structure)
+                sargs = prepare_static_inputs(structure)
                 batch = prepare_inputs(structure), prepare_forces(structure)
-                state, metrics = self.train_step_force(static_args, state, batch)
+                state, metrics = self.train_step_force(sargs, state, batch)
 
             if epoch % 1 == 0:
                 print(f"Epoch {epoch}, loss={metrics}")
