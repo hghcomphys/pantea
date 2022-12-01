@@ -5,8 +5,8 @@ from .symmetry import SymmetryFunction
 from .angular import AngularSymmetryFunction
 from .radial import RadialSymmetryFunction
 from ._asf import _calculate_descriptor
-from ._grad import _vmap_grad_func_asf
 from typing import Tuple, List, Optional
+import jax
 import itertools
 import jax.numpy as jnp
 
@@ -92,7 +92,7 @@ class AtomicSymmetryFunction(Descriptor):
 
         return _calculate_descriptor(
             self,
-            aid,
+            structure.position[aid],
             structure.position,
             structure.atype,
             structure.box.lattice,
@@ -104,7 +104,7 @@ class AtomicSymmetryFunction(Descriptor):
         self,
         structure: Structure,
         asf_index: int,
-        aid: Optional[jnp.ndarray] = None,
+        atom_index: int,
     ):
         if asf_index > self.n_symmetry_functions - 1:
             logger.error(
@@ -113,18 +113,49 @@ class AtomicSymmetryFunction(Descriptor):
                 ValueError,
             )
 
-        if aid is None:
-            aid = jnp.arange(structure.n_atoms)
+        def asf_fn(pos):
+            return _calculate_descriptor(
+                self,
+                pos,
+                structure.position,
+                structure.atype,
+                structure.box.lattice,
+                structure.dtype,
+                structure.element_map.element_to_atype,
+            )[0][asf_index]
 
-        return _vmap_grad_func_asf(
-            self,
-            asf_index,
-            jnp.atleast_1d(aid),
-            structure.position,
-            structure.box.lattice,
-            structure.atype,
-            structure.element_map.element_to_atype,
-        )
+        # FIXME: error when using vmap on grad over aids
+        # TODO: add jit
+        grad_asf_fn = jax.grad(asf_fn)
+        pos = structure.position[atom_index]
+
+        return grad_asf_fn(pos[None, :])
+
+    # def grad2(
+    #     self,
+    #     structure: Structure,
+    #     asf_index: int,
+    #     aid: Optional[jnp.ndarray] = None,
+    # ):
+    #     if asf_index > self.n_symmetry_functions - 1:
+    #         logger.error(
+    #             f"Unexpected ASF array index {asf_index}."
+    #             f" The index must be between [0, {self.n_symmetry_functions})",
+    #             ValueError,
+    #         )
+
+    #     if aid is None:
+    #         aid = jnp.arange(structure.n_atoms)
+
+    #     return _vmap_grad_func_asf(
+    #         self,
+    #         asf_index,
+    #         jnp.atleast_1d(aid),
+    #         structure.position,
+    #         structure.box.lattice,
+    #         structure.atype,
+    #         structure.element_map.element_to_atype,
+    #     )
 
     @property
     def n_radial_symmetry_functions(self) -> int:
