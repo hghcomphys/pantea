@@ -7,7 +7,7 @@ from .loss import mse_loss
 from .metrics import ErrorMetric
 from .metrics import init_error_metric
 from collections import defaultdict
-from typing import Dict, Callable, Tuple
+from typing import Dict, Callable, Tuple, Generator
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from functools import partial
@@ -16,21 +16,40 @@ import jax.numpy as jnp
 import optax
 
 
-class BasePotentialTrainer(_Base):
+@partial(jit, static_argnums=(0,))  # FIXME
+def _energy_fn(
+    sargs: Tuple,
+    xs: Tuple[jnp.ndarray],
+    state: Tuple[TrainState],
+    params: frozendict,
+    xbatch: Tuple[jnp.ndarray],
+) -> jnp.ndarray:
     """
-    A trainer class for fitting a generic potential.
-    This class must be independent of the type of the potential.
-
-    A derived trainer class, which is specific to a potential, can benefit from the best algorithms to
-    train the model(s) in the potential using energy and force components.
+    A helper function that allows to calculate gradient of the NNP total energy
+    respect to the atom positions (for each element).
     """
+    energy = jnp.array(0.0)
+    for s, p, inputs, static_inputs, x in zip(state, params, xbatch, sargs, xs):
+        _, position, atype, lattice, emap = inputs
+        asf, scaler, dtype = static_inputs
 
-    pass
+        dsc = _calculate_descriptor(asf, x, position, atype, lattice, dtype, emap)
+        scaled_dsc = scaler(dsc)
+        energy += jnp.sum(s.apply_fn({"params": p}, scaled_dsc))
+
+    return energy
 
 
-class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
+_grad_energy_fn = jit(
+    grad(_energy_fn, argnums=1),
+    static_argnums=0,
+)
+
+
+class NeuralNetworkPotentialTrainer(_Base):
     """
-    This derived trainer class that trains the neural network potential using energy and force components.
+    A trainer class to fit a generic NNP potential using target values of the total
+    energy and force components.
 
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
@@ -108,31 +127,33 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     def eval_step(self, batch):
         pass
 
-    @partial(jit, static_argnums=(0,))  # FIXME
+    @partial(jit, static_argnums=(0, 1))  # FIXME
     def train_step_energy(
         self,
+        sargs: Tuple,
         state: Tuple[TrainState],
-        batch: Tuple[jnp.ndarray],
-    ):
-        descriptors, total_energy = batch
+        batch: Tuple[Tuple, Tuple[jnp.ndarray]],
+    ) -> Tuple:
 
-        def loss_fn(params: Tuple[frozendict]):
-            energy = 0.0
-            for s, p, d in zip(state, params, descriptors):
-                energy += jnp.sum(s.apply_fn({"params": p}, d))
+        xbatch, target_energy = batch
 
-            loss = self.criterion(
-                logits=energy, targets=total_energy
-            )  # FIXME: divide by n_atoms
+        positions: Tuple[jnp.ndarray] = tuple(inputs[0] for inputs in xbatch)
+        n_atoms: int = sum(pos.shape[0] for pos in positions)
+
+        def loss_fn(params: Tuple[frozendict]) -> Tuple[jnp.ndarray, jnp.ndarray]:
+            """
+            Loss function based on energy.
+            """
+            energy = _energy_fn(sargs, positions, state, params, xbatch)
+            loss = self.criterion(logits=energy, targets=target_energy) / n_atoms
+
             return loss, energy
 
         grad_fn = grad(loss_fn, has_aux=True)
         grads, energy = grad_fn(tuple(s.params for s in state))
 
         state = tuple(s.apply_gradients(grads=g) for s, g in zip(state, grads))
-        metrics = mse_loss(
-            logits=energy, targets=total_energy
-        )  # FIXME: divide by n_atoms
+        metrics = mse_loss(logits=energy, targets=target_energy) / n_atoms
 
         return state, metrics
 
@@ -145,40 +166,18 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
     ) -> Tuple:
 
         xbatch, target_forces = batch
+        positions: Tuple[jnp.ndarray] = tuple(inputs[0] for inputs in xbatch)
 
         def loss_fn(
             params: Tuple[frozendict],
         ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray]]:
             """
-            loss function
+            Loss function based on force components
             """
-
-            def energy_fn(xs: Tuple[jnp.array]) -> jnp.ndarray:
-                """
-                A helper function that allows to calculate the total energy gradient
-                respect to the atom positions for each element.
-                """
-                energy = jnp.array(0.0)
-                for s, p, inputs, static_inputs, x in zip(
-                    state, params, xbatch, sargs, xs
-                ):
-                    _, position, atype, lattice, emap = inputs
-                    asf, scaler, dtype = static_inputs
-
-                    dsc = _calculate_descriptor(
-                        asf, x, position, atype, lattice, dtype, emap
-                    )
-                    scaled_dsc = scaler(dsc)
-                    energy += jnp.sum(s.apply_fn({"params": p}, scaled_dsc))
-
-                return energy
-
-            # Get positions for each element
-            positions: Tuple[jnp.ndarray] = tuple(inputs[0] for inputs in xbatch)
-
             # Calculate forces for each element based on gradient of the total energy
-            grad_energy_fn = grad(energy_fn)
-            grad_energies: Tuple[jnp.ndarray] = grad_energy_fn(positions)
+            grad_energies: Tuple[jnp.ndarray] = _grad_energy_fn(
+                sargs, positions, state, params, xbatch
+            )
             forces: Tuple[jnp.ndarray] = tuple(
                 -1 * grad_energy for grad_energy in grad_energies
             )
@@ -204,61 +203,43 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
 
     def fit(self, dataset: StructureDataset, **kwargs):
 
-        # TODO: optimize (mask?), improve design
-        def calculate_asf(structure) -> Tuple[jnp.ndarray]:
-            def extract_element_asf():
-                for element in self.potential.elements:
-                    aid = structure.select(element)
-                    x = self.potential.descriptor[element](structure, aid=aid)
-                    x = self.potential.scaler[element](x)
-                    yield x
+        # TODO: define as methods
+        def extract_inputs(structure) -> Generator:
+            for element in self.potential.elements:
+                aid = structure.select(element)
+                yield (
+                    structure.position[aid],
+                    structure.position,
+                    structure.atype,
+                    structure.box.lattice,
+                    structure.element_map.element_to_atype,
+                )
 
-            return tuple(asf for asf in extract_element_asf())
+        def extract_static_inputs(structure) -> Generator:
+            for element in self.potential.elements:
+                yield (
+                    self.potential.descriptor[element],
+                    self.potential.scaler[element],
+                    structure.dtype,
+                )
 
-        def prepare_inputs(structure) -> Tuple[Tuple]:
-            def extract_inputs():
-                for element in self.potential.elements:
-                    aid = structure.select(element)
-                    yield (
-                        structure.position[aid],
-                        structure.position,
-                        structure.atype,
-                        structure.box.lattice,
-                        structure.element_map.element_to_atype,
-                    )
-
-            return tuple(inputs for inputs in extract_inputs())
-
-        def prepare_static_inputs(structure):
-            def extract_static_inputs():
-                for element in self.potential.elements:
-                    yield (
-                        self.potential.descriptor[element],
-                        self.potential.scaler[element],
-                        structure.dtype,
-                    )
-
-            return tuple(inputs for inputs in extract_static_inputs())
-
-        def prepare_forces(structure) -> Tuple[jnp.ndarray]:
-            def extract_force():
-                for element in self.potential.elements:
-                    aid = structure.select(element)
-                    yield structure.force[aid]
-
-            return tuple(force for force in extract_force())
+        def extract_force(structure) -> Generator:
+            for element in self.potential.elements:
+                aid = structure.select(element)
+                yield structure.force[aid]
 
         history = defaultdict(list)
         state = self.init_train_state()
         for epoch in range(50):
 
             for structure in dataset:
+                sargs = tuple(inp for inp in extract_static_inputs(structure))
+                inputs = tuple(inp for inp in extract_inputs(structure))
 
-                batch = calculate_asf(structure), structure.total_energy
-                state, metrics = self.train_step_energy(state, batch)
+                batch = inputs, structure.total_energy
+                state, metrics = self.train_step_energy(sargs, state, batch)
 
-                sargs = prepare_static_inputs(structure)
-                batch = prepare_inputs(structure), prepare_forces(structure)
+                batch = inputs, tuple(frc for frc in extract_force(structure))
                 state, metrics = self.train_step_force(sargs, state, batch)
 
             if epoch % 1 == 0:
@@ -266,7 +247,7 @@ class NeuralNetworkPotentialTrainer(BasePotentialTrainer):
             history["epoch"].append(epoch)
             history["metrics_train"].append(metrics)
 
-            # Update model params
+            # update model params
             for element, train_state in zip(self.potential.elements, state):
                 self.potential.model_params[element] = train_state.params
 
