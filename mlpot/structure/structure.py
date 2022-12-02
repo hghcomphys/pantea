@@ -12,6 +12,7 @@ from ase import Atoms as AseAtoms
 import numpy as np
 import jax
 import jax.numpy as jnp
+import random
 from functools import partial
 
 
@@ -211,6 +212,40 @@ class Structure(_Base):
         :rtype: jnp.ndarray
         """
         return jnp.nonzero(self.atype == self.element_map[element])[0]
+
+    def get_inputs_per_element(self) -> Tuple:
+        """
+        A tuple of required info that are used for training and evaluating the potential.
+        """
+
+        def extract_inputs():
+            for element in self.elements:
+                aid = self.select(element)
+                yield (
+                    self.position[aid],
+                    self.position,
+                    self.atype,
+                    self.box.lattice,
+                    self.element_map.element_to_atype,
+                )
+
+        return tuple(inputs for inputs in extract_inputs())
+
+    def get_position_per_element(self) -> Tuple[jnp.ndarray]:
+        def extract_position():
+            for element in self.elements:
+                aid = self.select(element)
+                yield self.position[aid]
+
+        return tuple(position for position in extract_position())
+
+    def get_force_per_element(self) -> Tuple[jnp.ndarray]:
+        def extract_force():
+            for element in self.elements:
+                aid = self.select(element)
+                yield self.force[aid]
+
+        return tuple(force for force in extract_force())
 
     @property
     def n_atoms(self) -> int:
