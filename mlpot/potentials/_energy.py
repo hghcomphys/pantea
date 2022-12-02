@@ -1,0 +1,37 @@
+from ..descriptors.asf._asf import _calculate_descriptor
+from frozendict import frozendict
+from typing import Tuple
+from functools import partial
+import jax.numpy as jnp
+from jax import jit, grad
+
+
+@partial(jit, static_argnums=(0,))  # FIXME
+def _energy_fn(
+    sargs: Tuple,
+    xs: Tuple[jnp.ndarray],
+    params: Tuple[frozendict],
+    xbatch: Tuple[jnp.ndarray],
+) -> jnp.ndarray:
+    """
+    A helper function that allows to calculate gradient of the NNP total energy
+    respect to the atom positions (for each element).
+    """
+    # TODO: using jax.lax.scan?
+    energy = jnp.array(0.0)
+    for p, inputs, static_inputs, x in zip(params, xbatch, sargs, xs):
+
+        _, position, atype, lattice, emap = inputs
+        asf, scaler, model = static_inputs
+
+        dsc = _calculate_descriptor(asf, x, position, atype, lattice, emap)
+        scaled_dsc = scaler(dsc)
+        energy += jnp.sum(model.apply({"params": p}, scaled_dsc))
+
+    return energy
+
+
+_grad_energy_fn = jit(
+    grad(_energy_fn, argnums=1),
+    static_argnums=0,
+)
