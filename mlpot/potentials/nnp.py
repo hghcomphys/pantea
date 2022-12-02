@@ -12,8 +12,8 @@ from ..structure.element import ElementMap
 from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
-from typing import List, Dict, Union
-from typing import Tuple
+from ._energy import _energy_fn
+from typing import List, Dict, Union, Tuple, Generator
 from pathlib import Path
 from jax import random
 from frozendict import frozendict
@@ -325,18 +325,26 @@ class NeuralNetworkPotential(Potential):
         :rtype: jnp.ndarray
         """
 
-        # Loop over elements
-        total_energy: jnp.ndarray = jnp.array(0.0, dtype=structure.dtype)
+        return _energy_fn(
+            self.get_static_inputs_per_element(),
+            structure.get_position_per_element(),
+            self.get_model_params_per_element(),
+            structure.get_inputs_per_element(),
+        )
 
-        for element in self.elements:
-            aids = structure.select(element)  # TODO: use mask
-            x = self.descriptor[element](structure, aid=aids)
-            x = self.scaler[element](x, warnings=True)
-            x = self.model[element].apply({"params": self.model_params[element]}, x)
-            x = jnp.sum(x, axis=0)
-            total_energy += x
+    def get_static_inputs_per_element(self) -> Tuple:
+        def extract_static_inputs():
+            for element in self.elements:
+                yield (
+                    self.descriptor[element],
+                    self.scaler[element],
+                    self.model[element],
+                )
 
-        return total_energy
+        return tuple(inputs for inputs in extract_static_inputs())
+
+    def get_model_params_per_element(self) -> Tuple[frozendict]:
+        return tuple(params for params in self.model_params.values())
 
     def set_extrapolation_warnings(self, threshold: Union[int, None]) -> None:
         """
