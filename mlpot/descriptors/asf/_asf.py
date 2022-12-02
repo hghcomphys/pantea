@@ -8,7 +8,7 @@ from jax import jit, vmap, lax
 import jax.numpy as jnp
 
 
-@partial(jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))
 def _calculate_radial_asf_per_atom(
     radial: Tuple[RadialSymmetryFunction, str, str],
     atype: jnp.ndarray,
@@ -30,7 +30,7 @@ def _calculate_radial_asf_per_atom(
     )
 
 
-@partial(jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))
 def _calculate_angular_asf_per_atom(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
     atype: jnp.ndarray,
@@ -124,19 +124,19 @@ def _inner_loop_over_angular_asf_terms(
     return total + value, value
 
 
-@partial(jit, static_argnums=(0, 5))  # FIXME
+@partial(jit, static_argnums=(0,))
 def _calculate_descriptor_per_atom(
     asf,
     atom_position: jnp.ndarray,  # must be a single atom position shape=(1, 3)
     neighbor_positions: jnp.ndarray,
     atype: jnp.ndarray,
     lattice: jnp.ndarray,
-    dtype: jnp.dtype,
     emap: Dict,
 ) -> jnp.ndarray:
     """
     Compute descriptor values per atom in the structure (via atom id).
     """
+    dtype = atom_position.dtype
     result = jnp.empty(asf.n_symmetry_functions, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(
@@ -165,7 +165,7 @@ def _calculate_descriptor_per_atom(
 _calculate_descriptor = jit(
     vmap(
         _calculate_descriptor_per_atom,
-        in_axes=(None, 0, None, None, None, None, None),
+        in_axes=(None, 0, None, None, None, None),
     ),
-    static_argnums=(0, 5),  # FIXME
+    static_argnums=(0,),
 )

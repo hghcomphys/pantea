@@ -96,7 +96,6 @@ class AtomicSymmetryFunction(Descriptor):
             structure.position,
             structure.atype,
             structure.box.lattice,
-            structure.dtype,
             structure.element_map.element_to_atype,
         )
 
@@ -127,7 +126,6 @@ class AtomicSymmetryFunction(Descriptor):
                 structure.position,
                 structure.atype,
                 structure.box.lattice,
-                structure.dtype,
                 structure.element_map.element_to_atype,
             )[0][asf_index]
 
