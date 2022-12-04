@@ -12,8 +12,8 @@ from ..structure.element import ElementMap
 from .base import Potential
 from .settings import NeuralNetworkPotentialSettings
 from .trainer import NeuralNetworkPotentialTrainer
-from ._energy import _energy_fn
-from typing import List, Dict, Union, Tuple, Generator
+from ._energy import _energy_fn, _compute_forces
+from typing import List, Dict, Union, Tuple
 from pathlib import Path
 from jax import random
 from frozendict import frozendict
@@ -297,24 +297,6 @@ class NeuralNetworkPotential(Potential):
         """
         pass
 
-    def train(self, mode: bool = True) -> None:
-        """
-        Set pytorch models in training mode.
-        This is because layers like dropout, batch normalization etc. behave differently on the train
-        and test procedures.
-        """
-        for element in self.elements:
-            self.model[element].train(mode)
-
-    def eval(self) -> None:
-        """
-        Set pytorch models in evaluation mode.
-        This is because layers like dropout, batch normalization etc. behave differently on the train
-        and test procedures.
-        """
-        for element in self.elements:
-            self.model[element].eval()
-
     def __call__(self, structure: Structure) -> jnp.ndarray:
         """
         Return the total energy of the input structure.
@@ -324,13 +306,21 @@ class NeuralNetworkPotential(Potential):
         :return: total energy
         :rtype: jnp.ndarray
         """
-
         return _energy_fn(
             self.get_static_inputs_per_element(),
             structure.get_position_per_element(),
             self.get_model_params_per_element(),
             structure.get_inputs_per_element(),
         )
+
+    def compute_force(self, structure: Structure) -> Dict[str, jnp.ndarray]:
+        forces = _compute_forces(
+            self.get_static_inputs_per_element(),
+            structure.get_position_per_element(),
+            self.get_model_params_per_element(),
+            structure.get_inputs_per_element(),
+        )
+        return {element: force for element, force in zip(self.elements, forces)}
 
     def get_static_inputs_per_element(self) -> Tuple:
         def extract_static_inputs():
@@ -369,7 +359,7 @@ class NeuralNetworkPotential(Potential):
 
     @property
     def elements(self) -> List[str]:
-        return self.settings["elements"]
+        return sorted(self.settings["elements"])
 
     @property
     def n_elements(self) -> int:

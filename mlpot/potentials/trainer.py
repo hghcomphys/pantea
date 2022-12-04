@@ -5,7 +5,7 @@ from ..base import _Base
 from .loss import mse_loss
 from .metrics import ErrorMetric
 from .metrics import init_error_metric
-from ._energy import _energy_fn, _grad_energy_fn
+from ._energy import _energy_fn, _compute_forces
 from collections import defaultdict
 from typing import Dict, Callable, Tuple
 from flax.training.train_state import TrainState
@@ -148,26 +148,22 @@ class NeuralNetworkPotentialTrainer(_Base):
             """
             Loss function
             """
+            loss = jnp.array(0.0)
+
             # Energy
             energy = _energy_fn(sargs, positions, params, xbatch)
             loss_eng = self.criterion(logits=energy, targets=target_energy) / n_atoms
+            loss += loss_eng
 
             # Force
-            grad_energies: Tuple[jnp.ndarray] = _grad_energy_fn(
-                sargs, positions, params, xbatch
-            )
-            forces: Tuple[jnp.ndarray] = tuple(
-                -1 * grad_energy for grad_energy in grad_energies
-            )
+            forces = _compute_forces(sargs, positions, params, xbatch)
             # TODO: define loss weights for each element
             loss_frc = jnp.array(0.0)
             for force, target_force in zip(forces, target_forces):
                 loss_frc += self.criterion(logits=force, targets=target_force)
             loss_frc /= len(forces)
-
-            # Total loss
             # TODO: add coefficient
-            loss = loss_eng + loss_frc
+            loss += loss_frc / n_atoms
 
             return loss, (energy, force)
 
@@ -190,7 +186,7 @@ class NeuralNetworkPotentialTrainer(_Base):
 
         states = self.init_train_state()
         history = defaultdict(list)
-        for epoch in range(50):
+        for epoch in range(20):
 
             # steps = len(dataset)
             for structure in random.choices(dataset, k=len(dataset)):
