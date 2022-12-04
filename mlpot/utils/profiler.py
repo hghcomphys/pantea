@@ -4,7 +4,6 @@ from collections import defaultdict
 import functools
 import time
 import copy
-import torch
 
 
 _default_profiler = None
@@ -12,12 +11,13 @@ _default_profiler = None
 
 class Profiler:
     """
-    An implementation of a basic profiler for investigating code performace.
+    An implementation of a basic profiler for investigating code performance.
     How to use it:
     1) add profile() as a decorator before each targeted method
-    2) use context manager to collect stattistics from the region of interest
+    2) use context manager to collect stats from the region of interest
 
-    Otherwise, the introduced descorators are ignored. There will be small overheads.
+    Otherwise, the introduced decorators are ignored.
+    There will be small overheads.
     """
 
     # TODO: testing multi-thread applications
@@ -139,30 +139,6 @@ def timer(func):
     def wrapper(*args, **kwargs):
         with Timer(f"Timer {func.__name__} function"):
             retval = func(*args, **kwargs)
-        return retval
-
-    return wrapper
-
-
-def torch_profile(func):
-    """
-    Use torch profiler for the input function.
-    """
-    # TODO: extend it to be use for class methods
-    print(func.__name__)
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        with torch.profiler.profile(
-            activities=[
-                torch.profiler.ProfilerActivity.CPU,
-                torch.profiler.ProfilerActivity.CUDA,
-            ]
-        ) as p:
-            retval = func(*args, **kwargs)
-
-        print(p.key_averages().table(sort_by="self_cuda_time_total", row_limit=-1))
-
         return retval
 
     return wrapper

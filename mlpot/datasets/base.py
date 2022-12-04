@@ -1,8 +1,7 @@
 from ..base import _Base
-from torch.utils.data import Dataset
 
 
-class StructureDataset(Dataset, _Base):  # FIXME: multiple inheritance
+class StructureDataset(_Base):
     """
     A base class for atomic data structure in a lazy mode.
     All future atomic datasets must be derived from this class.

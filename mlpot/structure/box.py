@@ -12,9 +12,9 @@ class Box(_Base):
     """
     Box class extract Box info from the lattice matrix.
     Currently, it only works for orthogonal lattice.
-    TODO: box variables as numpy or pytorch?
-    TODO: triclinic lattice
     """
+
+    # TODO: triclinic lattice
 
     def __init__(
         self,
@@ -23,10 +23,6 @@ class Box(_Base):
     ) -> None:
         """
         Initialize simulation box (super-cell).
-
-        :param lattice: Lattice matrix (3x3 array)
-        :param dtype: Data type of internal tensors which represent structure, defaults to None
-        :type dtype: torch.dtype, optional
         """
         self.dtype = dtype
 

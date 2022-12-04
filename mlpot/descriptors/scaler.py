@@ -133,7 +133,7 @@ class DescriptorScaler(_Base):
 
         self.number_of_warnings += int(
             jnp.any(jnp.logical_or(gt, lt))
-        )  # alternative counting is using torch.sum
+        )  # alternative counting is using sum
 
         if self.number_of_warnings >= self.max_number_of_warnings:
             logger.warning(
