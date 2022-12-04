@@ -62,12 +62,14 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
             x = layer(x)
         return x
 
+    # TODO:
     # def save(self, filename: Path) -> None:
     #     """
     #     Save model weights.
     #     """
     #     torch.save(self.state_dict(), str(filename))
 
+    # TODO:
     # def load(self, filename: Path) -> None:
     #     """
     #     Load model weights.
