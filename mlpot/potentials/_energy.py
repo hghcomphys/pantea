@@ -11,7 +11,7 @@ def _energy_fn(
     sargs: Tuple,
     xs: Tuple[jnp.ndarray],
     params: Tuple[frozendict],
-    xbatch: Tuple[jnp.ndarray],
+    xbatch: Tuple,
 ) -> jnp.ndarray:
     """
     A helper function that allows to calculate gradient of the NNP total energy
@@ -20,7 +20,6 @@ def _energy_fn(
     # TODO: using jax.lax.scan?
     energy = jnp.array(0.0)
     for p, inputs, static_inputs, x in zip(params, xbatch, sargs, xs):
-
         _, position, atype, lattice, emap = inputs
         asf, scaler, model = static_inputs
 
@@ -35,3 +34,14 @@ _grad_energy_fn = jit(
     grad(_energy_fn, argnums=1),
     static_argnums=0,
 )
+
+
+@partial(jit, static_argnums=(0,))  # FIXME
+def _compute_forces(
+    sargs: Tuple,
+    xs: Tuple[jnp.ndarray],
+    params: Tuple[frozendict],
+    xbatch: Tuple,
+) -> Tuple[jnp.ndarray]:
+    grad_energies = _grad_energy_fn(sargs, xs, params, xbatch)
+    return tuple(-1 * grad_energy for grad_energy in grad_energies)
