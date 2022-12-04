@@ -32,10 +32,6 @@ class Structure(_Base):
     For the MPI implementation, this class can be considered as one domain
     in domain decomposition method (see miniMD code).
     An C++ implementation might be required for MD simulation but not necessarily developing ML potential.
-
-    Tensors assigned to atomic positions and charges must be differentiable and this requires
-    keeping track of all operations in the (PyTorch) computational graph that can lead to large memory usage.
-    Some methods are intoduced here to avoid gradient whenever it's possible, e.g. torch.no_grad().
     """
 
     _atomic_attributes: Tuple[str] = (
@@ -253,7 +249,8 @@ class Structure(_Base):
 
     @property
     def elements(self) -> List[str]:
-        return list({self.element_map(int(at)) for at in self.atype})
+        # FIXME: optimize
+        return sorted(list({self.element_map(int(at)) for at in self.atype}))
 
     @property
     def r_cutoff(self) -> float:
