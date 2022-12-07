@@ -17,3 +17,6 @@ dask-worker-space/
 *.rst
 _build/
 *.zip
+H2O*/
+LJ*/
+.virtual_documents/
