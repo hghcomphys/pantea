@@ -1,21 +1,20 @@
-.. mlpot documentation master file, created by
-   sphinx-quickstart on Fri Nov 11 18:48:37 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to mlpot's documentation!
-=================================
+Welcome to MLPOT's documentation!
+======================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    :caption: Contents:
 
-   mlpot
-
+   readme
+   installation
+   usage
+   modules
+   contributing
+   authors
+   history
 
 Indices and tables
 ==================
-
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`

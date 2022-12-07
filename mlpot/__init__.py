@@ -8,11 +8,6 @@ for performing large-scale molecular dynamics (MD) simulations of complex materi
 atomic scale and with ab initio accuracy.
 """
 
-from .logger import *
-from .config import *
-
-
+__author__ = """Hossein Ghorbanfekr"""
+__email__ = "hgh.comphys@gmail.com"
 __version__ = "0.3.0"
-
-logger.debug(f"{__doc__}")
-logger.debug(f"Version: {__version__}")
