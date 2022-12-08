@@ -1,6 +1,6 @@
-from ..logger import logger
-from ..base import _Base
 from typing import Union, List, Dict, Tuple, Mapping
+from mlpot.logger import logger
+from mlpot.base import _Base
 
 
 _KNOWN_ELEMENTS_LIST: Tuple = (

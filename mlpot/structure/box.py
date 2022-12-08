@@ -1,11 +1,11 @@
-from ..logger import logger
-from ..base import _Base
-from ..config import dtype as _dtype
-from ._box import _apply_pbc
-from typing import Optional
-from functools import partial
 import jax
 import jax.numpy as jnp
+from typing import Optional
+from functools import partial
+from mlpot.logger import logger
+from mlpot.base import _Base
+from mlpot.config import dtype as _dtype
+from mlpot.structure._box import _apply_pbc
 
 
 class Box(_Base):

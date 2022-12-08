@@ -1,4 +1,4 @@
-from ..base import _Base
+from mlpot.base import _Base
 
 
 class StructureDataset(_Base):
@@ -6,6 +6,8 @@ class StructureDataset(_Base):
     A base class for atomic data structure in a lazy mode.
     All future atomic datasets must be derived from this class.
     """
+
+    # TODO: add protocol
 
     def __len__(self) -> int:
         raise NotImplementedError

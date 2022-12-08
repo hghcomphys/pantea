@@ -1,4 +1,4 @@
-from ..base import _Base
+from mlpot.base import _Base
 
 
 class Descriptor(_Base):

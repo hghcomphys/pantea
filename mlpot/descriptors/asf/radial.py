@@ -1,7 +1,7 @@
-from .symmetry import SymmetryFunction
-from .cutoff import CutoffFunction
 import jax
 import jax.numpy as jnp
+from mlpot.descriptors.asf.symmetry import SymmetryFunction
+from mlpot.descriptors.asf.cutoff import CutoffFunction
 from functools import partial
 
 

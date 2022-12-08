@@ -1,19 +1,18 @@
 from __future__ import annotations
-from ..logger import logger
-from ..base import _Base
-from ..config import dtype as _dtype
-from ..utils.attribute import set_as_attribute
-from ._structure import _calculate_distance
-from .element import ElementMap
-from .neighbor import Neighbor
-from .box import Box
-from typing import List, Dict, Tuple, Union, Optional
-from ase import Atoms as AseAtoms
 import numpy as np
 import jax
 import jax.numpy as jnp
-import random
+from typing import List, Dict, Tuple, Union, Optional
+from ase import Atoms as AseAtoms
 from functools import partial
+from mlpot.logger import logger
+from mlpot.base import _Base
+from mlpot.config import dtype as _dtype
+from mlpot.utils.attribute import set_as_attribute
+from mlpot.structure._structure import _calculate_distance
+from mlpot.structure.element import ElementMap
+from mlpot.structure.neighbor import Neighbor
+from mlpot.structure.box import Box
 
 
 class Structure(_Base):

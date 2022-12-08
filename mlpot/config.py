@@ -1,6 +1,6 @@
-from .logger import logger
-from typing import Any
 import jax.numpy as jnp
+from typing import Any
+from mlpot.logger import logger
 
 
 class _CFG:

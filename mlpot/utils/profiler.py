@@ -1,9 +1,9 @@
 from __future__ import annotations
-from ..logger import logger
-from collections import defaultdict
 import functools
 import time
 import copy
+from collections import defaultdict
+from mlpot.logger import logger
 
 
 _default_profiler = None

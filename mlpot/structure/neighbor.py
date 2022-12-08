@@ -1,8 +1,8 @@
-from ..logger import logger
-from typing import Optional
-from ..base import _Base
-from ._neighbor import _calculate_cutoff_mask
 import jax.numpy as jnp
+from typing import Optional
+from mlpot.logger import logger
+from mlpot.base import _Base
+from mlpot.structure._neighbor import _calculate_cutoff_mask
 
 
 class Neighbor(_Base):

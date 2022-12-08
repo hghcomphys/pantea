@@ -1,9 +1,10 @@
 from typing import Mapping, Any
-from ..logger import logger
-from ..utils.tokenize import tokenize
-from ..structure.element import ElementMap
-from .base import Settings
 from pathlib import Path
+from mlpot.logger import logger
+from mlpot.utils.tokenize import tokenize
+from mlpot.structure.element import ElementMap
+from mlpot.potentials.base import Settings
+
 
 nnp_default_settings: Mapping[str, Any] = {
     "symfunction_short": list(),

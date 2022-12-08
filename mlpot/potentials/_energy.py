@@ -1,9 +1,9 @@
-from ..descriptors.asf._asf import _calculate_descriptor
+import jax.numpy as jnp
 from frozendict import frozendict
 from typing import Tuple
 from functools import partial
-import jax.numpy as jnp
 from jax import jit, grad
+from mlpot.descriptors.asf._asf import _calculate_descriptor
 
 
 @partial(jit, static_argnums=(0,))  # FIXME

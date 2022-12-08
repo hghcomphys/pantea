@@ -1,8 +1,8 @@
-from .cutoff import CutoffFunction
-from .symmetry import SymmetryFunction
 import jax
 import jax.numpy as jnp
 from functools import partial
+from mlpot.descriptors.asf.cutoff import CutoffFunction
+from mlpot.descriptors.asf.symmetry import SymmetryFunction
 
 
 class AngularSymmetryFunction(SymmetryFunction):

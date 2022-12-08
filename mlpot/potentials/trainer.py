@@ -1,20 +1,20 @@
-from ..logger import logger
-from ..potentials.base import Potential
-from ..datasets.base import StructureDataset
-from ..base import _Base
-from .loss import mse_loss
-from .metrics import ErrorMetric
-from .metrics import init_error_metric
-from ._energy import _energy_fn, _compute_forces
+import jax.numpy as jnp
+import optax
+import random
 from collections import defaultdict
 from typing import Dict, Callable, Tuple
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from functools import partial
 from jax import jit, value_and_grad
-import jax.numpy as jnp
-import optax
-import random
+from mlpot.logger import logger
+from mlpot.potentials.base import Potential
+from mlpot.datasets.base import StructureDataset
+from mlpot.base import _Base
+from mlpot.potentials.loss import mse_loss
+from mlpot.potentials.metrics import ErrorMetric
+from mlpot.potentials.metrics import init_error_metric
+from mlpot.potentials._energy import _energy_fn, _compute_forces
 
 
 class NeuralNetworkPotentialTrainer(_Base):

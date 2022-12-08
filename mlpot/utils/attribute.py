@@ -1,7 +1,7 @@
-from ..logger import logger
-from ..config import dtype as _dtype
 from typing import Dict, Any
 import jax.numpy as jnp
+from mlpot.logger import logger
+from mlpot.config import dtype as _dtype
 
 
 def set_as_attribute(

@@ -1,8 +1,8 @@
 from __future__ import annotations
-from .box import _apply_pbc
-from typing import Tuple
 import jax
 import jax.numpy as jnp
+from typing import Tuple
+from mlpot.structure.box import _apply_pbc
 
 
 @jax.jit

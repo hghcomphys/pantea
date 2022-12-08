@@ -1,4 +1,4 @@
-from .logger import logger
+from mlpot.logger import logger
 
 
 class _Base:

@@ -1,5 +1,5 @@
-from ..base import _Base
-from ..structure.structure import Structure
+from mlpot.base import _Base
+from mlpot.structure.structure import Structure
 from typing import Dict
 
 

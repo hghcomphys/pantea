@@ -1,14 +1,14 @@
-from ...logger import logger
-from ...structure import Structure
-from ..base import Descriptor
-from .symmetry import SymmetryFunction
-from .angular import AngularSymmetryFunction
-from .radial import RadialSymmetryFunction
-from ._asf import _calculate_descriptor
-from typing import Tuple, List, Optional
 import jax
 import itertools
 import jax.numpy as jnp
+from mlpot.logger import logger
+from mlpot.structure.structure import Structure
+from mlpot.descriptors.base import Descriptor
+from mlpot.descriptors.asf.symmetry import SymmetryFunction
+from mlpot.descriptors.asf.angular import AngularSymmetryFunction
+from mlpot.descriptors.asf.radial import RadialSymmetryFunction
+from mlpot.descriptors.asf._asf import _calculate_descriptor
+from typing import Tuple, List, Optional
 
 
 class AtomicSymmetryFunction(Descriptor):

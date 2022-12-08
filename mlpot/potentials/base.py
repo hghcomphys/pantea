@@ -1,6 +1,6 @@
-from ..base import _Base
 from collections import defaultdict
 from typing import Dict
+from mlpot.base import _Base
 
 
 class Potential(_Base):

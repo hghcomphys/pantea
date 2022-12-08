@@ -1,7 +1,7 @@
-from ..logger import logger
-from ..base import _Base
-from typing import Mapping
 import jax.numpy as jnp
+from typing import Mapping
+from mlpot.logger import logger
+from mlpot.base import _Base
 
 
 class ErrorMetric(_Base):

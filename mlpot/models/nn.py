@@ -1,9 +1,7 @@
-from ..logger import logger
-from .base import BaseModel
+import jax.numpy as jnp
 from typing import Tuple, List, Dict, Callable
 from frozendict import frozendict
 from flax import linen as nn
-import jax.numpy as jnp
 
 
 class NeuralNetworkModel(nn.Module):  # BaseModel

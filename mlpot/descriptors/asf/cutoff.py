@@ -1,8 +1,8 @@
-from ...logger import logger
-from ...base import _Base
 import math
 import jax
 import jax.numpy as jnp
+from mlpot.logger import logger
+from mlpot.base import _Base
 from functools import partial
 
 

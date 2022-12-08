@@ -1,2 +1,6 @@
-from .asf import *
-from .scaler import *
+from mlpot.descriptors.scaler import DescriptorScaler
+
+
+__all__ = [
+    "DescriptorScaler",
+]

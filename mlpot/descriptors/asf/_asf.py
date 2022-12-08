@@ -1,11 +1,11 @@
-from ...structure._structure import _calculate_distance_per_atom
-from ...structure._neighbor import _calculate_cutoff_mask_per_atom
-from .angular import AngularSymmetryFunction
-from .radial import RadialSymmetryFunction
+import jax.numpy as jnp
 from typing import Callable, Tuple, Dict
 from functools import partial
 from jax import jit, vmap, lax
-import jax.numpy as jnp
+from mlpot.structure._structure import _calculate_distance_per_atom
+from mlpot.structure._neighbor import _calculate_cutoff_mask_per_atom
+from mlpot.descriptors.asf.angular import AngularSymmetryFunction
+from mlpot.descriptors.asf.radial import RadialSymmetryFunction
 
 
 @partial(jit, static_argnums=(0,))

@@ -1,23 +1,23 @@
-from ..logger import logger
-from ..structure import Structure
-from ..datasets.runner import RunnerStructureDataset
-from ..descriptors.base import Descriptor
-from ..descriptors.asf.asf import ASF
-from ..descriptors.asf.cutoff import CutoffFunction
-from ..descriptors.scaler import DescriptorScaler
-from ..descriptors.asf.radial import G1, G2
-from ..descriptors.asf.angular import G3, G9
-from ..models.nn import NeuralNetworkModel
-from ..structure.element import ElementMap
-from .base import Potential
-from .settings import NeuralNetworkPotentialSettings
-from .trainer import NeuralNetworkPotentialTrainer
-from ._energy import _energy_fn, _compute_forces
+import jax.numpy as jnp
 from typing import List, Dict, Union, Tuple
 from pathlib import Path
 from jax import random
 from frozendict import frozendict
-import jax.numpy as jnp
+from mlpot.logger import logger
+from mlpot.structure import Structure
+from mlpot.datasets.runner import RunnerStructureDataset
+from mlpot.descriptors.base import Descriptor
+from mlpot.descriptors.asf.asf import ASF
+from mlpot.descriptors.asf.cutoff import CutoffFunction
+from mlpot.descriptors.scaler import DescriptorScaler
+from mlpot.descriptors.asf.radial import G1, G2
+from mlpot.descriptors.asf.angular import G3, G9
+from mlpot.models.nn import NeuralNetworkModel
+from mlpot.structure.element import ElementMap
+from mlpot.potentials.base import Potential
+from mlpot.potentials.settings import NeuralNetworkPotentialSettings
+from mlpot.potentials.trainer import NeuralNetworkPotentialTrainer
+from mlpot.potentials._energy import _energy_fn, _compute_forces
 
 
 class NeuralNetworkPotential(Potential):

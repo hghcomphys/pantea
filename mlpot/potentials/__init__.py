@@ -1,4 +1,5 @@
-from .nnp import *
-from .trainer import *
-from .metrics import *
-from .settings import *
+from mlpot.potentials.nnp import NeuralNetworkPotential
+
+__all__ = [
+    "NeuralNetworkPotential",
+]
