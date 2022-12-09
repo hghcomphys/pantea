@@ -8,7 +8,7 @@ class _Base:
     which expected to exist in all child classes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.debug(f"Initializing {self}")
 
     def __repr__(self) -> str:

@@ -1,7 +1,8 @@
 import jax.numpy as jnp
-from typing import Mapping
+from typing import Mapping, Optional, Type
 from mlpot.logger import logger
 from mlpot.base import _Base
+from mlpot.types import Array
 
 
 class ErrorMetric(_Base):
@@ -10,15 +11,13 @@ class ErrorMetric(_Base):
     Note: gradient calculations is disabled for all error metrics.
     """
 
-    def __init__(self):
-        def mse(*, prediction: jnp.ndarray, target: jnp.ndarray):
+    def __init__(self) -> None:
+        def mse(*, prediction: Array, target: Array) -> Array:
             return ((target - prediction) ** 2).mean()
 
         self._mse_metric = mse
 
-    def __call__(
-        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
-    ) -> jnp.ndarray:
+    def __call__(self, prediction: Array, target: Array, factor=None) -> Array:
         raise NotImplementedError()
 
     def __repr__(self) -> str:
@@ -31,8 +30,8 @@ class MSE(ErrorMetric):
     """
 
     def __call__(
-        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
-    ) -> jnp.ndarray:
+        self, prediction: Array, target: Array, factor: Optional[float] = None
+    ) -> Array:
         return self._mse_metric(prediction=prediction, target=target)
 
 
@@ -42,8 +41,8 @@ class RMSE(MSE):
     """
 
     def __call__(
-        self, prediction: jnp.ndarray, target: jnp.ndarray, factor=None
-    ) -> jnp.ndarray:
+        self, prediction: Array, target: Array, factor: Optional[float] = None
+    ) -> Array:
         return jnp.sqrt(self._mse_metric(prediction=prediction, target=target))
 
 
@@ -54,9 +53,7 @@ class MSEpa(MSE):
     MSE of force
     """
 
-    def __call__(
-        self, prediction: jnp.ndarray, target: jnp.ndarray, factor: int = 1
-    ) -> jnp.ndarray:
+    def __call__(self, prediction: Array, target: Array, factor: float = 1.0) -> Array:
         return self._mse_metric(prediction=prediction, target=target) / factor
 
 
@@ -67,13 +64,11 @@ class RMSEpa(RMSE):
     RMSE of force
     """
 
-    def __call__(
-        self, prediction: jnp.ndarray, target: jnp.ndarray, factor: int = 1
-    ) -> jnp.ndarray:
+    def __call__(self, prediction: Array, target: Array, factor: int = 1) -> Array:
         return jnp.sqrt(self._mse_metric(prediction=prediction, target=target)) / factor
 
 
-def init_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
+def init_error_metric(metric_type: str, **kwargs) -> Optional[MSE]:
     """
     An utility function to create a given type of error metric.
 
@@ -82,7 +77,7 @@ def init_error_metric(metric_type: str, **kwargs) -> ErrorMetric:
     :return: An instance of desired error metric
     :rtype: ErrorMetric
     """
-    _map_error_metric: Mapping[str, ErrorMetric] = {
+    _map_error_metric: Mapping[str, Type[ErrorMetric]] = {
         "MSE": MSE,
         "RMSE": RMSE,
         "MSEpa": MSEpa,

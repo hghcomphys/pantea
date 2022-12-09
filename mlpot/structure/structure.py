@@ -7,7 +7,7 @@ from ase import Atoms as AseAtoms
 from functools import partial
 from mlpot.logger import logger
 from mlpot.base import _Base
-from mlpot.config import dtype as _dtype
+from mlpot.types import dtype as _dtype, Array
 from mlpot.utils.attribute import set_as_attribute
 from mlpot.structure._structure import _calculate_distance
 from mlpot.structure.element import ElementMap
@@ -122,7 +122,7 @@ class Structure(_Base):
         Create a simulation box object using the provided lattice tensor.
 
         :param lattice: 3x3 lattice matrix
-        :type lattice: jnp.ndarray
+        :type lattice: Array
         """
         if len(lattice) > 0:
             self.box = Box(lattice)
@@ -130,7 +130,7 @@ class Structure(_Base):
             logger.debug("No lattice info were found in structure")
             self.box = Box()
 
-    def _prepare_atype_tensor(self, elements: List[str]) -> jnp.ndarray:
+    def _prepare_atype_tensor(self, elements: List[str]) -> Array:
         """
         Set atom types using the element map
         """
@@ -178,7 +178,7 @@ class Structure(_Base):
     @partial(jax.jit, static_argnums=(0,))  # FIXME
     def calculate_distance(
         self,
-        aid: jnp.ndarray,
+        aid: Array,
         neighbor_index: Optional[jnp.ndarray] = None,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """
@@ -197,14 +197,14 @@ class Structure(_Base):
         return jnp.squeeze(dis), jnp.squeeze(dx)
 
     # TODO: jit
-    def select(self, element: str) -> jnp.ndarray:
+    def select(self, element: str) -> Array:
         """
         Return all atom ids with atom type same as the input element.
 
         :param element: element
         :type element: str
         :return: atom indices
-        :rtype: jnp.ndarray
+        :rtype: Array
         """
         return jnp.nonzero(self.atype == self.element_map[element])[0]
 
@@ -328,16 +328,16 @@ class Structure(_Base):
 
         return result
 
-    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> jnp.ndarray:
+    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Array:
         """
         Return a tensor of energy offset.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[str, float]
         :return: energy offset
-        :rtype: jnp.ndarray
+        :rtype: Array
         """
-        energy_offset: jnp.ndarray = jnp.empty_like(self.energy)
+        energy_offset: Array = jnp.empty_like(self.energy)
         for element in self.elements:  # TODO: optimize item assignment
             energy_offset = energy_offset.at[self.select(element)].set(
                 atom_energy[element]

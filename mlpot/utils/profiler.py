@@ -4,6 +4,7 @@ import time
 import copy
 from collections import defaultdict
 from mlpot.logger import logger
+from typing import Mapping, Any
 
 
 _default_profiler = None
@@ -23,20 +24,20 @@ class Profiler:
     # TODO: testing multi-thread applications
     # TODO: no support for multi-process
 
-    def __init__(self, name: str = "Profiler", sort_by: str = "cumtime"):
+    def __init__(self, name: str = "Profiler", sort_by: str = "cumtime") -> None:
         logger.debug(
             f"An instance of {self.__class__.__name__} object has been initialized"
         )
-        self.name = name
-        self.sort_by = sort_by
-        self.active = None
-        self._walltimer = None
-        self.stats = defaultdict(
+        self.name: str = name
+        self.sort_by: str = sort_by
+        self.active: bool = False
+        self._walltimer: float = 0.0
+        self.stats: Mapping[str, Any] = defaultdict(
             lambda: {
                 "ncalls": 0,  # number of calls
                 "cumtime": 0.0,  # cumulative time
-                "startwt": None,  # start walltime
-                "endwt": 0.0,  # end walltime
+                "startwt": None,  # start wall time
+                "endwt": 0.0,  # end wall time
             }
         )
 
@@ -106,6 +107,7 @@ class Profiler:
         df_ = self.get_dataframe()
         if df_ is not None:
             return f"Profiler statistics (dataframe):\n{df_.to_string()}"
+        return ""
 
 
 class Timer:
@@ -113,15 +115,15 @@ class Timer:
     A class to measure elapsed time.
     """
 
-    def __init__(self, name: str = "Timer"):
+    def __init__(self, name: str = "Timer") -> None:
         self.name = name
         self.elapsed_time = None
 
-    def __enter__(self):
+    def __enter__(self) -> Timer:
         self._start = time.perf_counter()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type, value, traceback) -> None:
         self.elapsed_time = time.perf_counter() - self._start
         print(self)
 

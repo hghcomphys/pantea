@@ -1,7 +1,7 @@
-from typing import Dict, Any
 import jax.numpy as jnp
+from typing import Dict, Any
 from mlpot.logger import logger
-from mlpot.config import dtype as _dtype
+from mlpot.types import dtype as _dtype, Array
 
 
 def set_as_attribute(
@@ -19,12 +19,12 @@ def set_as_attribute(
     """
     logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__} attributes:")
     for name, item in items.items():
-        attr_name = f"{prefix}{name}{postfix}"
+        attr_name: str = f"{prefix}{name}{postfix}"
         logger.debug(f"-> {obj.__class__.__name__}.{attr_name}")
         setattr(obj, attr_name, item)
 
 
-def cast_to_tensor(x, dtype: jnp.dtype = _dtype.FLOATX) -> jnp.ndarray:
+def cast_to_tensor(x, dtype: jnp.dtype = _dtype.FLOATX) -> Array:
     """
     An utility function to cast input variable (scalar, array, etc)
     to torch tensor with predefined data and device types.

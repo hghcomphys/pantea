@@ -1,15 +1,16 @@
 from __future__ import annotations
 import jax
 import jax.numpy as jnp
-from typing import Tuple
+from typing import Tuple, Optional
 from mlpot.structure.box import _apply_pbc
+from mlpot.types import Array
 
 
 @jax.jit
 def _calculate_distance_per_atom(
-    x_atom: jnp.ndarray,
-    x_neighbors: jnp.ndarray,
-    lattice: jnp.ndarray = None,
+    x_atom: Array,
+    x_neighbors: Array,
+    lattice: Optional[Array] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     [Kernel]
@@ -38,9 +39,9 @@ _vmap_calculate_distance = jax.vmap(
 
 @jax.jit
 def _calculate_distance(
-    x_atom: jnp.ndarray,
-    x_neighbors: jnp.ndarray,
-    lattice: jnp.ndarray = None,
+    x_atom: Array,
+    x_neighbors: Array,
+    lattice: Optional[Array] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     [Kernel]

@@ -3,6 +3,7 @@ import jax.numpy as jnp
 from functools import partial
 from mlpot.descriptors.asf.cutoff import CutoffFunction
 from mlpot.descriptors.asf.symmetry import SymmetryFunction
+from mlpot.types import Array
 
 
 class AngularSymmetryFunction(SymmetryFunction):
@@ -14,11 +15,11 @@ class AngularSymmetryFunction(SymmetryFunction):
 
     def __call__(
         self,
-        rij: jnp.ndarray,
-        rik: jnp.ndarray,
-        rjk: jnp.ndarray,
-        cost: jnp.ndarray,
-    ) -> jnp.ndarray:
+        rij: Array,
+        rik: Array,
+        rjk: Array,
+        cost: Array,
+    ) -> Array:
         raise NotImplementedError
 
 
@@ -45,11 +46,11 @@ class G3(AngularSymmetryFunction):
     @partial(jax.jit, static_argnums=(0,))  # FIXME
     def __call__(
         self,
-        rij: jnp.ndarray,
-        rik: jnp.ndarray,
-        rjk: jnp.ndarray,
-        cost: jnp.ndarray,
-    ) -> jnp.ndarray:
+        rij: Array,
+        rik: Array,
+        rjk: Array,
+        cost: Array,
+    ) -> Array:
         # TODO: r_shift, define params argument instead
         return (
             self._scale_factor
@@ -70,15 +71,15 @@ class G9(G3):  # AngularSymmetryFunction
     @partial(jax.jit, static_argnums=(0,))  # FIXME
     def __call__(
         self,
-        rij: jnp.ndarray,
-        rik: jnp.ndarray,
-        rjk: jnp.ndarray,
-        cost: jnp.ndarray,
-    ) -> jnp.ndarray:
+        rij: Array,
+        rik: Array,
+        rjk: Array,
+        cost: Array,
+    ) -> Array:
         # TODO: r_shift, define params argument instead
         return (
             self._scale_factor
-            * jnp.pow(1 + self.lambda0 * cost, self.zeta)
+            * jnp.power(1 + self.lambda0 * cost, self.zeta)
             * jnp.exp(-self.eta * (rij**2 + rik**2))
             * self.cfn(rij)
             * self.cfn(rik)

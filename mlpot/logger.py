@@ -2,6 +2,7 @@ import sys
 import logging
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 
 
 class Logger:
@@ -9,10 +10,10 @@ class Logger:
     An utility logger class which allows more tweaks than the standard python logging.
     """
 
-    def __init__(self, level=logging.WARNING, filename=None):
-        self.logger = logging.getLogger("MLPOT")
-        self.level = level
-        self.handlers = []
+    def __init__(self, level=logging.WARNING, filename=None) -> None:
+        self.logger: Logger = logging.getLogger("MLPOT")
+        self.level: int = level
+        self.handlers = list()
 
         self._add_console_handler()
         if filename:
@@ -63,19 +64,21 @@ class Logger:
         file_handler.setLevel(logging.DEBUG)
         self.handlers.append(file_handler)
 
-    def debug(self, msg, *args, **kwargs):
+    def debug(self, msg, *args, **kwargs) -> None:
         self.logger.debug(msg, *args, **kwargs)
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg, *args, **kwargs) -> None:
         self.logger.info(msg, *args, **kwargs)
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg, *args, **kwargs) -> None:
         self.logger.warning(msg, *args, **kwargs)
 
-    def warn(self, msg, *args, **kwargs):
+    def warn(self, msg, *args, **kwargs) -> None:
         self.warning(msg, *args, **kwargs)
 
-    def error(self, msg, exception: Exception = None, *args, **kwargs):
+    def error(
+        self, msg, exception: Optional[Exception] = None, *args, **kwargs
+    ) -> None:
         self.logger.error(msg, *args, **kwargs)
         if exception is not None:
             raise exception(msg)

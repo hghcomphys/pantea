@@ -19,6 +19,6 @@ class Settings(_Base):
     Each potential contains several parameters and settings that can be handled using the derived setting classes.
     """
 
-    def __init__(self, default=Dict) -> None:
+    def __init__(self, default: Dict) -> None:
         self._settings = defaultdict(None)
         self._settings.update(default)

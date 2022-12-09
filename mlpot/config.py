@@ -1,5 +1,4 @@
-import jax.numpy as jnp
-from typing import Any
+from typing import Any, Dict
 from mlpot.logger import logger
 
 
@@ -9,14 +8,14 @@ class _CFG:
     """
 
     # TODO: circular import error between CFG & logger
-    _conf = {
+    _conf: Dict[str, Any] = {
         # Global variables!
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._set_attributes()
 
-    def _set_attributes(self):
+    def _set_attributes(self) -> None:
         for atr in self._conf:
             setattr(self, atr, self._conf[atr])
 
@@ -28,24 +27,10 @@ class _CFG:
             logger.debug(f"Setting {name}: '{value}'")
             self._conf[name] = value
         else:
-            logger.error(f"Name '{name}' is not allowed!", exception=NameError)
+            logger.error(
+                f"Name '{name}' is not allowed!",
+                exception=NameError,
+            )
 
     def __getitem__(self, name) -> Any:
         return self.get(name)
-
-
-class DataType(_CFG):
-    """
-    A configuration class for the tensors' data type.
-    """
-
-    _conf = {
-        "FLOATX": jnp.float32,
-        "INT": jnp.int32,
-        "UINT": jnp.uint32,
-        "INDEX": jnp.int32,
-    }
-
-
-# Create global dtype config
-dtype = DataType()

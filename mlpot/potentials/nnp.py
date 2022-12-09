@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 from jax import random
 from frozendict import frozendict
@@ -18,6 +18,7 @@ from mlpot.potentials.base import Potential
 from mlpot.potentials.settings import NeuralNetworkPotentialSettings
 from mlpot.potentials.trainer import NeuralNetworkPotentialTrainer
 from mlpot.potentials._energy import _energy_fn, _compute_forces
+from mlpot.types import Array
 
 
 class NeuralNetworkPotential(Potential):
@@ -159,7 +160,7 @@ class NeuralNetworkPotential(Potential):
         """
         logger.debug("[Setting models]")
         model: Dict[str, NeuralNetworkModel] = dict()
-        model_params: frozendict = dict()
+        model_params = dict()
 
         random_keys = random.split(random.PRNGKey(0), self.n_elements)
 
@@ -266,7 +267,7 @@ class NeuralNetworkPotential(Potential):
         kwargs["epochs"] = kwargs.get("epochs", self.settings["epochs"])
         return self.trainer.fit(dataset, **kwargs)
 
-    def save_model(self):
+    def save_model(self) -> None:
         """
         Save model weights separately for all elements.
         """
@@ -279,7 +280,7 @@ class NeuralNetworkPotential(Potential):
             self.model[element].save(model_fn)
 
     # @Profiler.profile
-    def load_model(self):
+    def load_model(self) -> None:
         """
         Load model weights separately for all elements.
         """
@@ -297,14 +298,14 @@ class NeuralNetworkPotential(Potential):
         """
         pass
 
-    def __call__(self, structure: Structure) -> jnp.ndarray:
+    def __call__(self, structure: Structure) -> Array:
         """
         Return the total energy of the input structure.
 
         :param structure: Structure
         :type structure: Structure
         :return: total energy
-        :rtype: jnp.ndarray
+        :rtype: Array
         """
         return _energy_fn(
             self.get_static_inputs_per_element(),
@@ -336,7 +337,7 @@ class NeuralNetworkPotential(Potential):
     def get_model_params_per_element(self) -> Tuple[frozendict]:
         return tuple(params for params in self.model_params.values())
 
-    def set_extrapolation_warnings(self, threshold: Union[int, None]) -> None:
+    def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
         """
         shows warning whenever a descriptor value is out of bounds defined by
         minimum/maximum values in the scaler.

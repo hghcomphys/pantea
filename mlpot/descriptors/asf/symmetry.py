@@ -1,7 +1,7 @@
-import jax.numpy as jnp
 from mlpot.logger import logger
 from mlpot.base import _Base
 from mlpot.descriptors.asf.cutoff import CutoffFunction
+from mlpot.types import Array
 
 
 class SymmetryFunction(_Base):
@@ -10,11 +10,11 @@ class SymmetryFunction(_Base):
     All symmetry functions (i.e. radial and angular) must derive from this base class.
     """
 
-    def __init__(self, cfn: CutoffFunction):
-        self.cfn = cfn
+    def __init__(self, cfn: CutoffFunction) -> None:
+        self.cfn: CutoffFunction = cfn
         logger.debug(repr(self))
 
-    def __call__(self, *args, **kwargs) -> jnp.ndarray:
+    def __call__(self, *args, **kwargs) -> Array:
         raise NotImplementedError
 
     def __repr__(self) -> str:

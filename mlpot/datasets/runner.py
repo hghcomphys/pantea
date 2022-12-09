@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TextIO, Dict, List, Union
+from typing import TextIO, Dict, List, Union, Any
 from collections import defaultdict
 from pathlib import Path
 from mlpot.logger import logger
@@ -33,16 +33,16 @@ class RunnerStructureDataset(StructureDataset):
         Initialize RuNNer structure dataset.
 
         :param filename: Path
-        :type filename: RuNNer structure file anme
+        :type filename: RuNNer structure file name
         :param transform: transform to be applied on a structure, defaults to ToStructure()
         :type transform: Transformer, optional
         :param persist: Persist structure data in the memory, defaults to False
         :type persist: bool, optional
         """
 
-        self.filename = Path(filename)
-        self.transform = transform  # transform after loading each sample
-        self.persist = persist  # enabling caching
+        self.filename: Path = Path(filename)
+        self.transform: Transformer = transform  # transform after loading each sample
+        self.persist: bool = persist  # enabling caching
         self._cached_structures: Dict = dict()  # a dictionary of cached structures
         self._current_index: int = 0  # used only for direct iteration
         super().__init__()
@@ -57,11 +57,11 @@ class RunnerStructureDataset(StructureDataset):
                 n_structures += 1
         return n_structures
 
-    def __getitem__(self, index: Union[int, List[int]]) -> Dict:
+    def __getitem__(self, index: Union[int, List[int]]) -> Any:
         """
-        Return i-th structure form the.
+        Return i-th structure.
         This is a lazy load. Data is read from the file only if this method is called.
-        Multiple-indexing with some limitations is possible.
+        Multiple-indexing with limitation is possible.
         """
         # TODO: assert range of index
         if isinstance(index, list):
@@ -155,7 +155,7 @@ class RunnerStructureDataset(StructureDataset):
 
         return sample
 
-    def _read_cache(self, index: int):
+    def _read_cache(self, index: int) -> Any:
         """
         This method reads cached structure if persist flag is True.
         """

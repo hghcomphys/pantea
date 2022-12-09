@@ -1,6 +1,6 @@
-import jax.numpy as jnp
+from mlpot.types import Array
 
 
 # TODO: define Loss classes, can cause performance penalty
-def mse_loss(*, logits: jnp.ndarray, targets: jnp.ndarray):
+def mse_loss(*, logits: Array, targets: Array) -> Array:
     return ((targets - logits) ** 2).mean()

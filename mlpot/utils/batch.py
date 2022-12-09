@@ -1,8 +1,9 @@
 import math
-import jax.numpy as jnp
+from mlpot.types import Array
+from typing import Generator
 
 
-def create_batch(array: jnp.ndarray, batch_size: int) -> jnp.ndarray:
+def create_batch(array: Array, batch_size: int) -> Generator[Array, None, None]:
     """
     Return the input array in form of batches (generator).
 

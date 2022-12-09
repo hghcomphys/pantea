@@ -1,6 +1,7 @@
 import jax
 import itertools
 import jax.numpy as jnp
+from typing import Tuple, List, Optional
 from mlpot.logger import logger
 from mlpot.structure.structure import Structure
 from mlpot.descriptors.base import Descriptor
@@ -8,7 +9,7 @@ from mlpot.descriptors.asf.symmetry import SymmetryFunction
 from mlpot.descriptors.asf.angular import AngularSymmetryFunction
 from mlpot.descriptors.asf.radial import RadialSymmetryFunction
 from mlpot.descriptors.asf._asf import _calculate_descriptor
-from typing import Tuple, List, Optional
+from mlpot.types import Array
 
 
 class AtomicSymmetryFunction(Descriptor):
@@ -17,7 +18,8 @@ class AtomicSymmetryFunction(Descriptor):
     ASF is a vector of different radial and angular terms which describe the chemical environment of an atom.
     """
 
-    # TODO: ASF should be independent of the input structure, but it should knows how to calculate the descriptor vector.
+    # TODO: ASF should be independent of the input structure,
+    # but it should knows how to calculate the descriptor vector.
     # See N2P2 -> https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
     def __init__(self, element: str) -> None:
@@ -63,7 +65,7 @@ class AtomicSymmetryFunction(Descriptor):
         self,
         structure: Structure,
         aid: Optional[jnp.ndarray] = None,
-    ) -> jnp.ndarray:
+    ) -> Array:
         """
         Calculate descriptor values for the input given structure and atom id(s).
         """

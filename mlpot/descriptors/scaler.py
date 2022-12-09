@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from pathlib import Path
 from typing import Optional
 from mlpot.logger import logger
-from mlpot.config import dtype as _dtype
+from mlpot.types import dtype as _dtype, Array
 from mlpot.base import _Base
 
 
@@ -35,10 +35,10 @@ class DescriptorScaler(_Base):
         # Statistical parameters
         self.nsamples: int = 0  # number of samples
         self.dimension: int = None  # dimension of each sample
-        self.mean: jnp.ndarray = None  # mean array of all fitted descriptor values
-        self.sigma: jnp.ndarray = None  # standard deviation
-        self.min: jnp.ndarray = None  # minimum
-        self.max: jnp.ndarray = None  # maximum
+        self.mean: Array = None  # mean array of all fitted descriptor values
+        self.sigma: Array = None  # standard deviation
+        self.min: Array = None  # minimum
+        self.max: Array = None  # maximum
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: int = None
@@ -46,7 +46,7 @@ class DescriptorScaler(_Base):
         # Set scaler type function
         self._transform = getattr(self, f"_{self.scale_type}")
 
-    def fit(self, data: jnp.ndarray) -> None:
+    def fit(self, data: Array) -> None:
         """
         This method fits the scaler parameters based on the given input tensor.
         It also works also in a batch-wise form.
@@ -89,18 +89,11 @@ class DescriptorScaler(_Base):
             self.min = jnp.minimum(self.min, new_min)
             self.nsamples += n
 
-    def __call__(self, x: jnp.ndarray, warnings: bool = False) -> jnp.ndarray:
+    def __call__(self, x: Array, warnings: bool = False) -> Array:
         """
         Transform the input descriptor values base on the selected scaler type.
         This method has to be called when fit method was already applied batch-wise over all descriptor values,
         or statistical parameters are read from a saved file.
-
-        :param x: descriptor values
-        :type x: jnp.ndarray
-        :param warnings: enable warnings, defaults to False
-        :type warnings: bool, optional
-        :return: scaled descriptor values
-        :rtype: jnp.ndarray
         """
 
         if warnings:
@@ -115,15 +108,12 @@ class DescriptorScaler(_Base):
             f"Setting the maximum number of scaler warnings: {self.max_number_of_warnings}"
         )
 
-    def _check_warnings(self, x: jnp.ndarray) -> None:
+    def _check_warnings(self, x: Array) -> None:
         """
         Check whether the output scaler values exceed the predefined min/max range values or not.
         if so, it keeps counting the number of warnings and raises an error if it exceeds the maximum number.
         An out of range descriptor value is in fact an indication of
         the descriptor extrapolation which has to be avoided.
-
-        :param val: scaled values of descriptor
-        :type val: jnp.ndarray
         """
         if self.max_number_of_warnings is None:
             return
@@ -141,20 +131,20 @@ class DescriptorScaler(_Base):
                 f"{self.number_of_warnings} (max={self.max_number_of_warnings})"
             )
 
-    def _center(self, x: jnp.ndarray) -> jnp.ndarray:
+    def _center(self, x: Array) -> Array:
         return x - self.mean
 
-    def _scale(self, x: jnp.ndarray) -> jnp.ndarray:
+    def _scale(self, x: Array) -> Array:
         return self.scale_min + (self.scale_max - self.scale_min) * (x - self.min) / (
             self.max - self.min
         )
 
-    def _scale_center(self, x: jnp.ndarray) -> jnp.ndarray:
+    def _scale_center(self, x: Array) -> Array:
         return self.scale_min + (self.scale_max - self.scale_min) * (x - self.mean) / (
             self.max - self.min
         )
 
-    def _scale_center_sigma(self, x: jnp.ndarray) -> jnp.ndarray:
+    def _scale_center_sigma(self, x: Array) -> Array:
         return (
             self.scale_min
             + (self.scale_max - self.scale_min) * (x - self.mean) / self.sigma

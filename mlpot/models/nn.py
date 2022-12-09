@@ -2,6 +2,7 @@ import jax.numpy as jnp
 from typing import Tuple, List, Dict, Callable
 from frozendict import frozendict
 from flax import linen as nn
+from mlpot.types import Array
 
 
 class NeuralNetworkModel(nn.Module):  # BaseModel
@@ -54,7 +55,7 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
 
         return layers
 
-    def __call__(self, inputs: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, inputs: Array) -> Array:
         x = inputs
         for layer in self.layers:
             x = layer(x)

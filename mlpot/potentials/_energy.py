@@ -4,6 +4,7 @@ from typing import Tuple
 from functools import partial
 from jax import jit, grad
 from mlpot.descriptors.asf._asf import _calculate_descriptor
+from mlpot.types import Array
 
 
 @partial(jit, static_argnums=(0,))  # FIXME
@@ -12,7 +13,7 @@ def _energy_fn(
     xs: Tuple[jnp.ndarray],
     params: Tuple[frozendict],
     xbatch: Tuple,
-) -> jnp.ndarray:
+) -> Array:
     """
     A helper function that allows to calculate gradient of the NNP total energy
     respect to the atom positions (for each element).

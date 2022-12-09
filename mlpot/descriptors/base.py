@@ -8,7 +8,7 @@ class Descriptor(_Base):
     """
 
     def __init__(self, element: str) -> None:
-        self.element = element
+        self.element: str = element
 
     @property
     def r_cutoff(self) -> float:

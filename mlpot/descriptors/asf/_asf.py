@@ -6,15 +6,16 @@ from mlpot.structure._structure import _calculate_distance_per_atom
 from mlpot.structure._neighbor import _calculate_cutoff_mask_per_atom
 from mlpot.descriptors.asf.angular import AngularSymmetryFunction
 from mlpot.descriptors.asf.radial import RadialSymmetryFunction
+from mlpot.types import Array
 
 
 @partial(jit, static_argnums=(0,))
 def _calculate_radial_asf_per_atom(
     radial: Tuple[RadialSymmetryFunction, str, str],
-    atype: jnp.ndarray,
-    dist_i: jnp.ndarray,
+    atype: Array,
+    dist_i: Array,
     emap: Dict,
-) -> jnp.ndarray:
+) -> Array:
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -33,12 +34,12 @@ def _calculate_radial_asf_per_atom(
 @partial(jit, static_argnums=(0,))
 def _calculate_angular_asf_per_atom(
     angular: Tuple[AngularSymmetryFunction, str, str, str],
-    atype: jnp.ndarray,
-    diff_i: jnp.ndarray,
-    dist_i: jnp.ndarray,
-    lattice: jnp.ndarray,
+    atype: Array,
+    diff_i: Array,
+    dist_i: Array,
+    lattice: Array,
     emap: Dict,
-) -> jnp.ndarray:
+) -> Array:
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -76,14 +77,14 @@ def _calculate_angular_asf_per_atom(
 
 # Called by jax.lax.scan (no need for @jax.jit)
 def _inner_loop_over_angular_asf_terms(
-    total: jnp.ndarray,
-    inputs: Tuple[jnp.ndarray],
-    diff_i: jnp.ndarray,
-    dist_i: jnp.ndarray,
-    mask_ik: jnp.ndarray,
-    lattice: jnp.ndarray,
+    total: Array,
+    inputs: Tuple[Array],
+    diff_i: Array,
+    dist_i: Array,
+    mask_ik: Array,
+    lattice: Array,
     kernel: Callable,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> Tuple[Array, Array]:
 
     # Scan occurs along the leading axis
     Rij, rij, mask_ij = inputs
@@ -127,12 +128,12 @@ def _inner_loop_over_angular_asf_terms(
 @partial(jit, static_argnums=(0,))
 def _calculate_descriptor_per_atom(
     asf,
-    atom_position: jnp.ndarray,  # must be a single atom position shape=(1, 3)
-    neighbor_positions: jnp.ndarray,
-    atype: jnp.ndarray,
-    lattice: jnp.ndarray,
+    atom_position: Array,  # must be a single atom position shape=(1, 3)
+    neighbor_positions: Array,
+    atype: Array,
+    lattice: Array,
     emap: Dict,
-) -> jnp.ndarray:
+) -> Array:
     """
     Compute descriptor values per atom in the structure (via atom id).
     """

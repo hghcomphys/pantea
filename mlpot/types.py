@@ -1,0 +1,23 @@
+import jax.numpy as jnp
+from mlpot.config import _CFG
+from typing import Mapping
+
+
+Array = jnp.ndarray
+
+
+class DataType(_CFG):
+    """
+    A configuration class for the tensors' data type.
+    """
+
+    _conf: Mapping[str, jnp.dtype] = {
+        "FLOATX": jnp.float32,
+        "INT": jnp.int32,
+        "UINT": jnp.uint32,
+        "INDEX": jnp.int32,
+    }
+
+
+# Create global dtype config
+dtype: DataType = DataType()
