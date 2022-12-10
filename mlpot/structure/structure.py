@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import jax
 import jax.numpy as jnp
+from collections import namedtuple
 from typing import List, Dict, Tuple, Union, Optional
 from ase import Atoms as AseAtoms
 from functools import partial
@@ -13,6 +14,18 @@ from mlpot.structure._structure import _calculate_distance
 from mlpot.structure.element import ElementMap
 from mlpot.structure.neighbor import Neighbor
 from mlpot.structure.box import Box
+
+
+Input = namedtuple(
+    "Input",
+    [
+        "position_aid",
+        "position",
+        "atype",
+        "lattice",
+        "emap",
+    ],
+)
 
 
 class Structure(_Base):
@@ -208,15 +221,15 @@ class Structure(_Base):
         """
         return jnp.nonzero(self.atype == self.element_map[element])[0]
 
-    def get_inputs_per_element(self) -> Tuple:
+    def get_inputs(self) -> Dict[str, Input]:
         """
         A tuple of required info that are used for training and evaluating the potential.
         """
 
-        def extract_inputs():
+        def extract_input():
             for element in self.elements:
-                aid = self.select(element)
-                yield (
+                aid: Array = self.select(element)
+                yield element, Input(
                     self.position[aid],
                     self.position,
                     self.atype,
@@ -224,23 +237,23 @@ class Structure(_Base):
                     self.element_map.element_to_atype,
                 )
 
-        return tuple(inputs for inputs in extract_inputs())
+        return {element: input for element, input in extract_input()}
 
-    def get_position_per_element(self) -> Tuple[jnp.ndarray]:
+    def get_positions(self) -> Dict[str, Array]:
         def extract_position():
             for element in self.elements:
-                aid = self.select(element)
-                yield self.position[aid]
+                aid: Array = self.select(element)
+                yield element, self.position[aid]
 
-        return tuple(position for position in extract_position())
+        return {element: position for element, position in extract_position()}
 
-    def get_force_per_element(self) -> Tuple[jnp.ndarray]:
+    def get_forces(self) -> Dict[str, Array]:
         def extract_force():
             for element in self.elements:
-                aid = self.select(element)
-                yield self.force[aid]
+                aid: Array = self.select(element)
+                yield element, self.force[aid]
 
-        return tuple(force for force in extract_force())
+        return {element: force for element, force in extract_force()}
 
     @property
     def n_atoms(self) -> int:
@@ -249,7 +262,7 @@ class Structure(_Base):
     @property
     def elements(self) -> List[str]:
         # FIXME: optimize
-        return sorted(list({self.element_map(int(at)) for at in self.atype}))
+        return list({self.element_map(int(at)) for at in self.atype})
 
     @property
     def r_cutoff(self) -> float:

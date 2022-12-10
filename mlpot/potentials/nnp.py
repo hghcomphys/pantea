@@ -1,8 +1,9 @@
 import jax.numpy as jnp
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from pathlib import Path
 from jax import random
 from frozendict import frozendict
+from collections import namedtuple
 from mlpot.logger import logger
 from mlpot.structure import Structure
 from mlpot.datasets.runner import RunnerStructureDataset
@@ -19,6 +20,12 @@ from mlpot.potentials.settings import NeuralNetworkPotentialSettings
 from mlpot.potentials.trainer import NeuralNetworkPotentialTrainer
 from mlpot.potentials._energy import _energy_fn, _compute_forces
 from mlpot.types import Array
+
+
+StaticArgs = namedtuple(
+    "StaticArgs",
+    ["descriptor", "scaler", "model"],
+)
 
 
 class NeuralNetworkPotential(Potential):
@@ -40,7 +47,7 @@ class NeuralNetworkPotential(Potential):
         Initialize a HDNNP potential instance by reading the potential file and
         creating descriptors, scalers, models, and trainer.
         """
-        self.potfile = Path(potfile)
+        self.potfile: Path = Path(potfile)
         self.settings = NeuralNetworkPotentialSettings()
         super().__init__()
 
@@ -61,7 +68,7 @@ class NeuralNetworkPotential(Potential):
         """
         # TODO: add logging
         logger.debug("[Setting descriptors]")
-        descriptor = {}
+        descriptor: Dict[str, Descriptor] = dict()
 
         # Elements
         logger.info(f"Number of elements: {self.n_elements}")
@@ -134,7 +141,7 @@ class NeuralNetworkPotential(Potential):
         Initialize a descriptor scaler for each element from the potential settings.
         """
         logger.debug("[Setting scalers]")
-        scaler = dict()
+        scaler: Dict[str, DescriptorScaler] = dict()
 
         # Prepare scaler input argument if exist in settings
         scaler_kwargs = {
@@ -154,18 +161,17 @@ class NeuralNetworkPotential(Potential):
 
         return scaler
 
-    def init_model(self) -> Tuple[Dict[str, NeuralNetworkModel], frozendict]:
+    def init_model(self) -> Tuple[Dict[str, NeuralNetworkModel], Dict[str, frozendict]]:
         """
         Initialize a neural network for each element using a dictionary representation of potential settings.
         """
         logger.debug("[Setting models]")
         model: Dict[str, NeuralNetworkModel] = dict()
-        model_params = dict()
+        model_params: Dict[str, frozendict] = dict()
 
         random_keys = random.split(random.PRNGKey(0), self.n_elements)
 
         for i, element in enumerate(self.elements):
-
             logger.debug(f"Element: {element}")
 
             # TODO: what if we have a different model architecture for each element
@@ -211,29 +217,28 @@ class NeuralNetworkPotential(Potential):
         logger.info("Fitting descriptor scalers")
         for structure in dataset:
             for element in structure.elements:
-                aid = structure.select(element)
+                aid: Array = structure.select(element)
                 dsc_val = self.descriptor[element](structure, aid)
-                # print(dsc_val.shape)
                 self.scaler[element].fit(dsc_val)
         logger.debug("Finished scaler fitting.")
 
         if save_scaler:
             self.save_scaler()
 
-    def save_scaler(self):
+    def save_scaler(self) -> None:
         """
         This method saves scaler parameters for each element into separate files.
         """
         # Save scaler parameters for each element separately
         for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number(element)
-            scaler_fn = Path(
+            atomic_number: int = ElementMap.get_atomic_number(element)
+            scaler_file = Path(
                 self.potfile.parent, self._scaler_save_format.format(atomic_number)
             )
             logger.info(
-                f"Saving scaler parameters for element ({element}): {scaler_fn.name}"
+                f"Saving scaler parameters for element ({element}): {scaler_file.name}"
             )
-            self.scaler[element].save(scaler_fn)
+            self.scaler[element].save(scaler_file)
 
     # @Profiler.profile
     def load_scaler(self) -> None:
@@ -243,14 +248,14 @@ class NeuralNetworkPotential(Potential):
         """
         # Load scaler parameters for each element separately
         for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number(element)
-            scaler_fn = Path(
+            atomic_number: int = ElementMap.get_atomic_number(element)
+            scaler_file = Path(
                 self.potfile.parent, self._scaler_save_format.format(atomic_number)
             )
             logger.debug(
-                f"Loading scaler parameters for element {element}: {scaler_fn.name}"
+                f"Loading scaler parameters for element {element}: {scaler_file.name}"
             )
-            self.scaler[element].load(scaler_fn)
+            self.scaler[element].load(scaler_file)
 
     # @Profiler.profile
     def fit_model(self, dataset: RunnerStructureDataset, **kwargs) -> Dict:
@@ -274,10 +279,10 @@ class NeuralNetworkPotential(Potential):
         for element in self.elements:
             logger.debug(f"Saving model weights for element: {element}")
             atomic_number = ElementMap.get_atomic_number(element)
-            model_fn = Path(
+            model_file = Path(
                 self.potfile.parent, self._model_save_format.format(atomic_number)
             )
-            self.model[element].save(model_fn)
+            self.model[element].save(model_file)
 
     # @Profiler.profile
     def load_model(self) -> None:
@@ -286,11 +291,11 @@ class NeuralNetworkPotential(Potential):
         """
         for element in self.elements:
             logger.debug(f"Loading model weights for element: {element}")
-            atomic_number = ElementMap.get_atomic_number(element)
-            model_fn = Path(
+            atomic_number: int = ElementMap.get_atomic_number(element)
+            model_file = Path(
                 self.potfile.parent, self._model_save_format.format(atomic_number)
             )
-            self.model[element].load(model_fn)
+            self.model[element].load(model_file)
 
     def fit(self) -> None:
         """
@@ -308,34 +313,30 @@ class NeuralNetworkPotential(Potential):
         :rtype: Array
         """
         return _energy_fn(
-            self.get_static_inputs_per_element(),
-            structure.get_position_per_element(),
-            self.get_model_params_per_element(),
-            structure.get_inputs_per_element(),
+            self.get_static_args(),
+            structure.get_positions(),
+            self.model_params,
+            structure.get_inputs(),
         )
 
     def compute_force(self, structure: Structure) -> Dict[str, jnp.ndarray]:
-        forces = _compute_forces(
-            self.get_static_inputs_per_element(),
-            structure.get_position_per_element(),
-            self.get_model_params_per_element(),
-            structure.get_inputs_per_element(),
+        forces: Dict[str, Array] = _compute_forces(
+            self.get_static_args(),
+            structure.get_positions(),
+            self.model_params,
+            structure.get_inputs(),
         )
-        return {element: force for element, force in zip(self.elements, forces)}
+        return forces
 
-    def get_static_inputs_per_element(self) -> Tuple:
-        def extract_static_inputs():
-            for element in self.elements:
-                yield (
-                    self.descriptor[element],
-                    self.scaler[element],
-                    self.model[element],
+    def get_static_args(self) -> frozendict:
+        return frozendict(
+            {
+                element: StaticArgs(
+                    self.descriptor[element], self.scaler[element], self.model[element]
                 )
-
-        return tuple(inputs for inputs in extract_static_inputs())
-
-    def get_model_params_per_element(self) -> Tuple[frozendict]:
-        return tuple(params for params in self.model_params.values())
+                for element in self.elements
+            }
+        )
 
     def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
         """
@@ -360,7 +361,7 @@ class NeuralNetworkPotential(Potential):
 
     @property
     def elements(self) -> List[str]:
-        return sorted(self.settings["elements"])
+        return self.settings["elements"]
 
     @property
     def n_elements(self) -> int:
