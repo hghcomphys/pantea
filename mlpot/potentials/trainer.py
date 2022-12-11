@@ -1,8 +1,10 @@
 import jax.numpy as jnp
 import optax
 import random
+import math
+from tqdm import tqdm
 from collections import defaultdict
-from typing import Dict, Callable, Tuple
+from typing import Dict, Callable, Tuple, Any
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from functools import partial
@@ -55,13 +57,13 @@ class NeuralNetworkPotentialTrainer(_Base):
         if settings["updater_type"] == 0:  # Gradient Descent
 
             if settings["gradient_type"] == 1:  # Adam
-                optimizer_cls = optax.adam
+                optimizer_cls = optax.adamw
                 optimizer_cls_kwargs = {
                     "learning_rate": settings["gradient_adam_eta"],
                     "b1": settings["gradient_adam_beta1"],
                     "b2": settings["gradient_adam_beta2"],
                     "eps": settings["gradient_adam_epsilon"],
-                    # "weight_decay": self.settings["gradient_weight_decay"], # TODO: regularization?
+                    "weight_decay": settings["gradient_weight_decay"],
                 }
             # TODO: self.settings["gradient_type"] == 0:  # fixed Step
             else:
@@ -96,22 +98,34 @@ class NeuralNetworkPotentialTrainer(_Base):
 
         return {element: state for element, state in generate_train_state()}
 
+    def update_potential_model_params(self, states: Dict[str, TrainState]) -> None:
+        for element, train_state in states.items():
+            self.potential.model_params[element] = train_state.params
+
     def fit(self, dataset: StructureDataset, **kwargs):
+
+        # TODO: add data loader: batch_size, shuffle, train/val split, etc.
+        batch_size: int = kwargs.get("batch_size", 1)
+        steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))
+        epochs: int = kwargs.get("epochs", 50)
 
         static_args = self.potential.get_static_args()
         states: Dict[str, TrainState] = self.init_train_state()
+
         history = defaultdict(list)
 
-        for epoch in range(20):
+        for epoch in range(epochs):
+            print(f"Epoch {epoch+1} of {epochs}")
+            history["epoch"].append(epoch)
 
-            # steps = len(dataset)
-            for structure in random.choices(dataset, k=len(dataset)):
+            for _ in tqdm(range(steps)):
+                structures = random.choices(dataset, k=batch_size)
 
-                xbatch = structure.get_inputs()
-                ybatch = (
-                    structure.total_energy,
-                    structure.get_forces(),
-                )
+                xbatch = [structure.get_inputs() for structure in structures]
+                ybatch = [
+                    (structure.total_energy, structure.get_forces())
+                    for structure in structures
+                ]
 
                 # batch = xbatch, structure.total_energy
                 # states, metrics_energy = self.train_step_energy(sargs, states, batch)
@@ -119,17 +133,15 @@ class NeuralNetworkPotentialTrainer(_Base):
                 batch = xbatch, ybatch
                 states, metrics = self.train_step(static_args, states, batch)
 
-            if epoch % 1 == 0:
-                print(
-                    f"Epoch {epoch}"
-                    f", loss:{float(metrics['loss']): 0.7f}"
-                    # f", loss[force]:{metrics_force['loss']: 0.7f}"
-                )
-            history["epoch"].append(epoch)
-            history["loss"].append(metrics["loss"])
+            self.update_potential_model_params(states)
 
-            for element, train_state in states.items():
-                self.potential.model_params[element] = train_state.params
+            print(
+                f"training loss:{float(metrics['loss']): 0.7f}"
+                # f", loss[energy]:{float(metrics['loss_eng']): 0.7f}"
+                # f", loss[force]:{float(metrics['loss_frc']): 0.7f}"
+                f"\n"
+            )
+            history["loss"].append(metrics["loss"])
 
         return history
 
@@ -139,53 +151,60 @@ class NeuralNetworkPotentialTrainer(_Base):
         static_args: Dict,
         states: Dict[str, TrainState],
         batch: Tuple,
-    ) -> Tuple[Dict[str, TrainState], Dict]:
-
-        xbatch, (true_energy, true_forces) = batch
-        positions = {element: input.position_aid for element, input in xbatch.items()}
-        n_atoms: int = sum(array.shape[0] for array in positions.values())
-        elements = true_forces.keys()
-
+    ) -> Tuple:
         def loss_fn(
             params: Dict[str, frozendict],
-        ) -> Tuple[Array, Tuple]:
+        ) -> Tuple[Array, Any]:
             """
             Loss function
             """
+            batch_size = len(batch[0])
             loss = jnp.array(0.0)
 
-            # Energy
-            energy = _energy_fn(static_args, positions, params, xbatch)
-            loss_eng = self.criterion(logits=energy, targets=true_energy) / n_atoms
-            loss += loss_eng
+            for xbatch, (true_energy, true_forces) in zip(batch[0], batch[1]):
 
-            # Force
-            forces = _compute_forces(static_args, positions, params, xbatch)
-            # TODO: define loss weights for each element
-            loss_frc = jnp.array(0.0)
-            for element in elements:
-                loss_frc += self.criterion(
-                    logits=forces[element],
-                    targets=true_forces[element],
-                )
-            loss_frc /= len(forces)
-            # TODO: add coefficient
-            loss += loss_frc / n_atoms
+                positions = {
+                    element: input.position_aid for element, input in xbatch.items()
+                }
+                n_atoms: int = sum(array.shape[0] for array in positions.values())
 
-            return loss, (energy, forces)
+                # Energy
+                energy = _energy_fn(static_args, positions, params, xbatch)
+                loss_eng = self.criterion(logits=energy, targets=true_energy) / n_atoms
+                loss += loss_eng
+
+                # Force
+                forces = _compute_forces(static_args, positions, params, xbatch)
+                # TODO: define loss weights for each element
+                elements = true_forces.keys()
+                loss_frc = jnp.array(0.0)
+                for element in elements:
+                    loss_frc += self.criterion(
+                        logits=forces[element],
+                        targets=true_forces[element],
+                    )
+                loss_frc /= len(forces)
+                loss += loss_frc / n_atoms
+
+            loss /= batch_size
+
+            return loss, (jnp.array(0),)  # (loss_eng, loss_frc) #, (energy, forces))
 
         value_and_grad_fn = value_and_grad(loss_fn, has_aux=True)
-        (loss, (energy, forces)), grads = value_and_grad_fn(
+
+        (loss, (outputs,)), grads = value_and_grad_fn(
             {element: state.params for element, state in states.items()}
         )
         states = {
             element: states[element].apply_gradients(grads=grads[element])
-            for element in elements
+            for element in states.keys()
         }
 
         # TODO: add more metrics for force
         metrics = {
             "loss": loss,
+            # "loss_eng": loss_eng,
+            # "loss_frc": loss_frc,
         }
         return states, metrics
 
