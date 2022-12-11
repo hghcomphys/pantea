@@ -1,8 +1,8 @@
 import jax.numpy as jnp
-from typing import Tuple, List, Dict, Callable
+from typing import Tuple, List, Dict, Callable, Optional, Mapping
 from frozendict import frozendict
 from flax import linen as nn
-from mlpot.types import Array
+from mlpot.types import dtype as _dtype, Array
 
 
 class NeuralNetworkModel(nn.Module):  # BaseModel
@@ -13,11 +13,11 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
     # input_size: int
     hidden_layers: Tuple[Tuple[int, str]]
     output_layer: Tuple[int, str] = (1, "l")
-    weights_range: Tuple[int, int] = None
-    param_dtype: jnp.dtype = jnp.float32  # FIXME:
+    weights_range: Optional[Tuple[int, int]] = None
+    param_dtype: jnp.dtype = _dtype.FLOATX
 
     # see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
-    _activation_function_map: Dict[str, Callable] = frozendict(
+    _activation_function_map: Mapping[str, Callable] = frozendict(
         {
             "t": nn.tanh,
             "l": lambda x: x,

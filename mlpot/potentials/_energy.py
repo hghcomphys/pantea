@@ -10,7 +10,7 @@ from mlpot.types import Array
 @partial(jit, static_argnums=(0,))  # FIXME
 def _energy_fn(
     static_args: Dict,
-    xs: Dict[str, Array],
+    positions: Dict[str, Array],
     params: Dict[str, frozendict],
     xbatch: Dict,
 ) -> Array:
@@ -20,8 +20,8 @@ def _energy_fn(
     """
     # TODO: using jax.lax.scan?
 
-    elements = xbatch.keys()
-    energy = jnp.array(0.0)
+    elements: list[str] = list(xbatch.keys())
+    energy: Array = jnp.array(0.0)
 
     for element in elements:
 
@@ -30,16 +30,14 @@ def _energy_fn(
 
         dsc = _calculate_descriptor(
             static_arg.descriptor,
-            xs[element],
+            positions[element],
             input.position,
             input.atype,
             input.lattice,
             input.emap,
         )
-        scaled_dsc = static_arg.scaler(dsc)
-        energy += jnp.sum(
-            static_arg.model.apply({"params": params[element]}, scaled_dsc)
-        )
+        dsc = static_arg.scaler(dsc)
+        energy += jnp.sum(static_arg.model.apply({"params": params[element]}, dsc))
 
     return energy
 
@@ -53,9 +51,16 @@ _grad_energy_fn = jit(
 # @partial(jit, static_argnums=(0,))  # FIXME
 def _compute_forces(
     static_input: Dict,
-    xs: Dict[str, Array],
+    positions: Dict[str, Array],
     params: Dict[str, frozendict],
     xbatch: Dict,
 ) -> Dict[str, Array]:
-    grad_energies: Dict = _grad_energy_fn(static_input, xs, params, xbatch)
-    return {element: -1 * grad_energy for element, grad_energy in grad_energies.items()}
+    grad_energies: Dict[str, Array] = _grad_energy_fn(
+        static_input,
+        positions,
+        params,
+        xbatch,
+    )
+    return {
+        element: -1.0 * grad_energy for element, grad_energy in grad_energies.items()
+    }
