@@ -46,7 +46,7 @@ class Structure(_Base):
     An C++ implementation might be required for MD simulation but not necessarily developing ML potential.
     """
 
-    _atomic_attributes: Tuple[str] = (
+    _atomic_attributes: Tuple[str, ...] = (
         "position",  # per-atom position x, y, and z
         "force",  # per-atom force components x, y, and z
         "energy",  # per-atom energy
@@ -58,15 +58,15 @@ class Structure(_Base):
 
     def __init__(
         self,
-        data: Dict = None,
-        r_cutoff: float = None,
-        dtype: jnp.dtype = jnp.float32,  # FIXME
+        data: Optional[Dict] = None,
+        dtype: Optional[jnp.dtype] = None,
+        r_cutoff: Optional[float] = None,
         **kwargs,
     ) -> None:
         """
         Initialize structure including tensors, simulation box, neighbor list, etc.
         """
-        self.dtype = dtype if dtype else _dtype.FLOATX
+        self.dtype = dtype if dtype is not None else _dtype.FLOATX
         self.requires_neighbor_update = True
 
         self.element_map: ElementMap = kwargs.get("element_map", None)

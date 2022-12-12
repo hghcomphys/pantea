@@ -4,6 +4,7 @@ from typing import Mapping
 
 
 Array = jnp.ndarray
+Dtype = jnp.dtype
 
 
 class DataType(_CFG):

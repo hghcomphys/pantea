@@ -1,4 +1,6 @@
-# MLPOT: Machine-Learning Interatomic Potential
+# MLPOT
+
+<!-- Machine-Learning Interatomic Potential -->
 
 <!-- <img src="./docs/images/logo.png" alt="NNP" width="300"/> -->
 

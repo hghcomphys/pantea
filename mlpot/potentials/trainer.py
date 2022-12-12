@@ -16,7 +16,7 @@ from mlpot.base import _Base
 from mlpot.potentials.loss import mse_loss
 from mlpot.potentials.metrics import ErrorMetric
 from mlpot.potentials.metrics import init_error_metric
-from mlpot.potentials._energy import _energy_fn, _compute_forces
+from mlpot.potentials._energy import _energy_fn, _compute_force
 from mlpot.types import Array
 
 
@@ -158,6 +158,8 @@ class NeuralNetworkPotentialTrainer(_Base):
             """
             Loss function
             """
+            # TODO: define force loss weights for each element
+
             batch_size = len(batch[0])
             loss = jnp.array(0.0)
 
@@ -173,9 +175,9 @@ class NeuralNetworkPotentialTrainer(_Base):
                 loss_eng = self.criterion(logits=energy, targets=true_energy) / n_atoms
                 loss += loss_eng
 
+                # if random.random() < 0.15:
                 # Force
-                forces = _compute_forces(static_args, positions, params, xbatch)
-                # TODO: define loss weights for each element
+                forces = _compute_force(static_args, positions, params, xbatch)
                 elements = true_forces.keys()
                 loss_frc = jnp.array(0.0)
                 for element in elements:

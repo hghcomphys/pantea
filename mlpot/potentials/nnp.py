@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from tqdm import tqdm
 from typing import List, Dict, Optional, Tuple, Any
 from pathlib import Path
 from jax import random
@@ -18,7 +19,7 @@ from mlpot.structure.element import ElementMap
 from mlpot.potentials.base import Potential
 from mlpot.potentials.settings import NeuralNetworkPotentialSettings
 from mlpot.potentials.trainer import NeuralNetworkPotentialTrainer
-from mlpot.potentials._energy import _energy_fn, _compute_forces
+from mlpot.potentials._energy import _energy_fn, _compute_force
 from mlpot.types import Array
 
 
@@ -215,7 +216,7 @@ class NeuralNetworkPotential(Potential):
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
         logger.info("Fitting descriptor scalers")
-        for structure in dataset:
+        for structure in tqdm(dataset):
             for element in structure.elements:
                 aid: Array = structure.select(element)
                 dsc_val = self.descriptor[element](structure, aid)
@@ -320,7 +321,7 @@ class NeuralNetworkPotential(Potential):
         )
 
     def compute_force(self, structure: Structure) -> Dict[str, jnp.ndarray]:
-        forces: Dict[str, Array] = _compute_forces(
+        forces: Dict[str, Array] = _compute_force(
             self.get_static_args(),
             structure.get_positions(),
             self.model_params,

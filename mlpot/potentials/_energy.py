@@ -49,12 +49,15 @@ _grad_energy_fn = jit(
 
 
 # @partial(jit, static_argnums=(0,))  # FIXME
-def _compute_forces(
+def _compute_force(
     static_input: Dict,
     positions: Dict[str, Array],
     params: Dict[str, frozendict],
     xbatch: Dict,
 ) -> Dict[str, Array]:
+    """
+    Compute force components using the gradient of the energy.
+    """
     grad_energies: Dict[str, Array] = _grad_energy_fn(
         static_input,
         positions,
