@@ -1,11 +1,14 @@
+from functools import partial
+from typing import Optional
+
 import jax
 import jax.numpy as jnp
-from typing import Optional
-from functools import partial
-from mlpot.logger import logger
+
 from mlpot.base import _Base
-from mlpot.types import dtype as _dtype, Array
+from mlpot.logger import logger
 from mlpot.structure._box import _apply_pbc
+from mlpot.types import Array
+from mlpot.types import dtype as _dtype
 
 
 class Box(_Base):

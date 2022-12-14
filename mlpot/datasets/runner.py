@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import TextIO, Dict, List, Union, Any
+
 from collections import defaultdict
 from pathlib import Path
+from typing import Any, Dict, List, TextIO, Union
+
+from mlpot.datasets.base import StructureDataset
+from mlpot.datasets.transformer import ToStructure, Transformer
 from mlpot.logger import logger
 from mlpot.utils.tokenize import tokenize
-from mlpot.datasets.base import StructureDataset
-from mlpot.datasets.transformer import Transformer, ToStructure
 
 
 class RunnerStructureDataset(StructureDataset):

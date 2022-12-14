@@ -1,14 +1,16 @@
-import jax
 import itertools
+from typing import List, Optional, Tuple
+
+import jax
 import jax.numpy as jnp
-from typing import Tuple, List, Optional
-from mlpot.logger import logger
-from mlpot.structure.structure import Structure
-from mlpot.descriptors.base import Descriptor
-from mlpot.descriptors.asf.symmetry import SymmetryFunction
+
+from mlpot.descriptors.asf._asf import _calculate_descriptor
 from mlpot.descriptors.asf.angular import AngularSymmetryFunction
 from mlpot.descriptors.asf.radial import RadialSymmetryFunction
-from mlpot.descriptors.asf._asf import _calculate_descriptor
+from mlpot.descriptors.asf.symmetry import SymmetryFunction
+from mlpot.descriptors.base import Descriptor
+from mlpot.logger import logger
+from mlpot.structure.structure import Structure
 from mlpot.types import Array
 
 

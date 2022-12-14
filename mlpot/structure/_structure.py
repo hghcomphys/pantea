@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from typing import Optional, Tuple
+
 import jax
 import jax.numpy as jnp
-from typing import Tuple, Optional
+
 from mlpot.structure.box import _apply_pbc
 from mlpot.types import Array
 

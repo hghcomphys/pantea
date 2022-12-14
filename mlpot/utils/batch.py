@@ -1,6 +1,7 @@
 import math
-from mlpot.types import Array
 from typing import Generator
+
+from mlpot.types import Array
 
 
 def create_batch(array: Array, batch_size: int) -> Generator[Array, None, None]:

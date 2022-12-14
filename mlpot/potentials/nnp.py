@@ -1,27 +1,28 @@
-import jax.numpy as jnp
-from tqdm import tqdm
-from typing import List, Dict, Optional, Tuple, Any
-from pathlib import Path
-from jax import random
-from frozendict import frozendict
 from collections import namedtuple
-from mlpot.logger import logger
-from mlpot.structure import Structure
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import jax.numpy as jnp
+from frozendict import frozendict
+from jax import random
+from tqdm import tqdm
+
 from mlpot.datasets.runner import RunnerStructureDataset
-from mlpot.descriptors.base import Descriptor
+from mlpot.descriptors.asf.angular import G3, G9
 from mlpot.descriptors.asf.asf import ASF
 from mlpot.descriptors.asf.cutoff import CutoffFunction
-from mlpot.descriptors.scaler import DescriptorScaler
 from mlpot.descriptors.asf.radial import G1, G2
-from mlpot.descriptors.asf.angular import G3, G9
+from mlpot.descriptors.base import Descriptor
+from mlpot.descriptors.scaler import DescriptorScaler
+from mlpot.logger import logger
 from mlpot.models.nn import NeuralNetworkModel
-from mlpot.structure.element import ElementMap
+from mlpot.potentials._energy import _compute_force, _energy_fn
 from mlpot.potentials.base import Potential
 from mlpot.potentials.settings import NeuralNetworkPotentialSettings
 from mlpot.potentials.trainer import NeuralNetworkPotentialTrainer
-from mlpot.potentials._energy import _energy_fn, _compute_force
+from mlpot.structure import Structure
+from mlpot.structure.element import ElementMap
 from mlpot.types import Array
-
 
 StaticArgs = namedtuple(
     "StaticArgs",
@@ -215,13 +216,13 @@ class NeuralNetworkPotential(Potential):
 
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
 
-        logger.info("Fitting descriptor scalers")
+        print("Fitting descriptor scalers...")
         for structure in tqdm(dataset):
             for element in structure.elements:
                 aid: Array = structure.select(element)
                 dsc_val = self.descriptor[element](structure, aid)
                 self.scaler[element].fit(dsc_val)
-        logger.debug("Finished scaler fitting.")
+        print("Done.\n")
 
         if save_scaler:
             self.save_scaler()

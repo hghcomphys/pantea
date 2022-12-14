@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+
 from mlpot.types import Array
 
 

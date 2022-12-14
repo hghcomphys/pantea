@@ -1,6 +1,7 @@
+from typing import Dict
+
 from mlpot.base import _Base
 from mlpot.structure.structure import Structure
-from typing import Dict
 
 
 class Transformer(_Base):

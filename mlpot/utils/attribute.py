@@ -1,7 +1,10 @@
+from typing import Any, Dict
+
 import jax.numpy as jnp
-from typing import Dict, Any
+
 from mlpot.logger import logger
-from mlpot.types import dtype as _dtype, Array
+from mlpot.types import Array
+from mlpot.types import dtype as _dtype
 
 
 def set_as_attribute(

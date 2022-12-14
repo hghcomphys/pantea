@@ -1,11 +1,13 @@
-import jax.numpy as jnp
-from typing import Callable, Tuple, Dict
 from functools import partial
-from jax import jit, vmap, lax
-from mlpot.structure._structure import _calculate_distance_per_atom
-from mlpot.structure._neighbor import _calculate_cutoff_mask_per_atom
+from typing import Callable, Dict, Tuple
+
+import jax.numpy as jnp
+from jax import jit, lax, vmap
+
 from mlpot.descriptors.asf.angular import AngularSymmetryFunction
 from mlpot.descriptors.asf.radial import RadialSymmetryFunction
+from mlpot.structure._neighbor import _calculate_cutoff_mask_per_atom
+from mlpot.structure._structure import _calculate_distance_per_atom
 from mlpot.types import Array
 
 

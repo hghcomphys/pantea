@@ -1,7 +1,9 @@
-import jax.numpy as jnp
 from typing import Optional
-from mlpot.logger import logger
+
+import jax.numpy as jnp
+
 from mlpot.base import _Base
+from mlpot.logger import logger
 from mlpot.structure._neighbor import _calculate_cutoff_mask
 
 

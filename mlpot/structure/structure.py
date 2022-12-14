@@ -1,20 +1,23 @@
 from __future__ import annotations
-import numpy as np
+
+from collections import namedtuple
+from functools import partial
+from typing import Dict, List, Optional, Tuple, Union
+
 import jax
 import jax.numpy as jnp
-from collections import namedtuple
-from typing import List, Dict, Tuple, Union, Optional
+import numpy as np
 from ase import Atoms as AseAtoms
-from functools import partial
-from mlpot.logger import logger
+
 from mlpot.base import _Base
-from mlpot.types import dtype as _dtype, Array
-from mlpot.utils.attribute import set_as_attribute
+from mlpot.logger import logger
 from mlpot.structure._structure import _calculate_distance
+from mlpot.structure.box import Box
 from mlpot.structure.element import ElementMap
 from mlpot.structure.neighbor import Neighbor
-from mlpot.structure.box import Box
-
+from mlpot.types import Array
+from mlpot.types import dtype as _dtype
+from mlpot.utils.attribute import set_as_attribute
 
 Input = namedtuple(
     "Input",

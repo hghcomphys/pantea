@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import Dict
+
 from mlpot.base import _Base
 
 

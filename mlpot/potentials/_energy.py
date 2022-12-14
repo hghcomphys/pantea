@@ -1,8 +1,10 @@
+from functools import partial
+from typing import Dict
+
 import jax.numpy as jnp
 from frozendict import frozendict
-from typing import Dict
-from functools import partial
-from jax import jit, grad
+from jax import grad, jit
+
 from mlpot.descriptors.asf._asf import _calculate_descriptor
 from mlpot.types import Array
 

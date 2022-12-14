@@ -1,9 +1,11 @@
 import math
+from functools import partial
+
 import jax
 import jax.numpy as jnp
-from functools import partial
-from mlpot.logger import logger
+
 from mlpot.base import _Base
+from mlpot.logger import logger
 from mlpot.types import Array
 
 

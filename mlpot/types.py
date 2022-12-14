@@ -1,7 +1,8 @@
-import jax.numpy as jnp
-from mlpot.config import _CFG
 from typing import Mapping
 
+import jax.numpy as jnp
+
+from mlpot.config import _CFG
 
 Array = jnp.ndarray
 Dtype = jnp.dtype

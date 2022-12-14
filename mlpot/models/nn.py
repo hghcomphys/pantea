@@ -1,8 +1,11 @@
-from typing import Tuple, List, Callable, Mapping
-from frozendict import frozendict
+from typing import Callable, List, Mapping, Tuple
+
 from flax import linen as nn
+from frozendict import frozendict
 from jax.random import KeyArray
-from mlpot.types import dtype as _dtype, Array, Dtype
+
+from mlpot.types import Array, Dtype
+from mlpot.types import dtype as _dtype
 
 
 class UniformInitializer:

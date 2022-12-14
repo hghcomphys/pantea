@@ -1,6 +1,6 @@
-from mlpot.logger import logger
 from mlpot.base import _Base
 from mlpot.descriptors.asf.cutoff import CutoffFunction
+from mlpot.logger import logger
 from mlpot.types import Array
 
 

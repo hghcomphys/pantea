@@ -1,11 +1,14 @@
-import jax
-import numpy as np
-import jax.numpy as jnp
 from pathlib import Path
 from typing import Optional
-from mlpot.logger import logger
-from mlpot.types import dtype as _dtype, Array
+
+import jax
+import jax.numpy as jnp
+import numpy as np
+
 from mlpot.base import _Base
+from mlpot.logger import logger
+from mlpot.types import Array
+from mlpot.types import dtype as _dtype
 
 
 class DescriptorScaler(_Base):
