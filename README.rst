@@ -1,6 +1,7 @@
-.. image:: images/logo.png
-        :alt: logo
 
+.. image:: docs/images/logo.png
+        :alt: logo
+        
 =====
 MLPOT
 =====
@@ -17,9 +18,8 @@ MLPOT
         :target: https://mlpot.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-
-* Free software: GNU General Public License v3
-* Documentation: https://mlpot.readthedocs.io.
+.. * Free software: GNU General Public License v3
+.. * Documentation: https://mlpot.readthedocs.io.
 
 
 What is it? 
