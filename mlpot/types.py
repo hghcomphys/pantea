@@ -1,4 +1,4 @@
-from typing import Mapping
+from dataclasses import dataclass
 
 import jax.numpy as jnp
 
@@ -8,18 +8,20 @@ Array = jnp.ndarray
 Dtype = jnp.dtype
 
 
+@dataclass
 class DataType(_CFG):
     """
-    A configuration class for the tensors' data type.
+    A configuration class for arrays data type.
+    It is globally used as default dtype for arrays, indices, etc.
+
+    User can modify any default dtype, for example, via setting the global
+    floating point precision of `FLOATX` to single (float32) or double (float64).
     """
 
-    _conf: Mapping[str, jnp.dtype] = {
-        "FLOATX": jnp.float32,
-        "INT": jnp.int32,
-        "UINT": jnp.uint32,
-        "INDEX": jnp.int32,
-    }
+    FLOATX: Dtype = jnp.float32
+    INT: Dtype = jnp.int32
+    UINT: Dtype = jnp.uint32
+    INDEX: Dtype = jnp.int32
 
 
-# Create global dtype config
 dtype: DataType = DataType()

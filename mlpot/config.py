@@ -1,32 +1,24 @@
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any
 
 from mlpot.logger import logger
 
 
+@dataclass
 class _CFG:
     """
-    A configuration class of default values for global variables.
+    A base configuration class of default values for global variables.
     """
 
-    # TODO: circular import error between CFG & logger
-    _conf: Dict[str, Any] = {
-        # Global variables!
-    }
+    # TODO: add methods to read configurations from dict and file inputs
 
-    def __init__(self) -> None:
-        self._set_attributes()
+    def get(self, name: str) -> Any:
+        return getattr(self, name)
 
-    def _set_attributes(self) -> None:
-        for atr in self._conf:
-            setattr(self, atr, self._conf[atr])
-
-    def get(self, name) -> Any:
-        return self._conf[name]
-
-    def set(self, name, value) -> None:
-        if name in self._conf.keys():
+    def set(self, name: str, value: Any) -> None:
+        if name in self.__dict__:
             logger.debug(f"Setting {name}: '{value}'")
-            self._conf[name] = value
+            setattr(self, name, value)
         else:
             logger.error(
                 f"Name '{name}' is not allowed!",
