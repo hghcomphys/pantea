@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict
+from typing import Any, DefaultDict, Dict
 
 from mlpot.base import _Base
 
@@ -21,5 +21,5 @@ class Settings(_Base):
     """
 
     def __init__(self, default: Dict) -> None:
-        self._settings = defaultdict(None)
+        self._settings: DefaultDict[str, Any] = defaultdict(lambda: None)
         self._settings.update(default)

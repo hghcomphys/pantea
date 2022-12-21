@@ -27,7 +27,9 @@ class AtomicSymmetryFunction(Descriptor):
     def __init__(self, element: str) -> None:
         super().__init__(element)  # central element
         self._radial: List[Tuple[RadialSymmetryFunction, str, str]] = list()
-        self._angular: List[Tuple[AngularSymmetryFunction, str, str, str]] = list()
+        self._angular: List[
+            Tuple[AngularSymmetryFunction, str, str, Optional[str]]
+        ] = list()
         logger.debug(f"Initializing {self}")
 
     def add(
