@@ -14,9 +14,11 @@ dist/
 *.png
 dask-worker-space/
 .idea/
-*.rst
+#*.rst
 _build/
 *.zip
 H2O*/
 LJ*/
 .virtual_documents/
+*.pkl
+*.json
