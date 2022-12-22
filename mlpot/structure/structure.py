@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections import namedtuple
+from dataclasses import dataclass
 from functools import partial
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
@@ -15,174 +15,180 @@ from mlpot.structure._structure import _calculate_distance
 from mlpot.structure.box import Box
 from mlpot.structure.element import ElementMap
 from mlpot.structure.neighbor import Neighbor
-from mlpot.types import Array
+from mlpot.types import Array, Dtype
 from mlpot.types import dtype as _dtype
-from mlpot.utils.attribute import set_as_attribute
-
-Input = namedtuple(
-    "Input",
-    [
-        "position_aid",
-        "position",
-        "atype",
-        "lattice",
-        "emap",
-    ],
-)
 
 
+class Input(NamedTuple):
+    """
+    Represents an array data types of Structure.
+    """
+
+    position_aid: Array
+    position: Array
+    atype: Array
+    lattice: Array
+    emap: Dict[str, Array]
+
+
+@dataclass
 class Structure(_Base):
     """
-    A structure tensors of atomic information including positions, forces, per-atom and total energy,
-    cell matrix, and  more) for a collection of atoms in the simulation box.
-    An instance of the Structure class is a defined unit of the atomic data that
-    is used to calculate the (atomic) descriptors.
-    For computational reasons tensors of atomic data are used instead of defining
-    individual atoms as a unit of the atomic data.
+    A structure contains arrays of atomic attributes
+    for a collection of atoms in a simulation box.
 
-    The most computationally expensive section of a structure is utilized for calculating the neighbor list.
-    This is done by giving an instance of Structure to the Neighbor class which is responsible
-    for updating the neighbor lists.
+    Atomic attributes:
 
-    For the MPI implementation, this class can be considered as one domain
-    in domain decomposition method (see miniMD code).
-    An C++ implementation might be required for MD simulation but not necessarily developing ML potential.
+    * `position`: per-atom position x, y, and z
+    * `force`: per-atom force components x, y, and z
+    * `energy`:  per-atom energy
+    * `lattice`: vectors of super cell 3x3 matrix
+    * `total_energy`: total energy of atoms in simulation box
+    * `charge`:  per-atom electric charge
+    * `total_charge`: total charge of atoms in simulation box
+
+    An instance structure can be seen as unit of data.
+    list of structures will be used to train a potential,
+    or new energy and forces components can be computed for a given structure.
+
+    Each structure has two instances of the `ElementMap` and `Neighbor`.
+    The element map determines how to extract atom types (integer)
+    from the element (string such as 'H' for hydrogen atoms).
+    The neighbor computes the list of neighboring atoms inside a given cutoff radius.
+
+    .. note::
+        `Structure` can be considered as one domain
+        in the domain decomposition method for the MPI implementation (see `miniMD`_).
+
+    .. _miniMD: https://github.com/Mantevo/miniMD
     """
 
-    _atomic_attributes: Tuple[str, ...] = (
-        "position",  # per-atom position x, y, and z
-        "force",  # per-atom force components x, y, and z
-        "energy",  # per-atom energy
-        "lattice",  # vectors of super cell 3x3 matrix
-        "total_energy",  # total energy of atoms in simulation box
-        # 'charge',       # per-atom electric charge
-        # 'total_charger' # total charge of atoms in simulation box
+    position: Array
+    force: Array
+    energy: Array
+    lattice: Array
+    total_energy: Array
+    charge: Array
+    total_charge: Array
+    atom_type: Array
+    element_map: ElementMap
+    box: Box
+    neighbor: Neighbor
+
+    atom_attributes: ClassVar[Tuple[str, ...]] = (
+        "position",
+        "force",
+        "energy",
+        "lattice",
+        "total_energy",
+        "charge",
+        "total_charge",
     )
 
-    def __init__(
-        self,
-        data: Optional[Dict] = None,
-        dtype: Optional[jnp.dtype] = None,
+    @classmethod
+    def create_from_dict(
+        cls,
+        data: Dict[str, Any],
         r_cutoff: Optional[float] = None,
-        **kwargs,
-    ) -> None:
+        dtype: Dtype = _dtype.FLOATX,
+    ) -> Structure:
         """
-        Initialize structure including tensors, simulation box, neighbor list, etc.
+        Initialize structure from a dictionary of arrays, box, neighbor, etc.
         """
-        self.dtype = dtype if dtype is not None else _dtype.FLOATX
-        self.requires_neighbor_update = True
+        kwargs: Dict[str, Any] = dict()
+        try:
+            element_map = ElementMap(data["element"])
+            kwargs["element_map"] = element_map
+            kwargs["atom_type"] = jnp.asarray(
+                [element_map(atom) for atom in data["element"]],
+                dtype=_dtype.INDEX,
+            )
+            kwargs.update(
+                cls._init_arrays(data, dtype=dtype),
+            )
+            kwargs["box"] = cls._init_box(data["lattice"], dtype=dtype)
+            kwargs["neighbor"] = Neighbor(r_cutoff)
 
-        self.element_map: ElementMap = kwargs.get("element_map", None)
-        self.tensors: Dict[str, jnp.ndarray] = kwargs.get("tensors", None)
-        self.box: Box = kwargs.get("box", None)
-        self.neighbor: Neighbor = kwargs.get("neighbor", None)
+        except KeyError:
+            logger.error(
+                f"Cannot find at least one of the expected atomic attributes in the input data:"
+                f"{''.join(cls.atom_attributes)}",
+                exception=KeyError,  # type: ignore
+            )
+        return cls(**kwargs)
 
-        if data:
+    @staticmethod
+    def _init_arrays(data: Dict, dtype: Dtype) -> Dict[str, Array]:
+        """
+        Create arrays from the input dictionary of structure data.
+        It convert element (string) to atom type (integer) because of computational efficiency.
+        """
+        logger.debug("Allocating arrays for the structure:")
+        arrays: Dict[str, Array] = dict()
+
+        for atom_attr in Structure.atom_attributes:
             try:
-                self.element_map = ElementMap(data["element"])
-                self._init_tensors(data)
-                self._init_box(data["lattice"])
+                array = jnp.asarray(data[atom_attr], dtype=dtype)
+                arrays[atom_attr] = array
+                logger.debug(
+                    f"{atom_attr:12} -> Array(shape='{array.shape}', dtype='{array.dtype}')"
+                )
+
             except KeyError:
                 logger.error(
-                    f"Cannot find at least one of the expected atomic attributes in the input data:"
-                    f"{''.join(self._atomic_attributes)}",
-                    exception=KeyError,
+                    f"Cannot find atom attribute {atom_attr} in the input data",
+                    exception=KeyError,  # type:ignore
                 )
-        self._init_neighbor(r_cutoff)
+        return arrays
 
-        if self.tensors:
-            set_as_attribute(self, self.tensors)
+    @staticmethod
+    def _init_box(lattice: List, dtype: Dtype) -> Box:
+        """
+        Create a simulation box object using the provided lattice matrix.
+
+        :param lattice: 3x3 lattice matrix
+        :type lattice: Array
+        """
+        box: Box
+        if len(lattice) > 0:
+            box = Box(jnp.asarray(lattice, dtype=dtype))
+        else:
+            logger.debug("No lattice info were found in structure")
+            box = Box()
+        return box
+
+    def __post_init__(self) -> None:
+
+        self.requires_neighbor_update: bool = True
 
         if self.box:
-            logger.debug("Shift all atoms into the PBC simulation box")
+            logger.debug("Shift all the atoms inside the simulation box")
             self.position = self.box.shift_inside_box(self.position)
 
         super().__init__()
-
-    def _init_neighbor(self, r_cutoff: float) -> None:
-        """
-        Initialize a neighbor list instance for a given cutoff radius.
-
-        It ignores updating the neighbor list if the new cutoff radius is the same the existing one.
-        It's important to note that the Neighbor object in Structure is considered as a buffer and not
-        part of the atomic structure data. But, it uses for calculating descriptors, potential, etc.
-        It is the task of those classes to prepare the buffer neighbor for their own usage.
-        """
-        if not self.neighbor:
-            self.neighbor = Neighbor(r_cutoff)
-            self.requires_neighbor_update = True
-            return
-
-        if self.r_cutoff and self.r_cutoff == r_cutoff:
-            logger.info(
-                f"Skipping updating the neighbor list (cutoff radius): "
-                f"{self.r_cutoff} vs {r_cutoff} (new)"
-            )
-            return
-
-        self.neighbor.set_cutoff_radius(r_cutoff)
-        self.requires_neighbor_update = True
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
         Set cutoff radius of the structure.
         This method is useful when having a potential with different cutoff radius.
 
+        It ignores updating the neighbor list if the new cutoff radius is the same the existing one.
+        It's important to note that the Neighbor object in Structure is considered as a buffer and not
+        part of the atomic structure data. But, it uses for calculating descriptors, potential, etc.
+        It is the task of those classes to prepare the buffer neighbor for their own usage.
+
         :param r_cutoff: new cutoff radius
         :type r_cutoff: float
         """
-        self._init_neighbor(r_cutoff)
-
-    def _init_box(self, lattice: List) -> None:
-        """
-        Create a simulation box object using the provided lattice tensor.
-
-        :param lattice: 3x3 lattice matrix
-        :type lattice: Array
-        """
-        if len(lattice) > 0:
-            self.box = Box(lattice)
-        else:
-            logger.debug("No lattice info were found in structure")
-            self.box = Box()
-
-    def _prepare_atype_tensor(self, elements: List[str]) -> Array:
-        """
-        Set atom types using the element map
-        """
-        return jnp.asarray(
-            [self.element_map(elem) for elem in elements],
-            dtype=int,  # FIXME _dtype.INDEX,
-        )
-
-    def _init_tensors(self, data: Dict) -> None:
-        """
-        Create tensors (allocate memory) from the input dictionary of structure data.
-        It convert element (string) to atom type (integer) because of computational efficiency.
-        """
-        logger.debug("Allocating tensors for the structure:")
-        self.tensors = {}
-        try:
-            # Tensors for atomic attributes
-            for atomic_attr in self._atomic_attributes:
-                self.tensors[atomic_attr] = jnp.asarray(
-                    data[atomic_attr],
-                    dtype=self.dtype,
-                )
-            # A tensor for atomic type
-            self.tensors["atype"] = self._prepare_atype_tensor(data["element"])
-
-        except KeyError:
-            logger.error(
-                f"Cannot find expected atomic attribute {atomic_attr} in the input data dictionary",
-                exception=KeyError,
+        if self.r_cutoff == r_cutoff:
+            logger.info(
+                f"Skipping updating the neighbor list (cutoff radius): "
+                f"{self.r_cutoff} vs. {r_cutoff} (new)"
             )
+            return
 
-        # Logging
-        for attr, tensor in self.tensors.items():
-            logger.debug(
-                f"{attr:12} -> Tensor(shape='{tensor.shape}', dtype='{tensor.dtype}')"
-            )
+        self.neighbor.set_cutoff_radius(r_cutoff)
+        self.requires_neighbor_update = True
 
     def update_neighbor(self) -> None:
         """
@@ -190,6 +196,64 @@ class Structure(_Base):
         This can be computationally expensive.
         """
         self.neighbor.update(self)
+
+    @property
+    def r_cutoff(self) -> Optional[float]:
+        return self.neighbor.r_cutoff
+
+    @property
+    def natoms(self) -> int:
+        return self.position.shape[0]
+
+    @property
+    def dtype(self) -> Dtype:
+        return self.position.dtype
+
+    @property
+    def elements(self) -> tuple[str]:
+        # FIXME: optimize
+        return tuple({self.element_map(int(at)) for at in self.atom_type})
+
+    def __repr__(self) -> str:
+        return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """
+        Return arrays of atomic attribute to a dictionary.
+        To be used for dumping structure into a file.
+        """
+        data = dict()
+        for atom_attr in self.atom_attributes:
+            array: Array = getattr(self, atom_attr)
+            data[atom_attr] = np.asarray(array)
+        return data
+
+    def to_ase_atoms(self) -> AseAtoms:
+        """
+        This method returns an ASE representation (atoms) of the structure.
+        The returned object can be used to visualize or modify the structure using the ASE package.
+        """
+        logger.info("Creating a representation of the structure in form of ASE atoms")
+        BOHR_TO_ANGSTROM = 0.529177  # TODO: Unit class or input length_conversion
+        return AseAtoms(
+            symbols=[self.element_map(int(at)) for at in self.atom_type],
+            positions=[BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position],
+            cell=[BOHR_TO_ANGSTROM * float(l) for l in self.box.length]
+            if self.box
+            else None,  # FIXME: works only for orthogonal cells
+        )
+
+    # TODO: jit
+    def select(self, element: str) -> Array:
+        """
+        Return all atom ids with atom type same as the input element.
+
+        :param element: element
+        :type element: str
+        :return: atom indices
+        :rtype: Array
+        """
+        return jnp.nonzero(self.atom_type == self.element_map[element])[0]
 
     @partial(jax.jit, static_argnums=(0,))  # FIXME
     def calculate_distance(
@@ -212,141 +276,9 @@ class Structure(_Base):
 
         return jnp.squeeze(dis), jnp.squeeze(dx)
 
-    # TODO: jit
-    def select(self, element: str) -> Array:
-        """
-        Return all atom ids with atom type same as the input element.
-
-        :param element: element
-        :type element: str
-        :return: atom indices
-        :rtype: Array
-        """
-        return jnp.nonzero(self.atype == self.element_map[element])[0]
-
-    def get_inputs(self) -> Dict[str, Input]:
-        """
-        A tuple of required info that are used for training and evaluating the potential.
-        """
-
-        def extract_input():
-            for element in self.elements:
-                aid: Array = self.select(element)
-                yield element, Input(
-                    self.position[aid],
-                    self.position,
-                    self.atype,
-                    self.box.lattice,
-                    self.element_map.element_to_atype,
-                )
-
-        return {element: input for element, input in extract_input()}
-
-    def get_positions(self) -> Dict[str, Array]:
-        def extract_position():
-            for element in self.elements:
-                aid: Array = self.select(element)
-                yield element, self.position[aid]
-
-        return {element: position for element, position in extract_position()}
-
-    def get_forces(self) -> Dict[str, Array]:
-        def extract_force():
-            for element in self.elements:
-                aid: Array = self.select(element)
-                yield element, self.force[aid]
-
-        return {element: force for element, force in extract_force()}
-
-    @property
-    def n_atoms(self) -> int:
-        return self.position.shape[0]
-
-    @property
-    def elements(self) -> List[str]:
-        # FIXME: optimize
-        return list({self.element_map(int(at)) for at in self.atype})
-
-    @property
-    def r_cutoff(self) -> float:
-        return self.neighbor.r_cutoff
-
-    def __repr__(self) -> str:
-        return f"Structure(n_atoms={self.n_atoms}, elements={self.elements}, dtype={self.dtype})"
-
-    def to_dict(self) -> Dict[str, np.ndarray]:
-        """
-        Cast the tensors to structure data.
-        To be used for dumping structure into a file.
-        """
-        data = {}
-        for name, tensor in self.tensors.items():
-            data[name] = np.asarray(tensor)
-        return data
-
-    def to_ase_atoms(self) -> AseAtoms:
-        """
-        This method returns an ASE representation (atoms) of the structure.
-        The returned object can be used to visualize or modify the structure using the ASE package.
-        """
-        logger.info("Creating a representation of the structure in form of ASE atoms")
-        BOHR_TO_ANGSTROM = 0.529177  # TODO: Unit class or input length_conversion
-        return AseAtoms(
-            symbols=[self.element_map(int(at)) for at in self.atype],
-            positions=[BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position],
-            cell=[BOHR_TO_ANGSTROM * float(l) for l in self.box.length]
-            if self.box
-            else None,  # FIXME: works only for orthogonal cells
-        )
-
-    def compare(
-        self,
-        other: Structure,
-        errors: Union[str, List] = "RMSEpa",
-        return_difference: bool = False,
-    ) -> Dict[str, float]:
-        """
-        Compare force and total energy values between two structures and return desired errors metrics.
-
-        :param other: other structure
-        :type other: Structure
-        :param error: a list of error metrics including 'RMSE', 'RMSEpa', 'MSE', and 'MSEpa'. Defaults to ['RMSEpa']
-        :type errors: list, optional
-        :type return_difference: bool, optional
-        :return: whether return energy and force tensor differences or not, defaults to False
-        :return: a dictionary of error metrics.
-        :rtype: Dict
-        """
-        # TODO: add charge, total_charge
-        result = dict()
-        frc_diff = self.force - other.force
-        eng_diff = self.total_energy - other.total_energy
-        errors = [errors] if isinstance(errors, str) else errors
-        logger.info(f"Comparing two structures, error metrics: {', '.join(errors)}")
-        errors = [x.lower() for x in errors]
-
-        # TODO: use metric classes
-        if "rmse" in errors:
-            result["force_RMSE"] = jnp.sqrt(jnp.mean(frc_diff**2))
-            result["energy_RMSE"] = jnp.sqrt(jnp.mean(eng_diff**2))
-        if "rmsepa" in errors:
-            result["force_RMSEpa"] = jnp.sqrt(jnp.mean(frc_diff**2))
-            result["energy_RMSEpa"] = jnp.sqrt(jnp.mean(eng_diff**2)) / self.n_atoms
-        if "mse" in errors:
-            result["force_MSE"] = jnp.mean(frc_diff**2)
-            result["energy_MSE"] = jnp.mean(eng_diff**2)
-        if "msepa" in errors:
-            result["force_MSEpa"] = jnp.mean(frc_diff**2)
-            result["energy_MSEpa"] = jnp.mean(eng_diff**2) / self.n_atoms
-        if return_difference:
-            result["frc_diff"] = frc_diff
-            result["eng_diff"] = eng_diff
-
-        return result
-
     def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Array:
         """
-        Return a tensor of energy offset.
+        Return a array of energy offset.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[str, float]
@@ -381,3 +313,82 @@ class Structure(_Base):
         energy_offset = self._get_energy_offset(atom_energy)
         self.energy += energy_offset
         self.total_energy += energy_offset.sum()
+
+    def get_inputs(self) -> Dict[str, Input]:
+        """
+        A tuple of required info that are used for training and evaluating the potential.
+        """
+
+        def extract_input():
+            for element in self.elements:
+                aid: Array = self.select(element)
+                yield element, Input(
+                    self.position[aid],
+                    self.position,
+                    self.atom_type,
+                    self.box.lattice,
+                    self.element_map.element_to_atype,
+                )
+
+        return {element: input for element, input in extract_input()}
+
+    def get_positions(self) -> Dict[str, Array]:
+        def extract_position():
+            for element in self.elements:
+                aid: Array = self.select(element)
+                yield element, self.position[aid]
+
+        return {element: position for element, position in extract_position()}
+
+    def get_forces(self) -> Dict[str, Array]:
+        def extract_force():
+            for element in self.elements:
+                aid: Array = self.select(element)
+                yield element, self.force[aid]
+
+        return {element: force for element, force in extract_force()}
+
+    def compare(
+        self,
+        other: Structure,
+        errors: Union[str, List] = "RMSEpa",
+        return_difference: bool = False,
+    ) -> Dict[str, Array]:
+        """
+        Compare force and total energy values between two structures and return desired errors metrics.
+
+        :param other: other structure
+        :type other: Structure
+        :param error: a list of error metrics including 'RMSE', 'RMSEpa', 'MSE', and 'MSEpa'. Defaults to ['RMSEpa']
+        :type errors: list, optional
+        :type return_difference: bool, optional
+        :return: whether return energy and force array differences or not, defaults to False
+        :return: a dictionary of error metrics.
+        :rtype: Dict
+        """
+        # TODO: add charge, total_charge
+        result = dict()
+        frc_diff = self.force - other.force
+        eng_diff = self.total_energy - other.total_energy
+        errors = [errors] if isinstance(errors, str) else errors
+        logger.info(f"Comparing two structures, error metrics: {', '.join(errors)}")
+        errors = [x.lower() for x in errors]
+
+        # TODO: use metric classes
+        if "rmse" in errors:
+            result["force_RMSE"] = jnp.sqrt(jnp.mean(frc_diff**2))
+            result["energy_RMSE"] = jnp.sqrt(jnp.mean(eng_diff**2))
+        if "rmsepa" in errors:
+            result["force_RMSEpa"] = jnp.sqrt(jnp.mean(frc_diff**2))
+            result["energy_RMSEpa"] = jnp.sqrt(jnp.mean(eng_diff**2)) / self.natoms
+        if "mse" in errors:
+            result["force_MSE"] = jnp.mean(frc_diff**2)
+            result["energy_MSE"] = jnp.mean(eng_diff**2)
+        if "msepa" in errors:
+            result["force_MSEpa"] = jnp.mean(frc_diff**2)
+            result["energy_MSEpa"] = jnp.mean(eng_diff**2) / self.natoms
+        if return_difference:
+            result["frc_diff"] = frc_diff
+            result["eng_diff"] = eng_diff
+
+        return result
