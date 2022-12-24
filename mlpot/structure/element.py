@@ -1,4 +1,4 @@
-from typing import Dict, List, Mapping, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 
 from mlpot.base import _Base
 from mlpot.logger import logger
@@ -115,25 +115,30 @@ _KNOWN_ELEMENTS_DICT: Mapping[str, int] = {
 
 class ElementMap(_Base):
     """
-    This class maps elements to atomic number end vice versa.
-    It also assigns an atomic type to each element which allows efficient tensor processing (e.g. applying conditions) using
-    the integer numbers (atom types) instead of strings.
+    Maps elements to atomic numbers and more.
+
+    It assigns an atomic type to each element which allows
+    efficient array processing (e.g. applying conditions) using
+    the arrays of integer (i.e. atom types) instead of strings.
     """
 
-    def __init__(self, elements: List[str] = None) -> None:
-        self.clear_maps()
-        if elements is not None:
-            self.unique_elements = set(elements)
-            self.create_maps()
+    def __init__(self, elements: List[str]) -> None:
+        """Initialize element map."""
+        self.unique_elements: Set[str] = set(elements)
+        self._elem_to_atomic_num: Dict[str, int] = dict()
+        self._elem_to_atom_type: Dict[str, int] = dict()
+        self._atom_type_to_elem: Dict[int, str] = dict()
+        self.create_maps()
         super().__init__()
 
     def insert(self, element: str) -> None:
+        """Add a new element."""
         self.unique_elements.add(element)
 
     def create_maps(self) -> None:
         """
-        Create dictionary to map element, atom type, and atomic numbers.
-        The given atom types are set based on elements' atomic number.
+        Create dictionary to map elements, atom types, and atomic numbers.
+        The given atom types are given and sorted based on elements' atomic number.
         """
         self._elem_to_atomic_num = {
             elem: _KNOWN_ELEMENTS_DICT[elem] for elem in self.unique_elements
@@ -149,23 +154,19 @@ class ElementMap(_Base):
             atom_type: elem for elem, atom_type in self._elem_to_atom_type.items()
         }
 
-    def clear_maps(self) -> None:
-        self.unique_elements = set()
-        self._elem_to_atomic_num = None
-        self._elem_to_atom_type = None
-        self._atom_type_to_elem = None
-
     def __getitem__(self, item: Union[str, int]) -> Union[int, str]:
-        """
-        Map an element to the atom type and vice versa.
-        """
+        """Map an element to the atom type and vice versa."""
         # TODO: raise an error when element type or atom type is unknown
+        result: Union[int, str]
         if isinstance(item, int):
-            return self._atom_type_to_elem[item]
+            result = self._atom_type_to_elem[item]
         elif isinstance(item, str):
-            return self._elem_to_atom_type[item]
+            result = self._elem_to_atom_type[item]
         else:
-            logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
+            logger.error(
+                f"Unknown item type '{type(item)}'", exception=TypeError  # type: ignore
+            )
+        return result  # type: ignore
 
     def __call__(self, item: Union[str, int]) -> Union[int, str]:
         return self[item]
@@ -175,9 +176,9 @@ class ElementMap(_Base):
         """
         Return atomic number of the input element.
 
-        :param element: Element
+        :param element: element name
         :type element: str
-        :return: Atomic number
+        :return: atomic number
         :rtype: int
         """
         return _KNOWN_ELEMENTS_DICT[element]
@@ -187,6 +188,7 @@ class ElementMap(_Base):
         """
         Return element name of the given atomic number.
 
+        :param atomic_number: atomic number
         :type atomic_number: int
         :return: element name
         :rtype: str
@@ -194,11 +196,12 @@ class ElementMap(_Base):
         return _KNOWN_ELEMENTS_LIST[atomic_number - 1]
 
     @property
-    def atype_to_element(self) -> Dict[int, str]:
+    def atom_type_to_element(self) -> Dict[int, str]:
         """
         Return a dictionary mapping of atom type to element.
         This property is defined due to a serialization issue of the ElementMap class during parallelization.
 
+        :return: a dictionary of mapping an atom type (integer) to the corresponding element (string)
         :rtype: Dict[int, str]
         """
         return self._atom_type_to_elem
@@ -209,6 +212,7 @@ class ElementMap(_Base):
         Return a mapping dictionary of element to atom type.
         This property is defined due to a serialization issue of the ElementMap class during parallelization.
 
+        :return: a dictionary of mapping an element (string) to the corresponding atom type (integer)
         :rtype: Dict[str, int]
         """
         return self._elem_to_atom_type

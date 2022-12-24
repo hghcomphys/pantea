@@ -11,6 +11,10 @@ def _calculate_cutoff_mask_per_atom(
     rij: Array,
     r_cutoff: Array,
 ) -> Array:
+    """
+    Calculate a mask (boolean array) of neighboring atoms for a single atom.
+    It excludes zero-distance atoms.
+    """
     # mask atoms only inside the cutoff radius and excluding self-counting
     return (rij <= r_cutoff) & (rij != 0.0)  # FIXME: use jnp.isclose
 
@@ -26,7 +30,7 @@ def _calculate_cutoff_mask(
     structure,
     r_cutoff: Array,
 ) -> Array:
-    # Tensors no need to be differentiable here
-    aids = jnp.arange(structure.n_atoms)  # all atoms
-    rij, _ = structure.calculate_distance(aids)
+    """Calculate mask (boolean arrays) of neighboring atoms for multiple atoms (using `jax.vmap`)."""
+    atom_index: Array = jnp.arange(structure.natoms)  # all atoms
+    rij, _ = structure.calculate_distance(atom_index)
     return _vmap_calculate_neighbor_mask(rij, r_cutoff)

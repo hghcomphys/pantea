@@ -11,16 +11,13 @@ from mlpot.types import Array
 
 @jax.jit
 def _calculate_distance_per_atom(
-    x_atom: Array,
-    x_neighbors: Array,
+    atom_position: Array,
+    neighbor_position: Array,
     lattice: Optional[Array] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """
-    [Kernel]
-    Calculate a tensor of distances to all atoms existing in the structure from a given atom.
-    TODO: input pbc flag, using default pbc from global configuration
-    """
-    dx = x_atom - x_neighbors
+    """Calculate an array of distances between a single atom and neighboring atoms."""
+    # TODO: input pbc flag, using default pbc from global configuration
+    dx = atom_position - neighbor_position
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
 
@@ -42,13 +39,9 @@ _vmap_calculate_distance = jax.vmap(
 
 @jax.jit
 def _calculate_distance(
-    x_atom: Array,
-    x_neighbors: Array,
+    atom_position: Array,
+    neighbor_position: Array,
     lattice: Optional[Array] = None,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """
-    [Kernel]
-    Calculate a tensor of distances to all atoms existing in the structure from a given atom.
-    """
-    # TODO: input pbc flag, using default pbc from global configuration
-    return _vmap_calculate_distance(x_atom, x_neighbors, lattice)
+) -> Tuple[Array, Array]:
+    """Calculate an array of distances between multiple atoms and the neighbors (using `jax.vmap`)."""
+    return _vmap_calculate_distance(atom_position, neighbor_position, lattice)
