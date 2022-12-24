@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 from ase import Atoms as AseAtoms
+from jax import tree_util
 
 from mlpot.base import _Base
 from mlpot.logger import logger
@@ -20,6 +21,7 @@ from mlpot.types import dtype as _dtype
 from mlpot.units import units
 
 
+# FIXME: move to trainer module
 class Input(NamedTuple):
     """
     Represents array data types of Structure.
@@ -43,10 +45,10 @@ class Structure(_Base):
     * `position`: per-atom position x, y, and z
     * `force`: per-atom force components x, y, and z
     * `energy`:  per-atom energy
-    * `lattice`: vectors of super cell 3x3 matrix
     * `total_energy`: total energy of atoms in simulation box
     * `charge`:  per-atom electric charge
     * `total_charge`: total charge of atoms in simulation box
+    * `atom_type`: per-atom type (unique integer) corresponding to each element
 
     An instance structure can be seen as unit of data.
     list of structures will be used to train a potential,
@@ -54,9 +56,9 @@ class Structure(_Base):
 
     Each structure has three additional instances:
 
+    * `Box`: applying periodic boundary conditions (PBC)
     * `ElementMap`: determines how to extract atom types (integer) from the element (string)
     * `Neighbor`: computes the list of neighboring atoms inside a given cutoff radius
-    * `Box`: applying periodic boundary conditions (PBC)
 
     .. note::
         `Structure` can be considered as one domain
@@ -65,17 +67,19 @@ class Structure(_Base):
     .. _miniMD: https://github.com/Mantevo/miniMD
     """
 
-    atom_type: Array
     position: Array
     force: Array
     energy: Array
     total_energy: Array
     charge: Array
     total_charge: Array
+    atom_type: Array
     box: Box
     element_map: ElementMap
     neighbor: Neighbor
     requires_neighbor_update: bool = field(init=False, default=True)
+
+    # --------------------------------------------------------------------------------------
 
     @classmethod
     def create_from_dict(
@@ -109,17 +113,10 @@ class Structure(_Base):
 
         except KeyError:
             logger.error(
-                f"Cannot find at least one of the expected atomic attributes in the input data:"
-                f"{''.join(cls._get_atom_attributes())}",
+                f"Cannot find at least one of the expected keyword in the input data.",
                 exception=KeyError,  # type: ignore
             )
         return cls(**kwargs)
-
-    @classmethod
-    def _get_atom_attributes(cls) -> tuple[str, ...]:
-        return tuple(
-            attr for attr, dtype in cls.__annotations__.items() if dtype == "Array"
-        )
 
     @staticmethod
     def _init_arrays(
@@ -164,9 +161,54 @@ class Structure(_Base):
     def __post_init__(self) -> None:
         """Post initializations."""
         super().__init__()
-        if self.box:
-            logger.debug("Shift all the atoms inside the simulation box")
-            self.position = self.box.shift_inside_box(self.position)
+        # self.position = self.box.shift_inside_box(self.position)
+
+    # --------------------------------------------------------------------------------------
+
+    def _tree_flatten(self) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
+        """
+        Here we specify exactly which components of the class should be treated as
+        static and which should be treated as dynamic.
+
+        Correctly JIT-compiling a class method
+        See https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods
+        """
+        children = tuple(getattr(self, attr) for attr in self._get_array_attributes())
+        aux_data = {
+            attr: getattr(self, attr) for attr in self._get_non_array_attributes()
+        }
+        return (children, aux_data)
+
+    @classmethod
+    def _tree_unflatten(
+        cls, aux_data: Dict[str, Any], children: Tuple[Any, ...]
+    ) -> Structure:
+        return cls(*children, **aux_data)
+
+    @classmethod
+    def _get_array_attributes(cls) -> tuple[str, ...]:
+        return tuple(
+            attr for attr, dtype in cls.__annotations__.items() if dtype == "Array"
+        )
+
+    @classmethod
+    def _get_non_array_attributes(cls):
+        return tuple(
+            attr
+            for attr in cls.__annotations__.keys()
+            if attr not in cls._get_array_attributes()
+        )
+
+    def __hash__(self):
+        """"""
+        aux_data = self._tree_flatten()[1]  # jax.jit static arguments
+        return hash(tuple(frozenset(sorted(aux_data.items()))))
+
+    @classmethod
+    def _get_atom_attributes(cls) -> tuple[str, ...]:
+        return cls._get_array_attributes()
+
+    # --------------------------------------------------------------------------------------
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
@@ -235,7 +277,7 @@ class Structure(_Base):
         :rtype: Dict[str, np.ndarray]
         """
         data = dict()
-        for atom_attr in self.atom_attributes:
+        for atom_attr in self._get_atom_attributes():
             array: Array = getattr(self, atom_attr)
             data[atom_attr] = np.asarray(array)
         return data
@@ -244,6 +286,9 @@ class Structure(_Base):
         """
         An ASE representation of the structure.
         The returned atoms object can be used to visualize or modify the structure using the ASE package.
+
+        .. warning::
+            This works only for for orthogonal cells.
 
         :return: ASE representation of the structure
         :rtype: AseAtoms
@@ -254,9 +299,9 @@ class Structure(_Base):
             positions=[
                 units.BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position
             ],
-            cell=[units.BOHR_TO_ANGSTROM * float(l) for l in self.box.length]
+            cell=[units.BOHR_TO_ANGSTROM * float(l) for l in self.box.length]  # type: ignore
             if self.box
-            else None,  # FIXME: works only for orthogonal cells
+            else None,  # FIXME:
         )
 
     # TODO: jit
@@ -272,7 +317,7 @@ class Structure(_Base):
         return jnp.nonzero(self.atom_type == self.element_map[element])[0]
 
     # FIXME: dataclass is not hashable
-    # @partial(jax.jit, static_argnums=0)
+    @partial(jax.jit, static_argnums=0)
     def calculate_distance(
         self,
         atom_index: Array,
@@ -303,6 +348,8 @@ class Structure(_Base):
             atom_position, neighbor_position, self.box.lattice
         )
         return jnp.squeeze(dis), jnp.squeeze(dx)
+
+    # --------------------------------------------------------------------------------------
 
     def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Array:
         """Return a array of energy offset."""
@@ -336,18 +383,22 @@ class Structure(_Base):
         self.energy += energy_offset
         self.total_energy += energy_offset.sum()
 
+    # --------------------------------------------------------------------------------------
+
     def get_inputs(self) -> Dict[str, Input]:
         """A tuple of required info which are used for training and evaluating the potential."""
 
-        def extract_input():
+        def extract_input() -> Generator[Tuple[str, Input], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, Input(
                     self.position[atom_index],
                     self.position,
                     self.atom_type,
-                    self.box.lattice,
-                    self.element_map.element_to_atype,
+                    self.box.lattice,  # type:ignore
+                    tree_util.tree_map(
+                        lambda x: jnp.asarray(x), self.element_map.element_to_atype
+                    ),
                 )
 
         return {element: input for element, input in extract_input()}
@@ -355,7 +406,7 @@ class Structure(_Base):
     def get_positions(self) -> Dict[str, Array]:
         """Get position of atoms per element."""
 
-        def extract_position():
+        def extract_position() -> Generator[Tuple[str, Array], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, self.position[atom_index]
@@ -365,9 +416,15 @@ class Structure(_Base):
     def get_forces(self) -> Dict[str, Array]:
         """Get force components per element."""
 
-        def extract_force():
+        def extract_force() -> Generator[Tuple[str, Array], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, self.force[atom_index]
 
         return {element: force for element, force in extract_force()}
+
+
+# Making CustomClass a PyTree
+tree_util.register_pytree_node(
+    Structure, Structure._tree_flatten, Structure._tree_unflatten  # type: ignore
+)
