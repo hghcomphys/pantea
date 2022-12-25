@@ -10,7 +10,7 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from mlpot.base import _Base
+from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._structure import _calculate_distance
 from mlpot.structure.box import Box
@@ -21,7 +21,7 @@ from mlpot.types import dtype as _dtype
 from mlpot.units import units
 
 
-# FIXME: move to trainer module
+# FIXME: move to the trainer module
 class Input(NamedTuple):
     """
     Represents array data types of Structure.
@@ -35,7 +35,7 @@ class Input(NamedTuple):
 
 
 @dataclass
-class Structure(_Base):
+class Structure(_BaseJaxPytreeClass):
     """
     A structure contains arrays of atomic attributes
     for a collection of atoms in the simulation box.
@@ -77,7 +77,7 @@ class Structure(_Base):
     box: Box
     element_map: ElementMap
     neighbor: Neighbor
-    requires_neighbor_update: bool = field(init=False, default=True)
+    requires_neighbor_update: bool = True
 
     # --------------------------------------------------------------------------------------
 
@@ -109,7 +109,7 @@ class Structure(_Base):
             )
             kwargs["box"] = cls._init_box(data["lattice"], dtype=dtype)
             kwargs["element_map"] = element_map
-            kwargs["neighbor"] = Neighbor(r_cutoff)
+            kwargs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
 
         except KeyError:
             logger.error(
@@ -158,55 +158,19 @@ class Structure(_Base):
             box = Box()
         return box
 
+    @classmethod
+    def _get_atom_attributes(cls) -> Tuple[str, ...]:
+        """Get atom attributes which are basically array values."""
+        return cls._get_jit_dynamic_attributes()
+
     def __post_init__(self) -> None:
         """Post initializations."""
-        super().__init__()
-        # self.position = self.box.shift_inside_box(self.position)
+        # super().__init__()
+        self.position = self.box.shift_inside_box(self.position)
 
-    # --------------------------------------------------------------------------------------
-
-    def _tree_flatten(self) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
-        """
-        Here we specify exactly which components of the class should be treated as
-        static and which should be treated as dynamic.
-
-        Correctly JIT-compiling a class method
-        See https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods
-        """
-        children = tuple(getattr(self, attr) for attr in self._get_array_attributes())
-        aux_data = {
-            attr: getattr(self, attr) for attr in self._get_non_array_attributes()
-        }
-        return (children, aux_data)
-
-    @classmethod
-    def _tree_unflatten(
-        cls, aux_data: Dict[str, Any], children: Tuple[Any, ...]
-    ) -> Structure:
-        return cls(*children, **aux_data)
-
-    @classmethod
-    def _get_array_attributes(cls) -> tuple[str, ...]:
-        return tuple(
-            attr for attr, dtype in cls.__annotations__.items() if dtype == "Array"
-        )
-
-    @classmethod
-    def _get_non_array_attributes(cls):
-        return tuple(
-            attr
-            for attr in cls.__annotations__.keys()
-            if attr not in cls._get_array_attributes()
-        )
-
-    def __hash__(self):
-        """"""
-        aux_data = self._tree_flatten()[1]  # jax.jit static arguments
-        return hash(tuple(frozenset(sorted(aux_data.items()))))
-
-    @classmethod
-    def _get_atom_attributes(cls) -> tuple[str, ...]:
-        return cls._get_array_attributes()
+    def __hash__(self) -> int:
+        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        return super().__hash__()
 
     # --------------------------------------------------------------------------------------
 
@@ -245,6 +209,8 @@ class Structure(_Base):
         """Return cutoff radius of neighboring atoms."""
         return self.neighbor.r_cutoff
 
+    # --------------------------------------------------------------------------------------
+
     @property
     def natoms(self) -> int:
         """Number of atoms in the structure"""
@@ -266,7 +232,53 @@ class Structure(_Base):
         return tuple({str(self.element_map(int(at))) for at in self.atom_type})
 
     def __repr__(self) -> str:
-        return f"Structure(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+        return f"{self.__class__.__name__}(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+
+    # TODO: jit
+    def select(self, element: str) -> Array:
+        """
+        Return all atom indices of the element.
+
+        :param element: element name (e.g. `H` for hydrogen)
+        :type element: str
+        :return: atom indices
+        :rtype: Array
+        """
+        return jnp.nonzero(self.atom_type == self.element_map[element])[0]
+
+    @jax.jit
+    def calculate_distance(
+        self,
+        atom_index: Array,
+        neighbor_index: Optional[Array] = None,
+    ) -> Tuple[Array, Array]:
+        """
+        Calculate distances between specific atoms (given by atom indices)
+        and the neighboring atoms in the structure.
+        This  method also returns the corresponding position difference.
+
+        If no neighbor index is given, all atoms inside the cutoff
+        radius will be considered as neighbor atoms.
+
+        :param atom_index: array of atom indices
+        :type atom_index: Array
+        :param neighbor_index: indices of neighbor atoms, defaults to None
+        :type neighbor_index: Optional[Array], optional
+        :return:  distances, position differences
+        :rtype: Tuple[Array, Array]
+        """
+        atom_position = self.position[jnp.asarray(atom_index)].reshape(-1, 3)
+        if neighbor_index is not None:
+            neighbor_position = self.position[jnp.atleast_1d(neighbor_index)]
+        else:
+            neighbor_position = self.position
+
+        dis, dx = _calculate_distance(
+            atom_position, neighbor_position, self.box.lattice
+        )
+        return jnp.squeeze(dis), jnp.squeeze(dx)
+
+    # --------------------------------------------------------------------------------------
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -301,53 +313,8 @@ class Structure(_Base):
             ],
             cell=[units.BOHR_TO_ANGSTROM * float(l) for l in self.box.length]  # type: ignore
             if self.box
-            else None,  # FIXME:
+            else None,  # FIXME: non-orthogonal cells
         )
-
-    # TODO: jit
-    def select(self, element: str) -> Array:
-        """
-        Return all atom indices of the element.
-
-        :param element: element name (e.g. `H` for hydrogen)
-        :type element: str
-        :return: atom indices
-        :rtype: Array
-        """
-        return jnp.nonzero(self.atom_type == self.element_map[element])[0]
-
-    # FIXME: dataclass is not hashable
-    @partial(jax.jit, static_argnums=0)
-    def calculate_distance(
-        self,
-        atom_index: Array,
-        neighbor_index: Optional[Array] = None,
-    ) -> Tuple[Array, Array]:
-        """
-        Calculate distances between specific atoms (given by atom indices)
-        and the neighboring atoms in the structure.
-        This  method also returns the corresponding position difference.
-
-        If no neighbor index is given, all atoms inside the cutoff
-        radius will be considered as neighbor atoms.
-
-        :param atom_index: array of atom indices
-        :type atom_index: Array
-        :param neighbor_index: indices of neighbor atoms, defaults to None
-        :type neighbor_index: Optional[Array], optional
-        :return:  distances, position differences
-        :rtype: Tuple[Array, Array]
-        """
-        atom_position = self.position[jnp.asarray(atom_index)].reshape(-1, 3)
-        if neighbor_index is not None:
-            neighbor_position = self.position[jnp.atleast_1d(neighbor_index)]
-        else:
-            neighbor_position = self.position
-
-        dis, dx = _calculate_distance(
-            atom_position, neighbor_position, self.box.lattice
-        )
-        return jnp.squeeze(dis), jnp.squeeze(dx)
 
     # --------------------------------------------------------------------------------------
 
@@ -355,7 +322,8 @@ class Structure(_Base):
         """Return a array of energy offset."""
 
         energy_offset: Array = jnp.empty_like(self.energy)
-        for element in self.elements:  # TODO: optimize item assignment
+        # TODO: optimize item assignment
+        for element in self.elements:
             energy_offset = energy_offset.at[self.select(element)].set(
                 atom_energy[element]
             )
@@ -424,7 +392,4 @@ class Structure(_Base):
         return {element: force for element, force in extract_force()}
 
 
-# Making CustomClass a PyTree
-tree_util.register_pytree_node(
-    Structure, Structure._tree_flatten, Structure._tree_unflatten  # type: ignore
-)
+register_jax_pytree_node(Structure)

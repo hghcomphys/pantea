@@ -1,39 +1,36 @@
-from functools import partial
+from dataclasses import dataclass
 from typing import Optional
 
 import jax
 import jax.numpy as jnp
 
-from mlpot.base import _Base
+from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._box import _apply_pbc
 from mlpot.types import Array, Dtype
 from mlpot.types import dtype as _dtype
 
 
-class Box(_Base):
+@dataclass
+class Box(_BaseJaxPytreeClass):
     """
     Simulation box which is responsible for applying PBCs
     when there are available lattice info.
-
 
     .. warning::
         Current implementation works only for orthogonal cells.
         No support for triclinic cells yet.
     """
 
-    def __init__(
-        self,
-        lattice: Optional[Array] = None,
-        dtype: Dtype = _dtype.FLOATX,
-    ) -> None:
-        """Initialize simulation box (super-cell)."""
-        self.lattice: Optional[Array] = None
-        self.dtype: Dtype = dtype
-        if lattice is not None:
+    lattice: Optional[Array] = None
+    dtype: Dtype = _dtype.FLOATX
+
+    def __pos_init__(self) -> None:
+        """Post initialize simulation box (super-cell)."""
+        if self.lattice is not None:
             try:
                 self.lattice = jnp.asarray(
-                    lattice,
+                    self.lattice,
                     dtype=self.dtype,
                 ).reshape(3, 3)
             except RuntimeError:
@@ -41,7 +38,11 @@ class Box(_Base):
                     "Unexpected lattice matrix type or dimension",
                     exception=ValueError,  # type:ignore
                 )
-        super().__init__()
+        # super().__init__()
+
+    def __hash__(self) -> int:
+        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        return super().__hash__()
 
     def __bool__(self) -> bool:
         """Check whether the box instance with lattice info makes sense."""
@@ -49,7 +50,7 @@ class Box(_Base):
             return False
         return True
 
-    @partial(jax.jit, static_argnums=(0,))
+    @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
         """
         Apply the periodic boundary condition (PBC) on the input position array.
@@ -66,6 +67,7 @@ class Box(_Base):
             return _apply_pbc(dx, self.lattice)
         return dx
 
+    @jax.jit
     def shift_inside_box(self, x: Array) -> Array:
         """
         Shift the input atom coordinates inside the PBC simulation box.
@@ -110,3 +112,6 @@ class Box(_Base):
         if self.lattice is not None:
             return self.lattice.diagonal()
         return None
+
+
+register_jax_pytree_node(Box)

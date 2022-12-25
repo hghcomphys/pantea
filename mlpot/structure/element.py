@@ -1,4 +1,4 @@
-from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
+from typing import Dict, List, Mapping, Set, Tuple, Union
 
 from mlpot.base import _Base
 from mlpot.logger import logger
@@ -115,12 +115,14 @@ _KNOWN_ELEMENTS_DICT: Mapping[str, int] = {
 
 class ElementMap(_Base):
     """
-    Maps elements to atomic numbers and more.
+    Mapping element to atomic number utility class.
 
     It assigns an atomic type to each element which allows
     efficient array processing (e.g. applying conditions) using
     the arrays of integer (i.e. atom types) instead of strings.
     """
+
+    # FIXME: might not be jit compilable (issue with hashing of static values)
 
     def __init__(self, elements: List[str]) -> None:
         """Initialize element map."""
@@ -128,14 +130,10 @@ class ElementMap(_Base):
         self._elem_to_atomic_num: Dict[str, int] = dict()
         self._elem_to_atom_type: Dict[str, int] = dict()
         self._atom_type_to_elem: Dict[int, str] = dict()
-        self.create_maps()
+        self.create_mapping_dicts()
         super().__init__()
 
-    def insert(self, element: str) -> None:
-        """Add a new element."""
-        self.unique_elements.add(element)
-
-    def create_maps(self) -> None:
+    def create_mapping_dicts(self) -> None:
         """
         Create dictionary to map elements, atom types, and atomic numbers.
         The given atom types are given and sorted based on elements' atomic number.
@@ -146,7 +144,10 @@ class ElementMap(_Base):
         self._elem_to_atom_type = {
             elem: atom_type
             for atom_type, elem in enumerate(
-                sorted(self._elem_to_atomic_num, key=self._elem_to_atomic_num.get),
+                sorted(
+                    self._elem_to_atomic_num,
+                    key=self._elem_to_atomic_num.get,  # type: ignore
+                ),
                 start=1,
             )
         }
@@ -156,7 +157,6 @@ class ElementMap(_Base):
 
     def __getitem__(self, item: Union[str, int]) -> Union[int, str]:
         """Map an element to the atom type and vice versa."""
-        # TODO: raise an error when element type or atom type is unknown
         result: Union[int, str]
         if isinstance(item, int):
             result = self._atom_type_to_elem[item]

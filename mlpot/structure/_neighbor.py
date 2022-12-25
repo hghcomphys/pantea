@@ -1,5 +1,3 @@
-from functools import partial
-
 import jax
 import jax.numpy as jnp
 
@@ -25,7 +23,7 @@ _vmap_calculate_neighbor_mask = jax.vmap(
 )
 
 
-@partial(jax.jit, static_argnums=(0,))  # FIXME
+@jax.jit
 def _calculate_cutoff_mask(
     structure,
     r_cutoff: Array,

@@ -1,13 +1,18 @@
+from dataclasses import dataclass, field
+from email.policy import default
 from typing import Optional
 
 import jax.numpy as jnp
+from jax import tree_util
 
-from mlpot.base import _Base
+from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._neighbor import _calculate_cutoff_mask
+from mlpot.types import Array
 
 
-class Neighbor(_Base):
+@dataclass
+class Neighbor(_BaseJaxPytreeClass):
     """
     Neighbor creates a neighbor list of atoms for an input structure
     and it is by design independent of `Structure`.
@@ -17,17 +22,17 @@ class Neighbor(_Base):
         This is usually implemented together with defining a skin radius.
     """
 
-    def __init__(self, r_cutoff: Optional[float] = None) -> None:
-        """
-        Initialize the neighbor list.
+    mask: Optional[Array] = None
+    r_cutoff: Optional[float] = None
+    r_cutoff_updated: bool = field(init=False, default=False)
 
-        :param r_cutoff: Cutoff radius, defaults to None.
-        :type r_cutoff: float, optional
-        """
-        self.r_cutoff: Optional[float] = r_cutoff
-        self.r_cutoff_updated: bool = False
-        self.mask: Optional[jnp.ndarray] = None
+    def __post_init__(self) -> None:
+        """Post initialize the neighbor list."""
         super().__init__()
+
+    def __hash__(self) -> int:
+        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        return super().__hash__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
@@ -77,3 +82,6 @@ class Neighbor(_Base):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
+
+
+register_jax_pytree_node(Neighbor)
