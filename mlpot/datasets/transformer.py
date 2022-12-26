@@ -1,10 +1,13 @@
-from typing import Dict
+from abc import ABCMeta, abstractmethod
+from typing import Any, Dict, Optional
 
 from mlpot.base import _Base
 from mlpot.structure.structure import Structure
+from mlpot.types import Dtype
+from mlpot.types import dtype as _dtype
 
 
-class Transformer(_Base):
+class Transformer(_Base, metaclass=ABCMeta):
     """
     A base transformer class which applies on the structure dataset.
     """
@@ -12,14 +15,23 @@ class Transformer(_Base):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
 
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> Any:
+        pass
+
 
 class ToStructure(Transformer):
-    """
-    An utility transformer that converts a structure dataset (dictionary) into to a **Structure** instance.
-    """
+    """Transform a dictionary of data into to a `Structure`."""
 
-    def __init__(self, **kwargs) -> None:
-        self.kwargs = kwargs
+    def __init__(
+        self,
+        r_cutoff: Optional[float] = None,
+        dtype: Dtype = _dtype.FLOATX,
+    ) -> None:
+        self.r_cutoff: Optional[float] = r_cutoff
+        self.dtype: Dtype = dtype
 
-    def __call__(self, data: Dict) -> Structure:
-        return Structure(data, **self.kwargs)
+    def __call__(self, data: Dict[str, Any]) -> Structure:  # type: ignore
+        return Structure.create_from_dict(
+            data, r_cutoff=self.r_cutoff, dtype=self.dtype
+        )

@@ -1,16 +1,23 @@
+from abc import ABCMeta, abstractmethod
+from typing import Any
+
 from mlpot.base import _Base
 
 
-class StructureDataset(_Base):
+class StructureDataset(_Base, metaclass=ABCMeta):
     """
-    A base class for atomic data structure in a lazy mode.
-    All future atomic datasets must be derived from this class.
+    A data container for atom data structure.
+
+    Features:
+
+    * it must access data item in a lazy mode.
+    * it should be able to cache data via a `persist` input flag.
     """
 
-    # TODO: add protocol
-
+    @abstractmethod
     def __len__(self) -> int:
-        raise NotImplementedError
+        pass
 
-    def __getitem__(self, index):
-        raise NotImplementedError
+    @abstractmethod
+    def __getitem__(self, index) -> Any:
+        pass
