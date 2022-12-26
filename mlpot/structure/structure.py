@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from functools import partial
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -67,6 +67,7 @@ class Structure(_BaseJaxPytreeClass):
     .. _miniMD: https://github.com/Mantevo/miniMD
     """
 
+    # Array type attributes must be define first (with type hint)
     position: Array
     force: Array
     energy: Array
@@ -102,12 +103,13 @@ class Structure(_BaseJaxPytreeClass):
         :rtype: Structure
         """
         kwargs: Dict[str, Any] = dict()
+        data_: DefaultDict[str, List] = defaultdict(list, data)
         try:
-            element_map = ElementMap(data["element"])
+            element_map: ElementMap = ElementMap(data_["element"])
             kwargs.update(
-                cls._init_arrays(data, element_map=element_map, dtype=dtype),
+                cls._init_arrays(data_, element_map=element_map, dtype=dtype),
             )
-            kwargs["box"] = cls._init_box(data["lattice"], dtype=dtype)
+            kwargs["box"] = cls._init_box(data_["lattice"], dtype=dtype)
             kwargs["element_map"] = element_map
             kwargs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
 
@@ -229,7 +231,7 @@ class Structure(_BaseJaxPytreeClass):
     @property
     def elements(self) -> tuple[str, ...]:
         # FIXME: optimize
-        return tuple({str(self.element_map(int(at))) for at in self.atom_type})
+        return tuple(sorted({str(self.element_map(int(at))) for at in self.atom_type}))
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
