@@ -20,6 +20,7 @@ LJ_DATA: Dict[str, Any] = {
     "comment": ["r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"],
     "total_charge": [],
     "lattice": [],
+    "atom_type": [1, 1],
 }
 
 H2O_DATA: Dict[str, Any] = {
@@ -87,12 +88,13 @@ H2O_DATA: Dict[str, Any] = {
     ],
     "total_energy": [-32.1390027258],
     "total_charge": [8.0e-07],
+    "atom_type": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
 }
 
 
 class TestStructure:
 
-    lj: Structure = Structure.create_from_dict(LJ_DATA, dtype=jnp.float32)
+    lj: Structure = Structure.create_from_dict(LJ_DATA, dtype=jnp.float32)  # type: ignore
     h2o: Structure = Structure.create_from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
         ["position", "force", "energy", "total_energy", "charge", "total_charge"]
@@ -103,11 +105,17 @@ class TestStructure:
         [
             (
                 lj,
-                tuple(jnp.asarray(LJ_DATA[attr]) for attr in atom_attributes),
+                tuple(
+                    jnp.asarray(LJ_DATA[attr])
+                    for attr in Structure._get_atom_attributes()
+                ),
             ),
             (
                 h2o,
-                tuple(jnp.asarray(H2O_DATA[attr]) for attr in atom_attributes),
+                tuple(
+                    jnp.asarray(H2O_DATA[attr])
+                    for attr in Structure._get_atom_attributes()
+                ),
             ),
         ],
     )
@@ -116,28 +124,13 @@ class TestStructure:
         structure: Structure,
         expected: Tuple,
     ) -> None:
-        assert jnp.all(
-            structure.position == structure.box.shift_inside_box(expected[0])
-        )
-        assert jnp.all(structure.force == expected[1])
-        assert jnp.all(structure.energy == expected[2])
-        assert jnp.all(structure.total_energy == expected[3])
-        assert jnp.all(structure.charge == expected[4])
-        assert jnp.all(structure.total_charge == expected[5])
-
-    @pytest.mark.parametrize(
-        "structure, expected",
-        [
-            (lj, jnp.asarray([1, 1])),
-            (h2o, jnp.asarray([2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1])),
-        ],
-    )
-    def test_atom_type(
-        self,
-        structure: Structure,
-        expected: Array,
-    ) -> None:
-        assert jnp.all(structure.atom_type == expected)
+        for i, attr in enumerate(Structure._get_atom_attributes()):
+            if attr == "position":
+                assert jnp.all(
+                    structure.position == structure.box.shift_inside_box(expected[i])
+                )
+            else:
+                assert jnp.all(getattr(structure, attr) == expected[i])
 
     @pytest.mark.parametrize(
         "structure, expected",
@@ -160,7 +153,6 @@ class TestStructure:
         assert structure.natoms == expected[0]
         assert structure.elements == expected[1]
         assert structure.r_cutoff == expected[2]
-        print(structure.dtype, expected[3])
         assert structure.dtype == expected[3]
         if structure.lattice is None:
             assert structure.lattice is expected[4]
