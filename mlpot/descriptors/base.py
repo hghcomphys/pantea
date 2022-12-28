@@ -1,19 +1,13 @@
-from mlpot.base import _Base
+from abc import ABCMeta, abstractmethod
+
+from mlpot.base import _BaseJaxPytreeDataClass
 
 
-class Descriptor(_Base):
-    """
-    A base descriptor class.
-    All descriptors must derive from this class.
-    """
-
-    def __init__(self, element: str) -> None:
-        self.element: str = element
+class Descriptor(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
+    """A base class for descriptors."""
 
     @property
+    @abstractmethod
     def r_cutoff(self) -> float:
-        """
-        Return the cutoff radius for the derived descriptor.
-        This will be used to extract the maximum cutoff radius required for updating the neighbor list.
-        """
-        raise NotImplementedError
+        """Return the cutoff radius of the descriptor."""
+        pass
