@@ -1,6 +1,6 @@
 import itertools
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -21,19 +21,51 @@ class ACSF(Descriptor):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor.
 
-    ACSF describes the chemical environment of an atom.
+    ACSF describes the local chemical environment of an atom.
     It composes of `two-body` (radial) and `three-body` (angular) symmetry functions.
 
     .. note::
-        The ACSF is independent of the input structure,
-        but it knows how to calculate the descriptor values for any given structure.
+        The ACSF is independent of input structure
+        but it can calculate the descriptor values for any given structures.
+
+    Example:
+
+    .. code-block:: python
+        :linenos:
+
+        from mlpot.descriptors.acsf import ACSF, G2, G3, G9, CutoffFunction
+
+        # Create an instance of ACSF for `O` element
+        acsf = ACSF('O')
+
+        # Set cutoff function and symmetry functions
+        cfn = CutoffFunction(12.0)
+        g2 = G2(cfn, eta=0.5, r_shift=0.0)
+        g3 = G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0)
+
+        # Add different symmetry functions
+        acsf.add(g2, 'O')
+        acsf.add(g2, 'H')
+        acsf.add(g3, 'H', 'H')
+        acsf.add(g3, 'H', 'O')
+
+        print(acsf)
+
+    This gives the following output:
+
+    .. code-block:: bash
+
+        ACSF(element='O', num_symmetry_functions=4, r_cutoff=12.0)
 
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
+
     """
 
     element: str
-    radial: Tuple[Tuple[RadialElements, RadialSymmetryFunction]] = tuple()
-    angular: Tuple[Tuple[AngularElements, AngularSymmetryFunction]] = tuple()
+    # Here we use hashable tuple instead of list due to JIT compilation
+    # FIXME: set radial and angular attribute as dynamic JIT arguments
+    radial: Tuple[Tuple[RadialElements, RadialSymmetryFunction]] = tuple()  # type: ignore
+    angular: Tuple[Tuple[AngularElements, AngularSymmetryFunction]] = tuple()  # type: ignore
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
@@ -118,7 +150,7 @@ class ACSF(Descriptor):
     def grad(
         self,
         structure: Structure,
-        asf_index: int,
+        acsf_index: int,
         atom_index: int,
     ) -> Array:
         """
@@ -126,43 +158,43 @@ class ACSF(Descriptor):
 
         :param structure: input structure instance
         :type structure: Structure
-        :param asf_index: index of array in descriptor array, [0, `num_of_symmetry_functions`]
-        :type asf_index: int
+        :param acsf_index: index of array in descriptor array, [0, `num_of_symmetry_functions`]
+        :type acsf_index: int
         :param atom_index: between [0, natoms)
         :type atom_index: int
         :return: gradient respect to position
         :rtype: Array
         """
-        if not (0 <= asf_index < self.num_symmetry_functions):
+        if not (0 <= acsf_index < self.num_symmetry_functions):
             logger.error(
-                f"Unexpected {asf_index=}."
+                f"Unexpected {acsf_index=}."
                 f" The index must be between [0, {self.num_symmetry_functions})",
                 ValueError,
             )
 
         if not (0 <= atom_index < structure.natoms):
             logger.error(
-                f"Unexpected {asf_index=}."
+                f"Unexpected {acsf_index=}."
                 f" The index must be between [0, {structure.natoms})",
                 ValueError,
             )
 
-        def asf_func(pos) -> Array:
+        def acsf_fn(position: Array) -> Array:
             return _calculate_descriptor(
                 self,
-                pos,
+                position,
                 structure.position,
                 structure.atom_type,
                 structure.box.lattice,
                 structure.element_map.element_to_atype,
-            )[0][asf_index]
+            )[0][acsf_index]
 
         # FIXME: error when using vmap on grad over aids
         # TODO: add jit
-        grad_asf_fn = jax.grad(asf_func)
+        grad_acsf_fn = jax.grad(acsf_fn)
         pos: Array = structure.position[atom_index]
 
-        return grad_asf_fn(pos[None, :])
+        return grad_acsf_fn(pos[None, :])
 
     @property
     def num_radial_symmetry_functions(self) -> int:
@@ -183,14 +215,14 @@ class ACSF(Descriptor):
     def r_cutoff(self) -> float:  # type: ignore
         """Return the maximum cutoff radius for list of the symmetry functions."""
         return max(
-            [cfn[0].r_cutoff for cfn in itertools.chain(*[self.radial, self.angular])]
+            [cfn.r_cutoff for (_, cfn) in itertools.chain(*[self.radial, self.angular])]
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
-            f", num_radial={self.num_radial_symmetry_functions}"
-            f", num_angular={self.num_angular_symmetry_functions})"
+            f", num_symmetry_functions={self.num_symmetry_functions}"
+            f", r_cutoff={self.r_cutoff})"
         )
 
 
