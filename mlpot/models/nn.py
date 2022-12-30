@@ -1,87 +1,76 @@
-from typing import Callable, List, Mapping, Tuple
+from typing import Any, Callable, List, Mapping, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict
-from jax.random import KeyArray
 
 from mlpot.types import Array, Dtype
 from mlpot.types import dtype as _dtype
 
+# FIXME: add kernel initializer as input argument
+# UniformInitializer(self.weights_range)
+# weights_range: Tuple[int, int] = (-1, 1)
 
-class UniformInitializer:
-    def __init__(self, weights_range: Tuple[int, int]) -> None:
-        self.weights_range = weights_range
-        self.initializer = nn.initializers.uniform(
-            self.weights_range[1] - self.weights_range[0]
-        )
+# FIXME: move to activation function module
+# see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
+activation_function_map: Mapping[str, Callable] = frozendict(
+    {
+        "t": nn.tanh,
+        "l": lambda x: x,
+    }
+)
 
-    def __call__(self, rng: KeyArray, shape: Tuple[int, ...], dtype: Dtype) -> Array:
-        return self.initializer(rng, shape, dtype) + self.weights_range[0]
 
-
-class NeuralNetworkModel(nn.Module):  # BaseModel
-    """
-    A neural network model which maps descriptor values to energy and force (using gradient).
-    """
+class NeuralNetworkModel(nn.Module):
+    """Neural network model that outputs energy."""
 
     # input_size: int
-    hidden_layers: Tuple[Tuple[int, str]]
+    hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "l")
-    weights_range: Tuple[int, int] = (-1, 1)
     param_dtype: Dtype = _dtype.FLOATX
-    # TODO: add kenel initializer as input argument
-
-    # see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
-    _activation_function_map: Mapping[str, Callable] = frozendict(
-        {
-            "t": nn.tanh,
-            "l": lambda x: x,
-        }
-    )
+    kernel_initializer: Callable = nn.initializers.lecun_normal()
+    # bias_initializer: Callable = nn.initializers.zeros
 
     def setup(self) -> None:
-        """
-        Initialize stack of Dense layers and activation functions.
-        """
-        self.layers = self.create_network()
+        """Initialize neural network model."""
+        self.layers: List = self.create_network()
 
-    def _create_layer(self, features: int) -> nn.Dense:
+    def create_layer(self, features: int) -> nn.Dense:
         """
-        Create a neural network layer and initialize weights and bias.
-        See https://aiqm.github.io/torchani/examples/nnp_training.html#training-example
+        Create a dense layer and initialize the weights and biases
+        (see `here <https://aiqm.github.io/torchani/examples/nnp_training.html#training-example>`_).
         """
-        # TODO: add bias as input argument
-        kernel_initializer = UniformInitializer(self.weights_range)
-        bias_initializer = nn.initializers.zeros
-
         return nn.Dense(
             features,
             param_dtype=self.param_dtype,
-            kernel_init=kernel_initializer,
-            bias_init=bias_initializer,
+            kernel_init=self.kernel_initializer,
+            bias_init=nn.initializers.zeros,  # self.bias_initializer,
         )
 
     def create_network(self) -> List:
-        """
-        Create a network using provided parameters.
-        """
+        """Create a neural network as stack of dense layers and activation functions."""
         # TODO: add logging
         layers: List = list()
         # Hidden layers
         for out_size, af_type in self.hidden_layers:
-            layers.append(self._create_layer(out_size))
-            layers.append(self._activation_function_map[af_type])
+            layers.append(self.create_layer(out_size))
+            layers.append(activation_function_map[af_type])
         # Output layer
-        layers.append(self._create_layer(self.output_layer[0]))
-        layers.append(self._activation_function_map[self.output_layer[1]])
-
+        layers.append(self.create_layer(self.output_layer[0]))
+        layers.append(activation_function_map[self.output_layer[1]])
         return layers
 
     def __call__(self, inputs: Array) -> Array:
+        """Compute energy."""
         x = inputs
         for layer in self.layers:
             x = layer(x)
         return x
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
+            f", output_layer={self.output_layer})"
+        )
 
     # TODO:
     # def save(self, filename: Path) -> None:
@@ -97,9 +86,3 @@ class NeuralNetworkModel(nn.Module):  # BaseModel
     #     """
     #     self.load_state_dict(torch.load(str(filename)))
     #     self.eval()
-
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
-            f", output_layer={self.output_layer})"
-        )
