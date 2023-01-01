@@ -63,7 +63,7 @@ class DescriptorScaler(_Base):
         Fit scaler parameters using the given input data.
         Bach-wise sampling is also possible (see `this`_ for more details).
 
-        .. _hear: https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
+        .. _this: https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
         """
         data = jnp.atleast_2d(data)  # type: ignore
 
@@ -78,7 +78,7 @@ class DescriptorScaler(_Base):
             if data.shape[1] != self.dimension:
                 logger.error(
                     f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
-                    exception=ValueError,  # type: ignore
+                    exception=ValueError,
                 )
 
             # New data (batch)
@@ -113,7 +113,7 @@ class DescriptorScaler(_Base):
             self._check_warnings(array)
         return self._transform(array)
 
-    def set_max_number_of_warnings(self, number: int) -> None:
+    def set_max_number_of_warnings(self, number: Optional[int] = None) -> None:
         """Set the maximum number of warning for out of range descriptor values."""
         self.max_number_of_warnings = number
         self.number_of_warnings = 0
@@ -134,8 +134,15 @@ class DescriptorScaler(_Base):
         if self.max_number_of_warnings is None:
             return
 
-        gt: Array = jax.lax.gt(array, self.max)
-        lt: Array = jax.lax.gt(self.min, array)
+        # TODO: optimize it
+        gt: Array
+        lt: Array
+        if array.ndim == 2:
+            gt = jax.lax.gt(array, self.max[None, :])
+            lt = jax.lax.gt(self.min[None, :], array)
+        else:
+            gt = jax.lax.gt(array, self.max)
+            lt = jax.lax.gt(self.min, array)
 
         self.number_of_warnings += int(
             jnp.any(jnp.logical_or(gt, lt))
