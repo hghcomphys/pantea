@@ -1,10 +1,29 @@
 from abc import ABCMeta, abstractmethod
 
 from mlpot.base import _BaseJaxPytreeDataClass
+from mlpot.types import Array
 
 
 class Descriptor(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
     """A base class for descriptors."""
+
+    @abstractmethod
+    def add(self, *args, **kwargs) -> None:
+        pass
+
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> Array:
+        pass
+
+    @abstractmethod
+    def grad(self, *args, **kwargs) -> Array:
+        pass
+
+    @property
+    @abstractmethod
+    def num_descriptors(self) -> int:
+        """Return number of items in the descriptor array."""
+        pass
 
     @property
     @abstractmethod
