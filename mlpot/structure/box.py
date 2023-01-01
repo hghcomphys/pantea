@@ -4,7 +4,7 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 
-from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
+from mlpot.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._box import _apply_pbc
 from mlpot.types import Array, Dtype
@@ -12,7 +12,7 @@ from mlpot.types import dtype as _dtype
 
 
 @dataclass
-class Box(_BaseJaxPytreeClass):
+class Box(_BaseJaxPytreeDataClass):
     """
     Simulation box which is responsible for applying PBCs
     when there are available lattice info.
@@ -22,6 +22,7 @@ class Box(_BaseJaxPytreeClass):
         No support for triclinic cells yet.
     """
 
+    # Array type attributes must be define first (with type hint)
     lattice: Optional[Array] = None
     dtype: Dtype = _dtype.FLOATX
 
@@ -41,7 +42,7 @@ class Box(_BaseJaxPytreeClass):
         # super().__init__()
 
     def __hash__(self) -> int:
-        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()
 
     def __bool__(self) -> bool:
@@ -83,7 +84,7 @@ class Box(_BaseJaxPytreeClass):
         return x
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(lattice={self.lattice}"
+        return f"{self.__class__.__name__}(lattice={self.lattice})"
 
     @property
     def lx(self) -> Optional[Array]:

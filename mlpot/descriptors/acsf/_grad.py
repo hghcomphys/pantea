@@ -58,7 +58,7 @@
 
 # # TODO: jax.jit
 # def _grad_func_asf(
-#     asf,
+#     acsf,
 #     asf_index: int,
 #     aid: jnp.ndarray,
 #     position: jnp.ndarray,
@@ -67,9 +67,9 @@
 #     emap: Dict[str, int],
 # ) -> jnp.ndarray:
 
-#     if asf_index < asf.n_radial_symmetry_functions:
+#     if asf_index < acsf.n_radial_symmetry_functions:
 #         grad_value = _grad_func_asf_radial(
-#             asf._radial[asf_index],
+#             acsf._radial[asf_index],
 #             position[aid],
 #             aid,
 #             position,
@@ -79,7 +79,7 @@
 #         )
 #     else:
 #         grad_value = _grad_func_asf_angular(
-#             asf._angular[asf_index - asf.n_radial_symmetry_functions],
+#             acsf._angular[asf_index - acsf.n_radial_symmetry_functions],
 #             position[aid],
 #             aid,
 #             position,

@@ -29,9 +29,9 @@ class _Base:
         )
 
 
-class _BaseJaxPytreeClass:
+class _BaseJaxPytreeDataClass:
     """
-    Here we specify exactly which components of the class should be treated as
+    Here we specify exactly which components of a `dataclass` should be treated as
     static and which should be treated as dynamic (array) values.
 
     The `hash` method then it would only based on the static attributes and
@@ -41,6 +41,9 @@ class _BaseJaxPytreeClass:
     and then static values (as dict) in child class constructor (same for dataclasses).
 
     Registering the class to jax pytree node is required.
+
+    ..warning::
+        Must be used only for dataclasses, and class attributes must have typings.
 
     Correctly JIT-compiling a class method
     See https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods
@@ -58,7 +61,7 @@ class _BaseJaxPytreeClass:
     @classmethod
     def _tree_unflatten(
         cls, aux_data: Dict[str, Any], children: Tuple[Any, ...]
-    ) -> _BaseJaxPytreeClass:
+    ) -> _BaseJaxPytreeDataClass:
         return cls(*children, **aux_data)  # type: ignore
 
     @classmethod

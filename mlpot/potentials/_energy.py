@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from frozendict import frozendict
 from jax import grad, jit
 
-from mlpot.descriptors.asf._asf import _calculate_descriptor
+from mlpot.descriptors.acsf._acsf import _calculate_descriptor
 from mlpot.types import Array
 
 

@@ -4,8 +4,7 @@ import jax.numpy as jnp
 import pytest
 
 from mlpot.descriptors.acsf import ACSF, G2, G3, CutoffFunction
-from mlpot.descriptors.acsf.angular import AngularElements
-from mlpot.descriptors.acsf.radial import RadialElements
+from mlpot.descriptors.acsf.symmetry import EnvironmentElements
 from mlpot.structure.structure import Structure
 from mlpot.types import Array
 
@@ -27,9 +26,9 @@ def h2o_acsf() -> ACSF:
     """Initialize directly from the radial and angular terms."""
     return ACSF(
         element="O",
-        radial=(
+        radial_symmetry_functions=(
             (
-                RadialElements(central_i="O", neighbor_j="H"),
+                EnvironmentElements(central="O", neighbor_j="H"),
                 G2(
                     cfn=CutoffFunction(
                         r_cutoff=5.9043202, cutoff_type="tanhu"
@@ -39,9 +38,9 @@ def h2o_acsf() -> ACSF:
                 ),
             ),
         ),
-        angular=(
+        angular_symmetry_functions=(
             (
-                AngularElements(central_i="O", neighbor_j="H", neighbor_k="H"),
+                EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
                 G3(
                     cfn=CutoffFunction(
                         r_cutoff=5.9043202, cutoff_type="tanhu"

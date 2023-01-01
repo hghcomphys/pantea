@@ -122,7 +122,7 @@ class ElementMap(_Base):
     the arrays of integer (i.e. atom types) instead of strings.
     """
 
-    # FIXME: might not be jit compilable (issue with hashing of static values)
+    # FIXME: issue with hashing of static values (jit compilation)
 
     def __init__(self, elements: List[str]) -> None:
         """Initialize element map."""
@@ -163,9 +163,7 @@ class ElementMap(_Base):
         elif isinstance(item, str):
             result = self._elem_to_atom_type[item]
         else:
-            logger.error(
-                f"Unknown item type '{type(item)}'", exception=TypeError  # type: ignore
-            )
+            logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
         return result  # type: ignore
 
     def __call__(self, item: Union[str, int]) -> Union[int, str]:

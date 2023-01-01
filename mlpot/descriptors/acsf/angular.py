@@ -11,12 +11,6 @@ from mlpot.descriptors.acsf.symmetry import SymmetryFunction
 from mlpot.types import Array
 
 
-class AngularElements(NamedTuple):
-    central_i: str
-    neighbor_j: str
-    neighbor_k: str
-
-
 class AngularSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
     """A base class for `three body` (angular) symmetry functions."""
 
@@ -41,7 +35,7 @@ class AngularSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
 class G3(AngularSymmetryFunction):
     """Angular symmetry function."""
 
-    cutoff_function: CutoffFunction
+    cfn: CutoffFunction
     eta: float
     zeta: float
     lambda0: float
@@ -63,9 +57,9 @@ class G3(AngularSymmetryFunction):
             2.0 ** (1.0 - self.zeta)
             * jnp.power(1 + self.lambda0 * cost, self.zeta)
             * jnp.exp(-self.eta * (rij**2 + rik**2 + rjk**2))
-            * self.cutoff_function(rij)
-            * self.cutoff_function(rik)
-            * self.cutoff_function(rjk)
+            * self.cfn(rij)
+            * self.cfn(rik)
+            * self.cfn(rjk)
         )
 
 
@@ -94,8 +88,8 @@ class G9(G3):
             2.0 ** (1.0 - self.zeta)
             * jnp.power(1 + self.lambda0 * cost, self.zeta)
             * jnp.exp(-self.eta * (rij**2 + rik**2))
-            * self.cutoff_function(rij)
-            * self.cutoff_function(rik)
+            * self.cfn(rij)
+            * self.cfn(rik)
         )
 
 

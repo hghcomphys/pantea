@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable
+from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
@@ -28,7 +28,7 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
 
     r_cutoff: float
     cutoff_type: str = "tanh"
-    cutoff_function: Callable = lambda r: r
+    cutoff_function: Optional[Callable] = None  # lambda r: r
 
     def __post_init__(self) -> None:
         self.cutoff_type = self.cutoff_type.lower()
@@ -47,7 +47,11 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
 
     @jax.jit
     def __call__(self, r: Array) -> Array:
-        return jnp.where(r < self.r_cutoff, self.cutoff_function(r), jnp.zeros_like(r))
+        return jnp.where(
+            r < self.r_cutoff,
+            self.cutoff_function(r),  # type: ignore
+            jnp.zeros_like(r),
+        )
 
     def hard(self, r: Array) -> Array:
         return jnp.ones_like(r)

@@ -6,9 +6,7 @@ from mlpot.logger import logger
 
 @dataclass
 class _CFG:
-    """
-    A base configuration class of default values for global variables.
-    """
+    """A base configuration class of default values for global variables."""
 
     # TODO: add methods to read configurations from dict and file inputs
 

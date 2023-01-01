@@ -50,26 +50,27 @@ Defining an atomic descriptor
 -----------------------------
 
 The below example shows how to define a vector of Atomic-centered Symmetry Functions
-(`ASF`_) for an element.
+(`ACSF`_) for an element.
 The defined descriptor can be calculated on a given structure and the evaluated vector of descriptor values are eventually used for constructing ML potentials.
 
-.. _ASF: https://aip.scitation.org/doi/10.1063/1.3553717
+.. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
 .. code-block:: python
 
         from mlpot.datasets import RunnerStructureDataset
-        from mlpot.descriptors import AtomicSymmetryFunction
         from mlpot.descriptors import CutoffFunction, G2, G3
+        from mlpot.descriptors import ACSF
+        
 
         # Read atomic structure data
         structures = RunnerStructureDataset('input.data')
         structure = structures[0]
 
         # Define descriptor and adding radial and angular terms
-        descriptor = AtomicSymmetryFunction(element='H')
+        descriptor = ACSF(element='H')
         cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
-        descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H' )
-        descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O' )
+        descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
+        descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
 
         # Calculate descriptor values
         values = descriptor(structure)
@@ -79,7 +80,7 @@ The defined descriptor can be calculated on a given structure and the evaluated 
 Training a potential
 --------------------
 
-This example shows hwo to quickly create a high-dimensional neural network 
+This example shows how to quickly create a high-dimensional neural network 
 potential `HDNNP`_ and training on the input structures. The energy and force components 
 can be evaluated for (new) structures from the trained potential.
 

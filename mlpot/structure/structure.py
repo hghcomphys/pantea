@@ -10,7 +10,7 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
+from mlpot.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._structure import _calculate_distance
 from mlpot.structure.box import Box
@@ -35,7 +35,7 @@ class Input(NamedTuple):
 
 
 @dataclass
-class Structure(_BaseJaxPytreeClass):
+class Structure(_BaseJaxPytreeDataClass):
     """
     A structure contains arrays of atomic attributes
     for a collection of atoms in the simulation box.
@@ -116,7 +116,7 @@ class Structure(_BaseJaxPytreeClass):
         except KeyError:
             logger.error(
                 f"Cannot find at least one of the expected keyword in the input data.",
-                exception=KeyError,  # type: ignore
+                exception=KeyError,
             )
         return cls(**kwargs)
 
@@ -171,7 +171,7 @@ class Structure(_BaseJaxPytreeClass):
         self.position = self.box.shift_inside_box(self.position)
 
     def __hash__(self) -> int:
-        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()
 
     # --------------------------------------------------------------------------------------

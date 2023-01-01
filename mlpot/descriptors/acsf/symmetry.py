@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from typing import NamedTuple, Optional
 
 from mlpot.base import _BaseJaxPytreeDataClass
 from mlpot.descriptors.acsf.cutoff import CutoffFunction
@@ -12,8 +13,8 @@ class SymmetryFunction(_BaseJaxPytreeDataClass):
     All symmetry functions (i.e. radial and angular) must derive from this base class.
     """
 
-    def __init__(self, cutoff_function: CutoffFunction) -> None:
-        self.cutoff_function: CutoffFunction = cutoff_function
+    def __init__(self, cfn: CutoffFunction) -> None:
+        self.cfn: CutoffFunction = cfn
         logger.debug(repr(self))
 
     @abstractmethod
@@ -22,4 +23,10 @@ class SymmetryFunction(_BaseJaxPytreeDataClass):
 
     @property
     def r_cutoff(self) -> float:
-        return self.cutoff_function.r_cutoff
+        return self.cfn.r_cutoff
+
+
+class EnvironmentElements(NamedTuple):
+    central: str
+    neighbor_j: str
+    neighbor_k: Optional[str] = None

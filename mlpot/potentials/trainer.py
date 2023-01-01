@@ -1,22 +1,22 @@
+import math
+import random
+from collections import defaultdict
+from functools import partial
+from typing import Any, Callable, Dict, Tuple
+
 import jax.numpy as jnp
 import optax
-import random
-import math
-from tqdm import tqdm
-from collections import defaultdict
-from typing import Dict, Callable, Tuple, Any
 from flax.training.train_state import TrainState
 from frozendict import frozendict
-from functools import partial
 from jax import jit, value_and_grad
-from mlpot.logger import logger
-from mlpot.potentials.base import Potential
-from mlpot.datasets.base import StructureDataset
+from tqdm import tqdm
+
 from mlpot.base import _Base
+from mlpot.datasets.base import StructureDataset
+from mlpot.logger import logger
+from mlpot.potentials._energy import _compute_force, _energy_fn
 from mlpot.potentials.loss import mse_loss
-from mlpot.potentials.metrics import ErrorMetric
-from mlpot.potentials.metrics import init_error_metric
-from mlpot.potentials._energy import _energy_fn, _compute_force
+from mlpot.potentials.metrics import ErrorMetric, init_error_metric
 from mlpot.types import Array
 
 
@@ -28,7 +28,7 @@ class NeuralNetworkPotentialTrainer(_Base):
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
 
-    def __init__(self, potential: Potential, **kwargs) -> None:
+    def __init__(self, potential, **kwargs) -> None:
         """
         Initialize trainer.
         """
@@ -166,7 +166,7 @@ class NeuralNetworkPotentialTrainer(_Base):
             for xbatch, (true_energy, true_forces) in zip(batch[0], batch[1]):
 
                 positions = {
-                    element: input.position_aid for element, input in xbatch.items()
+                    element: input.atom_position for element, input in xbatch.items()
                 }
                 n_atoms: int = sum(array.shape[0] for array in positions.values())
 

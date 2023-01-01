@@ -1,25 +1,34 @@
 from functools import partial
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Protocol, Tuple
 
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
-from mlpot.descriptors.acsf.angular import AngularElements, AngularSymmetryFunction
-from mlpot.descriptors.acsf.radial import RadialElements, RadialSymmetryFunction
+from mlpot.descriptors.acsf.angular import AngularSymmetryFunction
+from mlpot.descriptors.acsf.radial import RadialSymmetryFunction
+from mlpot.descriptors.acsf.symmetry import EnvironmentElements
 from mlpot.structure._neighbor import _calculate_cutoff_mask_per_atom
 from mlpot.structure._structure import _calculate_distance_per_atom
 from mlpot.types import Array
 
 
+class AcsfInterface(Protocol):
+    num_symmetry_functions: int
+    num_radial_symmetry_functions: int
+    num_angular_symmetry_functions: int
+    radial_symmetry_functions: Tuple
+    angular_symmetry_functions: Tuple
+
+
 @jit
-def _calculate_radial_asf_per_atom(
-    radial: Dict[RadialElements, RadialSymmetryFunction],
+def _calculate_radial_acsf_per_atom(
+    radial: Dict[EnvironmentElements, RadialSymmetryFunction],
     atype: Array,
     dist_i: Array,
     emap: Dict[str, Array],
 ) -> Array:
 
-    elements: RadialElements = [k for k in radial.keys()][0]
+    elements: EnvironmentElements = [k for k in radial.keys()][0]
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -36,8 +45,8 @@ def _calculate_radial_asf_per_atom(
 
 
 @jit
-def _calculate_angular_asf_per_atom(
-    angular: Dict[AngularElements, AngularSymmetryFunction],
+def _calculate_angular_acsf_per_atom(
+    angular: Dict[EnvironmentElements, AngularSymmetryFunction],
     atype: Array,
     diff_i: Array,
     dist_i: Array,
@@ -45,7 +54,7 @@ def _calculate_angular_asf_per_atom(
     emap: Dict[str, Array],
 ) -> Array:
 
-    elements: AngularElements = [k for k in angular.keys()][0]
+    elements: EnvironmentElements = [k for k in angular.keys()][0]
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
@@ -55,19 +64,19 @@ def _calculate_angular_asf_per_atom(
     at_j = emap[elements.neighbor_j]
     mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == at_j)
     # mask for neighboring element k
-    at_k = emap[elements.neighbor_k]
+    at_k = emap[elements.neighbor_k]  # type: ignore
     mask_cutoff_and_atype_ik = mask_cutoff_i & (atype == at_k)
 
     total, _ = lax.scan(
         partial(
-            _inner_loop_over_angular_asf_terms,
+            _inner_loop_over_angular_acsf_terms,
             mask_ik=mask_cutoff_and_atype_ik,
             diff_i=diff_i,
             dist_i=dist_i,
             lattice=lattice,
             kernel=angular[elements],
         ),
-        0.0,
+        jnp.asarray(0.0),
         (diff_i, dist_i, mask_cutoff_and_atype_ij),
     )
     # correct double-counting
@@ -81,7 +90,7 @@ def _calculate_angular_asf_per_atom(
 
 
 # Called by jax.lax.scan (no need for @jax.jit)
-def _inner_loop_over_angular_asf_terms(
+def _inner_loop_over_angular_acsf_terms(
     total: Array,
     inputs: Tuple[Array, ...],
     diff_i: Array,
@@ -132,7 +141,7 @@ def _inner_loop_over_angular_asf_terms(
 
 @jit
 def _calculate_descriptor_per_atom(
-    asf,
+    acsf: AcsfInterface,
     atom_position: Array,  # must be a single atom position shape=(1, 3)
     neighbor_positions: Array,
     atype: Array,
@@ -143,24 +152,24 @@ def _calculate_descriptor_per_atom(
     Compute descriptor values per atom in the structure (via atom id).
     """
     dtype = atom_position.dtype
-    result = jnp.empty(asf.num_symmetry_functions, dtype=dtype)
+    result = jnp.empty(acsf.num_symmetry_functions, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(
         atom_position, neighbor_positions, lattice
     )
 
     # Loop over the radial terms
-    for index, (elements, radial) in enumerate(asf.radial):
+    for index, (elements, radial) in enumerate(acsf.radial_symmetry_functions):
         result = result.at[index].set(
-            _calculate_radial_asf_per_atom({elements: radial}, atype, dist_i, emap)
+            _calculate_radial_acsf_per_atom({elements: radial}, atype, dist_i, emap)
         )
 
     # Loop over the angular terms
     for index, (elements, angular) in enumerate(
-        asf.angular, start=asf.num_radial_symmetry_functions
+        acsf.angular_symmetry_functions, start=acsf.num_radial_symmetry_functions
     ):
         result = result.at[index].set(
-            _calculate_angular_asf_per_atom(
+            _calculate_angular_acsf_per_atom(
                 {elements: angular}, atype, diff_i, dist_i, lattice, emap
             )
         )

@@ -2,7 +2,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 
 class Logger:
@@ -76,9 +76,7 @@ class Logger:
     def warn(self, msg, *args, **kwargs) -> None:
         self.warning(msg, *args, **kwargs)
 
-    def error(
-        self, msg, exception: Optional[Exception] = None, *args, **kwargs
-    ) -> None:
+    def error(self, msg, exception: Any = None, *args, **kwargs) -> None:
         self.logger.error(msg, *args, **kwargs)
         if exception is not None:
             raise exception(msg)

@@ -89,6 +89,10 @@ Make html
 $ make html
 ```
 
+### Singularity
+
+- https://singularity-tutorial.github.io/01-installation/
+
 ## References
 
 ### Tutorials

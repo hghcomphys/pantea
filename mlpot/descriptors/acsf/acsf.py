@@ -7,9 +7,9 @@ import jax.numpy as jnp
 
 from mlpot.base import register_jax_pytree_node
 from mlpot.descriptors.acsf._acsf import _calculate_descriptor
-from mlpot.descriptors.acsf.angular import AngularElements, AngularSymmetryFunction
-from mlpot.descriptors.acsf.radial import RadialElements, RadialSymmetryFunction
-from mlpot.descriptors.acsf.symmetry import SymmetryFunction
+from mlpot.descriptors.acsf.angular import AngularSymmetryFunction
+from mlpot.descriptors.acsf.radial import RadialSymmetryFunction
+from mlpot.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunction
 from mlpot.descriptors.base import Descriptor
 from mlpot.logger import logger
 from mlpot.structure.structure import Structure
@@ -64,8 +64,8 @@ class ACSF(Descriptor):
     element: str
     # Here we use hashable tuple instead of list due to JIT compilation
     # FIXME: set radial and angular attribute as dynamic JIT arguments
-    radial: Tuple[Tuple[RadialElements, RadialSymmetryFunction]] = tuple()  # type: ignore
-    angular: Tuple[Tuple[AngularElements, AngularSymmetryFunction]] = tuple()  # type: ignore
+    radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
+    angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
@@ -79,16 +79,16 @@ class ACSF(Descriptor):
     ) -> None:
         """Add the input symmetry function to the list of ACSFs."""
         if isinstance(symmetry_function, RadialSymmetryFunction):
-            self.radial = self.radial + (
+            self.radial_symmetry_functions = self.radial_symmetry_functions + (
                 (
-                    RadialElements(self.element, neighbor_element_j),
+                    EnvironmentElements(self.element, neighbor_element_j),
                     symmetry_function,
                 ),
             )  # type: ignore
         elif isinstance(symmetry_function, AngularSymmetryFunction):
-            self.angular = self.angular + (
+            self.angular_symmetry_functions = self.angular_symmetry_functions + (
                 (
-                    AngularElements(
+                    EnvironmentElements(
                         self.element, neighbor_element_j, neighbor_element_k  # type: ignore
                     ),
                     symmetry_function,
@@ -199,12 +199,12 @@ class ACSF(Descriptor):
     @property
     def num_radial_symmetry_functions(self) -> int:
         """Return number of `two-body` (radial) symmetry functions."""
-        return len(self.radial)
+        return len(self.radial_symmetry_functions)
 
     @property
     def num_angular_symmetry_functions(self) -> int:
         """Return number of `three-body` (angular) symmetry functions."""
-        return len(self.angular)
+        return len(self.angular_symmetry_functions)
 
     @property
     def num_symmetry_functions(self) -> int:
@@ -212,16 +212,25 @@ class ACSF(Descriptor):
         return self.num_radial_symmetry_functions + self.num_angular_symmetry_functions
 
     @property
+    def num_descriptors(self) -> int:
+        return self.num_symmetry_functions
+
+    @property
     def r_cutoff(self) -> float:  # type: ignore
         """Return the maximum cutoff radius for list of the symmetry functions."""
         return max(
-            [cfn.r_cutoff for (_, cfn) in itertools.chain(*[self.radial, self.angular])]
+            [
+                cfn.r_cutoff
+                for (_, cfn) in itertools.chain(
+                    *[self.radial_symmetry_functions, self.angular_symmetry_functions]
+                )
+            ]
         )
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
-            f", num_symmetry_functions={self.num_symmetry_functions}"
+            f", size={self.num_symmetry_functions}"
             f", r_cutoff={self.r_cutoff})"
         )
 

@@ -5,14 +5,14 @@ from typing import Optional
 import jax.numpy as jnp
 from jax import tree_util
 
-from mlpot.base import _BaseJaxPytreeClass, register_jax_pytree_node
+from mlpot.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from mlpot.logger import logger
 from mlpot.structure._neighbor import _calculate_cutoff_mask
 from mlpot.types import Array
 
 
 @dataclass
-class Neighbor(_BaseJaxPytreeClass):
+class Neighbor(_BaseJaxPytreeDataClass):
     """
     Neighbor creates a neighbor list of atoms for an input structure
     and it is by design independent of `Structure`.
@@ -22,6 +22,7 @@ class Neighbor(_BaseJaxPytreeClass):
         This is usually implemented together with defining a skin radius.
     """
 
+    # Array type attributes must be define first (with type hint)
     mask: Optional[Array] = None
     r_cutoff: Optional[float] = None
     r_cutoff_updated: bool = field(init=False, default=False)
@@ -31,7 +32,7 @@ class Neighbor(_BaseJaxPytreeClass):
         super().__init__()
 
     def __hash__(self) -> int:
-        """Enforcing to use the parent class hash method (it's necessary for dataclasses)."""
+        """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:

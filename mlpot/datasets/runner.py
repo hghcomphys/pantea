@@ -68,6 +68,8 @@ class RunnerStructureDataset(StructureDataset):
         #     return [self._read_cache(idx) for idx in index]
         return self.read_from_cache(index)
 
+    # ----------------------------------------------
+
     def read_raw(self, file: TextIO) -> Optional[Dict[str, List]]:
         """
         Read the next structure from the input file.
