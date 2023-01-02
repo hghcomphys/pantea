@@ -7,7 +7,7 @@ from mlpot.logger import logger
 from mlpot.types import Array
 
 
-class SymmetryFunction(_BaseJaxPytreeDataClass):
+class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
     """
     A base class for symmetry functions.
     All symmetry functions (i.e. radial and angular) must derive from this base class.

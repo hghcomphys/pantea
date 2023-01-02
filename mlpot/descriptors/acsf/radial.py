@@ -1,7 +1,5 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from functools import partial
-from typing import Callable, NamedTuple
 
 import jax
 import jax.numpy as jnp
