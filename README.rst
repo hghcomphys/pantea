@@ -15,7 +15,7 @@ MLPOT
         :target: https://travis-ci.com/hghcomphys/mlpot
 
 .. image:: https://readthedocs.org/projects/mlpot/badge/?version=latest
-        :target: https://mlpot.readthedocs.io/en/latest/?version=latest
+        .. :target: https://mlpot.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 .. * Free software: GNU General Public License v3
@@ -32,8 +32,8 @@ of complex materials at the atomic scale and with ab initio accuracy.
 Why MLPOT?
 ----------
 * Offers a generic and flexible design which allows introducing any atomic descriptors and potentials
-* Utilizes automatic differentiation that makes definition of new descriptors quite easy
-* Pythonic design with an optimized implementation using just-in-time compilations and task/data parallelization
+* Utilizes `automatic differentiation` that makes definition of new descriptors quite easy
+* Pythonic design with an optimized implementation using just-in-time compilation and task/data parallelization
 * Supports GPU-computing that can speeds up model trainings orders of magnitude
 * MLPOT is not a simulation package but a framework to develop ML-based potentials used for the MD simulations.
 
@@ -62,11 +62,11 @@ The defined descriptor can be calculated on a given structure and the evaluated 
         from mlpot.descriptors import ACSF
         
 
-        # Read atomic structure data
+        # Read atomic structure dataset
         structures = RunnerStructureDataset('input.data')
         structure = structures[0]
 
-        # Define descriptor and adding radial and angular terms
+        # Define descriptor and adding radial and angular symmetry functions
         descriptor = ACSF(element='H')
         cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
         descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
