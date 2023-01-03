@@ -21,14 +21,16 @@ class ACSF(Descriptor):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor.
 
-    ACSF describes the local chemical environment of an atom.
-    It composes of `two-body` (radial) and `three-body` (angular) symmetry functions.
+    ACSF describes the local environment of an atom (neighbors' distribution).
+    It usually contains multiple combinations of `radial` (two-body)
+    and `angular` (three-body) symmetry functions.
 
     .. note::
         The ACSF is independent of input structure
-        but it can calculate the descriptor values for any given structures.
+        but it knows how to calculate the descriptor values for any given structures.
 
-    Example:
+    Example
+    -------
 
     .. code-block:: python
         :linenos:
@@ -55,7 +57,7 @@ class ACSF(Descriptor):
 
     .. code-block:: bash
 
-        ACSF(element='O', num_symmetry_functions=4, r_cutoff=12.0)
+        ACSF(element='O', size=4, r_cutoff=12.0)
 
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
@@ -158,11 +160,11 @@ class ACSF(Descriptor):
 
         :param structure: input structure instance
         :type structure: Structure
-        :param acsf_index: index of array in descriptor array, [0, `num_of_symmetry_functions`]
+        :param acsf_index: index in descriptor array, [0, `num_of_symmetry_functions`)
         :type acsf_index: int
-        :param atom_index: between [0, natoms)
+        :param atom_index: atom index in the structure [0, natoms)
         :type atom_index: int
-        :return: gradient respect to position
+        :return: gradient of the descriptor value respect to the atom position
         :rtype: Array
         """
         if not (0 <= acsf_index < self.num_symmetry_functions):

@@ -7,7 +7,7 @@ Installation
 Requirements
 ------------
 
-The following packages have to be installed beforehand:
+The following packages are required:
 
 * `JAX`_: Composable transformations of Python+NumPy programs
 * `FLAX`_: A neural network library and ecosystem for JAX designed for flexibility

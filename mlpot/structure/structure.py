@@ -257,10 +257,10 @@ class Structure(_BaseJaxPytreeDataClass):
         """
         Calculate distances between specific atoms (given by atom indices)
         and the neighboring atoms in the structure.
-        This  method also returns the corresponding position difference.
+        This method also returns the corresponding position difference.
 
-        If no neighbor index is given, all atoms inside the cutoff
-        radius will be considered as neighbor atoms.
+        If no neighbor index is given, all atoms in the structure
+        will be considered as neighbor atoms.
 
         :param atom_index: array of atom indices
         :type atom_index: Array

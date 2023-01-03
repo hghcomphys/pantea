@@ -6,7 +6,7 @@
 MLPOT
 =====
 
-**A machine-learning framework for development of interatomic potential**
+**A machine-learning framework for development of interatomic potentials**
 
 .. image:: https://img.shields.io/pypi/v/mlpot.svg
         :target: https://pypi.python.org/pypi/mlpot
@@ -31,15 +31,21 @@ of complex materials at the atomic scale and with ab initio accuracy.
 
 Why MLPOT?
 ----------
-* Offers a generic and flexible design which allows introducing any atomic descriptors and potentials
-* Utilizes `automatic differentiation` that makes definition of new descriptors quite easy
-* Pythonic design with an optimized implementation using just-in-time compilation and task/data parallelization
-* Supports GPU-computing that can speeds up model trainings orders of magnitude
-* MLPOT is not a simulation package but a framework to develop ML-based potentials used for the MD simulations.
+* Offers a generic and flexible design simplifies introducing atomic descriptors and potentials
+* Utilizes `autograd` that makes definition of new descriptors quite easy
+* Pythonic design with an optimized implementation using just-in-time (JIT) compilations
+* Supports GPU-computing that can speeds up preprocessing steps and model trainings order(s) of magnitude
+
+Important
+---------
+
+MLPOT is not a molecular dynamics (MD) simulation package but a framework to 
+develop ML-based potentials used for the MD simulations.
 
 .. note::
-        This repository is under heavy development and the current focus is on the implementation of high-dimensional 
+        This library is under heavy development and the current focus is on the implementation of high-dimensional 
         neural network potential (HDNNP) proposed by Behler et al. (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
+
 
 
 Examples
@@ -80,7 +86,7 @@ The defined descriptor can be calculated on a given structure and the evaluated 
 Training a potential
 --------------------
 
-This example shows how to quickly create a high-dimensional neural network 
+This example demonstrates how to quickly create a high-dimensional neural network 
 potential `HDNNP`_ and training on the input structures. The energy and force components 
 can be evaluated for (new) structures from the trained potential.
 

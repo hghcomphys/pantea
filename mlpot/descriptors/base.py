@@ -5,7 +5,7 @@ from mlpot.types import Array
 
 
 class Descriptor(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
-    """A base class for descriptors."""
+    """A base class for atomic environment descriptors."""
 
     @abstractmethod
     def add(self, *args, **kwargs) -> None:
