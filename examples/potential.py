@@ -1,28 +1,31 @@
-# # LMPOT: Lennard-Jones potential
-# An example notebook that shows how to reconstruct a Lennard-Jones potential using
+# An example notebook that shows how to construct a potential using
 # high-dimensional neural network potential (HDNNP).
 
-# ### Imports
+import os
 
-import sys
+os.environ["JAX_ENABLE_X64"] = "1"
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
-sys.path.append("../")
-
-import mlpot
-from mlpot.datasets import RunnerStructureDataset
-from mlpot.potentials import NeuralNetworkPotential
-import torch
-import pandas as pd
+import logging
 from pathlib import Path
 
-# mlpot.set_logging_level(logging.DEBUG)
-mlpot.manual_seed(2022)
-mlpot.device.DEVICE = torch.device("cpu")
+import jax.numpy as jnp
+import pandas as pd
 
-potdir = Path("./LJ")
+from mlpot.datasets import RunnerStructureDataset
+from mlpot.logger import set_logging_level
+from mlpot.potentials import NeuralNetworkPotential
+from mlpot.types import dtype as default_dtype
+
+# default_dtype.FLOATX = jnp.float64
+
+# set_logging_level(logging.INFO)
+
+potdir = Path("./H2O_2")
 
 # Dataset
 structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
+structures = [structures[i] for i in range(10)]
 
 # Potential
 nnp = NeuralNetworkPotential(Path(potdir, "input.nn"))
@@ -31,7 +34,7 @@ nnp = NeuralNetworkPotential(Path(potdir, "input.nn"))
 nnp.fit_scaler(structures)
 
 # nnp.load_model()
-history = nnp.fit_model(structures, epochs=1, validation_split=0.20)
+# history = nnp.fit_model(structures, epochs=10)
 
 # df = pd.DataFrame(history)
 # print(df.tail())
