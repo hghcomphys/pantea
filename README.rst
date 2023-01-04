@@ -24,26 +24,25 @@ MLPOT
 
 What is it? 
 -----------
-MLPOT is a Python library to facilitate development of the emerging machine-learning (ML) 
-interatomic potentials in computational physics and chemistry. 
-Such potentials are essential for performing large-scale molecular dynamics (MD) simulations 
-of complex materials at the atomic scale and with ab initio accuracy.
+MLPOT is a Python framework that helps in the development of emerging machine learning interatomic potentials 
+for use in computational physics and chemistry. These potentials are necessary for conducting 
+large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
 
 Why MLPOT?
 ----------
-* Offers a generic and flexible design simplifies introducing atomic descriptors and potentials
-* Utilizes `autograd` that makes definition of new descriptors quite easy
-* Pythonic design with an optimized implementation using just-in-time (JIT) compilations
-* Supports GPU-computing that can speeds up preprocessing steps and model trainings order(s) of magnitude
+* The design of MLPOT is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
+* It uses `autograd` to make defining new descriptors straightforward
+* MLPOT is written purely in Python and optimized with `just-in-time` (JIT) compilation.
+* It also supports `GPU computing`, which can significantly speed up preprocessing and model training.
 
 Important
 ---------
 
-MLPOT is not a molecular dynamics (MD) simulation package but a framework to 
-develop ML-based potentials used for the MD simulations.
+MLPOT is a framework for creating machine learning-based potentials for use in molecular dynamics simulations, 
+rather than a package for conducting molecular dynamics simulations itself.
 
 .. note::
-        This library is under heavy development and the current focus is on the implementation of high-dimensional 
+        This package is under heavy development and the current focus is on the implementation of high-dimensional 
         neural network potential (HDNNP) proposed by Behler et al. (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
 
 
@@ -51,29 +50,32 @@ develop ML-based potentials used for the MD simulations.
 Examples
 --------
 
------------------------------
-Defining an atomic descriptor
------------------------------
+-----------------------------------------
+Defining an atomic environment descriptor
+-----------------------------------------
 
-The below example shows how to define a vector of Atomic-centered Symmetry Functions
-(`ACSF`_) for an element.
-The defined descriptor can be calculated on a given structure and the evaluated vector of descriptor values are eventually used for constructing ML potentials.
+The following example shows how to create an array of `atomic-centered symmetry functions`
+(`ACSF`_) for a specific element. 
+This descriptor can be applied to a given structure to produce the 
+descriptor values that are required to build machine learning potentials.
 
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
 .. code-block:: python
 
         from mlpot.datasets import RunnerStructureDataset
-        from mlpot.descriptors import CutoffFunction, G2, G3
         from mlpot.descriptors import ACSF
+        from mlpot.descriptors.acsf import CutoffFunction, G2, G3
         
 
-        # Read atomic structure dataset
+        # Read atomic structure dataset (e.g. water molecules)
         structures = RunnerStructureDataset('input.data')
         structure = structures[0]
 
-        # Define descriptor and adding radial and angular symmetry functions
+        # Define ACSF descriptor for hydrogen element 
         descriptor = ACSF(element='H')
+        
+        # Add radial and angular symmetry functions
         cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
         descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
@@ -81,14 +83,30 @@ The defined descriptor can be calculated on a given structure and the evaluated 
         # Calculate descriptor values
         values = descriptor(structure)
 
+Output:
 
---------------------
-Training a potential
---------------------
+.. code-block:: bash
 
-This example demonstrates how to quickly create a high-dimensional neural network 
-potential `HDNNP`_ and training on the input structures. The energy and force components 
-can be evaluated for (new) structures from the trained potential.
+        >> values.shape
+        (128, 2)
+
+        >> values[:3]
+        DeviceArray([[1.9689142e-03, 3.3253882e+00],
+                [1.9877939e-03, 3.5034561e+00],
+                [1.5204106e-03, 3.5458331e+00],
+                [1.3690088e-03, 3.8879104e+00],
+                [2.0514650e-03, 3.6062906e+00]], dtype=float32)
+
+-------------------------------------
+Training a machine learning potential
+-------------------------------------
+
+.. warning::
+        The example script below is not currently prepared to be executed.
+
+This example illustrates how to quickly create a `high-dimensional neural network 
+potential` (`HDNNP`_) and train it on input structures. 
+The trained potential can then be used to evaluate the energy and force components for new structures.
 
 .. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
 
@@ -116,6 +134,24 @@ can be evaluated for (new) structures from the trained potential.
         structure = structures[0]
         energy = nnp(structure)
         force = nnp.compute_force(structure)
+
+
+License
+-------
+
+.. _license-file: LICENSE
+
+
+This project is licensed under the GNU General Public License (GPL) version 3 - 
+see the LICENSE file for details.
+
+.. The GPL v3 is a free software license that allows users to share and modify the software, 
+.. as long as the original copyright notice and license are included and the modified versions 
+.. are marked as such. The GPL v3 also requires that users receive the source code or have the 
+.. ability to obtain it, and that they are made aware of their rights under the license.
+
+.. For more information about the GPL v3 license, please see the full text of the license in the "LICENSE" file.
+
 
 
 .. Credits
