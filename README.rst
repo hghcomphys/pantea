@@ -1,45 +1,49 @@
 
-.. image:: docs/images/logo.png
-        :alt: logo
+.. .. image:: docs/images/logo.png
+..         :alt: logo
         
 =====
-MLPOT
+JAXIP
 =====
 
-**A machine-learning framework for development of interatomic potentials**
+**JAX-based Interatomic Potential**
 
-.. image:: https://img.shields.io/pypi/v/mlpot.svg
-        :target: https://pypi.python.org/pypi/mlpot
+.. image:: https://img.shields.io/pypi/v/jaxip.svg
+        :target: https://pypi.python.org/pypi/jaxip
 
-.. image:: https://img.shields.io/travis/hghcomphys/mlpot.svg
-        :target: https://travis-ci.com/hghcomphys/mlpot
+.. image:: https://img.shields.io/travis/hghcomphys/jaxip.svg
+        :target: https://travis-ci.com/hghcomphys/jaxip
 
-.. image:: https://readthedocs.org/projects/mlpot/badge/?version=latest
-        .. :target: https://mlpot.readthedocs.io/en/latest/?version=latest
+.. image:: https://readthedocs.org/projects/jaxip/badge/?version=latest
+        :target: https://jaxip.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 .. * Free software: GNU General Public License v3
-.. * Documentation: https://mlpot.readthedocs.io.
+.. * Documentation: https://jaxip.readthedocs.io.
 
 
-What is it? 
------------
-MLPOT is a Python framework that helps in the development of emerging machine learning interatomic potentials 
+.. What is JAXIP? 
+.. -----------
+JAXIP is a Python library on basis of `JAX`_ that helps 
+in the development of emerging machine learning interatomic potentials 
 for use in computational physics and chemistry. These potentials are necessary for conducting 
 large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
 
-Why MLPOT?
+JAXIP is for creating machine learning-based potentials for use in molecular dynamics simulations, 
+rather than a package for conducting molecular dynamics simulations itself.
+
+.. _JAX: https://github.com/google/jax
+
+
+Why JAXIP?
 ----------
-* The design of MLPOT is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
+* The design of JAXIP is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
 * It uses `autograd` to make defining new descriptors straightforward
-* MLPOT is written purely in Python and optimized with `just-in-time` (JIT) compilation.
+* JAXIP is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU computing`, which can significantly speed up preprocessing and model training.
 
-Important
----------
-
-MLPOT is a framework for creating machine learning-based potentials for use in molecular dynamics simulations, 
-rather than a package for conducting molecular dynamics simulations itself.
+.. Important
+.. ---------
 
 .. note::
         This package is under heavy development and the current focus is on the implementation of high-dimensional 
@@ -63,9 +67,9 @@ descriptor values that are required to build machine learning potentials.
 
 .. code-block:: python
 
-        from mlpot.datasets import RunnerStructureDataset
-        from mlpot.descriptors import ACSF
-        from mlpot.descriptors.acsf import CutoffFunction, G2, G3
+        from jaxip.datasets import RunnerStructureDataset
+        from jaxip.descriptors import ACSF
+        from jaxip.descriptors.acsf import CutoffFunction, G2, G3
         
 
         # Read atomic structure dataset (e.g. water molecules)
@@ -93,9 +97,7 @@ Output:
         >> values[:3]
         DeviceArray([[1.9689142e-03, 3.3253882e+00],
                 [1.9877939e-03, 3.5034561e+00],
-                [1.5204106e-03, 3.5458331e+00],
-                [1.3690088e-03, 3.8879104e+00],
-                [2.0514650e-03, 3.6062906e+00]], dtype=float32)
+                [1.5204106e-03, 3.5458331e+00]], dtype=float32)
 
 -------------------------------------
 Training a machine learning potential
@@ -113,8 +115,8 @@ The trained potential can then be used to evaluate the energy and force componen
 
 .. code-block:: python
 
-        from mlpot.datasets import RunnerStructureDataset
-        from mlpot.potentials import NeuralNetworkPotential
+        from jaxip.datasets import RunnerStructureDataset
+        from jaxip.potentials import NeuralNetworkPotential
 
         # Atomic data
         structures = RunnerStructureDataset("input.data")

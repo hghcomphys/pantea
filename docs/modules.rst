@@ -1,7 +1,7 @@
-mlpot
+jaxip
 =====
 
 .. toctree::
    :maxdepth: 4
 
-   mlpot
+   jaxip

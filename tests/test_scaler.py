@@ -3,11 +3,10 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 from jax import random
-
-from mlpot.descriptors.scaler import DescriptorScaler
-from mlpot.types import Array
-from mlpot.types import dtype as _dtype
-from mlpot.utils.batch import create_batch
+from jaxip.descriptors.scaler import DescriptorScaler
+from jaxip.types import Array
+from jaxip.types import dtype as _dtype
+from jaxip.utils.batch import create_batch
 
 key = random.PRNGKey(2023)
 key, subkey = random.split(key, 2)

@@ -1,0 +1,29 @@
+jaxip.models package
+====================
+
+Submodules
+----------
+
+jaxip.models.nn module
+----------------------
+
+.. automodule:: jaxip.models.nn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+jaxip.models.initializer module
+-------------------------------
+
+.. automodule:: jaxip.models.initializer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: jaxip.models
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,5 +1,4 @@
-# An example notebook that shows how to construct a potential using
-# high-dimensional neural network potential (HDNNP).
+# An example notebook for constructing a high-dimensional neural network potential (HDNNP)..
 
 import os
 

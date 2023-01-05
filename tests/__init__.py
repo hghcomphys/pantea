@@ -1,1 +1,1 @@
-"""Unit test package for mlpot."""
+"""Unit test package for jaxip."""

@@ -2,11 +2,10 @@ from typing import Tuple
 
 import jax.numpy as jnp
 import pytest
-
-from mlpot.descriptors.acsf import ACSF, G2, G3, CutoffFunction
-from mlpot.descriptors.acsf.symmetry import EnvironmentElements
-from mlpot.structure.structure import Structure
-from mlpot.types import Array
+from jaxip.descriptors.acsf import ACSF, G2, G3, CutoffFunction
+from jaxip.descriptors.acsf.symmetry import EnvironmentElements
+from jaxip.structure.structure import Structure
+from jaxip.types import Array
 
 
 # @pytest.fixture

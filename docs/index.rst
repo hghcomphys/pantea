@@ -1,4 +1,4 @@
-Welcome to MLPOT's documentation!
+Welcome to JAXIP's documentation!
 ======================================
 
 

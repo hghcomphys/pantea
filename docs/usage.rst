@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use MLPOT in a project::
+To use JAXIP in a project::
 
-    import mlpot
+    import jaxip

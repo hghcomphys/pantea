@@ -13,7 +13,7 @@ $ pygount --format=summary ./
 ### Class dependency graph
 
 ```bash
-$ pydeps  mlpot/potentials/nnp/nnp.py -o pydepsgraph.svg
+$ pydeps  jaxip/potentials/nnp/nnp.py -o pydepsgraph.svg
 ```
 
 ## Optimizations
@@ -78,7 +78,7 @@ $ sphinx-quickstart
 Create `.rst` and `Makefile`
 
 ```bash
-$ sphinx-apidoc -f -o ./ ../mlpot
+$ sphinx-apidoc -f -o ./ ../jaxip
 ```
 
 _Note_: The `-F` flag must be added for the first time in order to create default `index.rst` and `conf.py` files.

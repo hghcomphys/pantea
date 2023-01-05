@@ -3,9 +3,8 @@ from typing import Tuple
 
 import jax.numpy as jnp
 import pytest
-
-from mlpot.datasets.runner import RunnerStructureDataset
-from mlpot.structure.structure import Structure
+from jaxip.datasets.runner import RunnerStructureDataset
+from jaxip.structure.structure import Structure
 
 h2o_filename = Path("tests", "h2o.data")
 H2O_DATA = {

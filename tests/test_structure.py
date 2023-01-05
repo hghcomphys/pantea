@@ -2,9 +2,8 @@ from typing import Any, Dict, Mapping, Tuple
 
 import jax.numpy as jnp
 import pytest
-
-from mlpot.structure.structure import Structure
-from mlpot.types import dtype as _dtype
+from jaxip.structure.structure import Structure
+from jaxip.types import dtype as _dtype
 
 LJ_DATA: Dict[str, Any] = {
     "position": [[0.0, 0.0, 0.0], [0.583123772, 0.583123772, 0.583123772]],
