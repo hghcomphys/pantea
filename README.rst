@@ -21,9 +21,6 @@ JAXIP
 .. * Free software: GNU General Public License v3
 .. * Documentation: https://jaxip.readthedocs.io.
 
-
-.. What is JAXIP? 
-.. -----------
 JAXIP is a Python library on basis of `JAX`_ that helps 
 in the development of emerging machine learning interatomic potentials 
 for use in computational physics and chemistry. These potentials are necessary for conducting 
@@ -49,7 +46,6 @@ Why JAXIP?
         This package is under heavy development and the current focus is on the implementation of high-dimensional 
         neural network potential (HDNNP) proposed by Behler et al. 
         (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
-
 
 
 Examples
@@ -88,6 +84,7 @@ descriptor values that are required to build machine learning potentials.
         # Calculate descriptor values
         values = descriptor(structure)
 
+
 Output:
 
 .. code-block:: bash
@@ -99,6 +96,7 @@ Output:
         DeviceArray([[1.9689142e-03, 3.3253882e+00],
                 [1.9877939e-03, 3.5034561e+00],
                 [1.5204106e-03, 3.5458331e+00]], dtype=float32)
+
 
 -------------------------------------
 Training a machine learning potential
