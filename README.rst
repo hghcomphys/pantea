@@ -29,8 +29,8 @@ in the development of emerging machine learning interatomic potentials
 for use in computational physics and chemistry. These potentials are necessary for conducting 
 large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
 
-JAXIP is for creating machine learning-based potentials for use in molecular dynamics simulations, 
-rather than a package for conducting molecular dynamics simulations itself.
+JAXIP is a tool for developing potentials for molecular dynamics simulations, 
+rather than a package for performing molecular dynamics simulations itself.
 
 .. _JAX: https://github.com/google/jax
 
@@ -47,7 +47,8 @@ Why JAXIP?
 
 .. note::
         This package is under heavy development and the current focus is on the implementation of high-dimensional 
-        neural network potential (HDNNP) proposed by Behler et al. (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
+        neural network potential (HDNNP) proposed by Behler et al. 
+        (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
 
 
 
