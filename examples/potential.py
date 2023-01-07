@@ -11,10 +11,10 @@ from pathlib import Path
 import jax.numpy as jnp
 import pandas as pd
 
-from mlpot.datasets import RunnerStructureDataset
-from mlpot.logger import set_logging_level
-from mlpot.potentials import NeuralNetworkPotential
-from mlpot.types import dtype as default_dtype
+from jaxip.datasets import RunnerStructureDataset
+from jaxip.logger import set_logging_level
+from jaxip.potentials import NeuralNetworkPotential
+from jaxip.types import dtype as default_dtype
 
 # default_dtype.FLOATX = jnp.float64
 

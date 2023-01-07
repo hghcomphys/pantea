@@ -3,39 +3,28 @@ History
 =======
 
 
-.. * First release on PyPI.
-.. * renamed package to JAXIP
-
-
-v0.4.0 (2023-01-03)
+0.4.0 (2023-01-03)
 -------------------
-
 * Applied extensive refactoring
 * Replaced PyTorch main dependency with JAX
+* First release on PyPI.
 
 
-
-v0.3.0 (2022-12-07)
+0.3.0 (2022-12-07)
 -------------------
-
 * JAX optimization of ACSF descriptor
 
 
-
-v0.2.0 (2022-11-11)
+0.2.0 (2022-11-11)
 -------------------
-
 * Small optimizations using `torch.jit.script`
 
 
-
-v0.1.0 (2022-10-28)
+0.1.0 (2022-10-28)
 -------------------
-
 * Primary implementation and validation
 
 
-v0.0.1 (2022-01-01)
--------------------
-
-* Start
+.. v0.0.1 (2022-01-01)
+.. -------------------
+.. * Start
