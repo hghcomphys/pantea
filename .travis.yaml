@@ -1,0 +1,17 @@
+language: python
+python:
+  - "3.8"
+  - "3.9"
+  - "3.10"
+
+# command to install dependencies
+install:
+  - pip install --upgrade pip
+  - pip install -r requirements_dev.txt
+  - pip install jax jaxlib
+  - pip install ase
+  - pip install .
+
+# command to run tests
+script:
+  - pytest
