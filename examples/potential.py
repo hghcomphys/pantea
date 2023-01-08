@@ -1,4 +1,4 @@
-# An example notebook for constructing a high-dimensional neural network potential (HDNNP)..
+# An example notebook for constructing a high-dimensional neural network potential (HDNNP).
 
 import os
 
@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 import jax.numpy as jnp
-import pandas as pd
+#import pandas as pd
 
 from jaxip.datasets import RunnerStructureDataset
 from jaxip.logger import set_logging_level
@@ -24,7 +24,7 @@ potdir = Path("./H2O_2")
 
 # Dataset
 structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
-structures = [structures[i] for i in range(10)]
+structures = [structures[i] for i in range(100)]
 
 # Potential
 nnp = NeuralNetworkPotential(Path(potdir, "input.nn"))
