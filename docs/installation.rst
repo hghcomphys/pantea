@@ -7,17 +7,25 @@ Installation
 Requirements
 ------------
 
-The following packages are required:
+This package has the following dependencies:
 
-* `JAX`_: Composable transformations of Python+NumPy programs
-* `FLAX`_: A neural network library and ecosystem for JAX designed for flexibility
-* `ASE`_: Atomic Simulation Environment
+* `JAX`_: An `Autograd` and `XLA` framework for high-performance numerical computing
+
+
+JAX is the core of this package and its installation is necessary to use it.
+The CPU version of JAX is included in the installation of JAXIP.  
+
+For machines with an NVidia GPU, it is recommended to install JAX through `Conda` using the following command:
+
+.. code-block:: bash
+
+    conda install jax cuda-nvcc -c conda-forge -c nvidia
+
+Please refer to the `JAX Install Guide`_ for full installation instructions.
 
 
 .. _JAX: https://github.com/google/jax
-.. _FLAX: https://github.com/google/flax
-.. _ASE: https://wiki.fysik.dtu.dk/ase/
-
+.. _`JAX Install Guide`: https://github.com/google/jax#installation
 
 
 Stable release
