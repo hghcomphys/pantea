@@ -12,6 +12,10 @@ with open("HISTORY.rst") as history_file:
 
 requirements = [
     "Click>=7.0",
+    "tqdm>=4.6",
+    "ase>=3.2",
+    "frozendict>=2.3",
+    "flax>=0.6",
 ]
 
 test_requirements = [
@@ -29,8 +33,8 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+        # "Programming Language :: Python :: 3.9",
+        # "Programming Language :: Python :: 3.10",
     ],
     description="JAX-based Interatomic Potential",
     entry_points={
@@ -40,7 +44,7 @@ setup(
     },
     install_requires=requirements,
     license="GNU General Public License v3",
-    long_description=readme, # + "\n\n" + history,
+    long_description=readme,  # + "\n\n" + history,
     include_package_data=True,
     keywords="jaxip",
     name="jaxip",
