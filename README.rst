@@ -6,6 +6,7 @@
 JAXIP
 =====
 
+
 **JAX-based Interatomic Potential**
 
 .. image:: https://img.shields.io/pypi/v/jaxip.svg
@@ -18,8 +19,10 @@ JAXIP
         :target: https://jaxip.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-.. * Free software: GNU General Public License v3
-.. * Documentation: https://jaxip.readthedocs.io.
+
+* Free software: GNU General Public License v3
+* Documentation: https://jaxip.readthedocs.io.
+
 
 JAXIP is a Python library on basis of `JAX`_ that helps 
 in the development of emerging machine learning interatomic potentials 
@@ -85,7 +88,7 @@ descriptor values that are required to build machine learning potentials.
         values = descriptor(structure)
 
 
-Output:
+Outputs:
 
 .. code-block:: bash
 
@@ -96,6 +99,14 @@ Output:
         DeviceArray([[1.9689142e-03, 3.3253882e+00],
                 [1.9877939e-03, 3.5034561e+00],
                 [1.5204106e-03, 3.5458331e+00]], dtype=float32)
+
+ 
+The **gradient** of the defined descriptor can be obtained by using the `grad` method.
+
+.. code-block:: bash
+
+        >> descriptor.grad(structure, acsf_index=0, atom_index=2)
+                DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
 
 
 -------------------------------------
