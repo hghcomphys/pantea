@@ -7,12 +7,10 @@ Installation
 Requirements
 ------------
 
-This package has the following dependencies:
+.. This package has the following dependencies:
+.. * `JAX`_: An `Autograd` and `XLA` framework for high-performance numerical computing
 
-* `JAX`_: An `Autograd` and `XLA` framework for high-performance numerical computing
-
-
-JAX is the core of this package and its installation is necessary to use it.
+`JAX`_ is the core of this package and its installation is necessary to use it.
 The CPU version of JAX is included in the installation of JAXIP.  
 
 For machines with an NVidia GPU, it is recommended to install JAX through `Conda` using the following command:

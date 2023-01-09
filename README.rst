@@ -20,10 +20,6 @@ JAXIP
         :alt: Documentation Status
 
 
-* Free software: GNU General Public License v3
-* Documentation: https://jaxip.readthedocs.io.
-
-
 JAXIP is a Python library on basis of `JAX`_ that helps 
 in the development of emerging machine learning interatomic potentials 
 for use in computational physics and chemistry. These potentials are necessary for conducting 
@@ -33,6 +29,9 @@ JAXIP is a tool for developing potentials for molecular dynamics simulations,
 rather than a package for performing molecular dynamics simulations itself.
 
 .. _JAX: https://github.com/google/jax
+
+
+Documentation: https://jaxip.readthedocs.io.
 
 
 Why JAXIP?
@@ -106,7 +105,7 @@ The **gradient** of the defined descriptor can be obtained by using the `grad` m
 .. code-block:: bash
 
         >> descriptor.grad(structure, acsf_index=0, atom_index=2)
-                DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
+        DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
 
 
 -------------------------------------
