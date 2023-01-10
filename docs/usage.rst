@@ -4,7 +4,7 @@ Usage
 
 To use JAXIP in a project:
 
-.. code:: ipython3
+.. code:: python
 
     import jaxip
 
@@ -15,7 +15,7 @@ The following scripts demonstrate how to utilize various modules:
 
 Initialization
 
-.. code:: ipython3
+.. code:: python
 
     import os
     os.environ["JAX_ENABLE_X64"] = "1"       # enabling double precision (float64)
@@ -24,7 +24,7 @@ Initialization
 
 Imports
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.types import dtype as default_dtype
     import jax.numpy as jnp
@@ -41,7 +41,7 @@ Imports
 Dataset
 -------
 
-.. code:: ipython3
+.. code:: python
 
     base_dir = Path('./H2O_2')
 
@@ -50,7 +50,7 @@ RuNNer
 ''''''
 Read `RuNNer <https://www.uni-goettingen.de/de/560580.html>`_ data format
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.datasets import RunnerStructureDataset
     structures = RunnerStructureDataset(Path(base_dir, "input.data"), persist=True)
@@ -69,14 +69,14 @@ Output:
 .. Data loader
 .. '''''''''''
 
-.. .. code:: ipython3
+.. .. code:: python
 
 ..     # from torch.utils.data import DataLoader
 
 .. Split train and validation structures
 .. '''''''''''''''''''''''''''''''''''''
 
-.. .. code:: ipython3
+.. .. code:: python
 
 ..     # import torch
 ..     # validation_split = 0.032
@@ -90,7 +90,7 @@ Output:
 Structure
 ---------
 
-.. code:: ipython3
+.. code:: python
 
     s = structures[0]
     s
@@ -102,7 +102,7 @@ Output:
     Structure(natoms=192, elements=('H', 'O'), dtype=float32)
 
 
-.. code:: ipython3
+.. code:: python
 
     from ase.visualize import view
     from ase.io.vasp import write_vasp
@@ -117,14 +117,14 @@ Output:
 Compare between two structures
 ''''''''''''''''''''''''''''''
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.utils.compare import compare
     compare(structures[0], structures[1])
 
 Output:
 
-.. code:: ipython3
+.. code:: python
 
     Comparing two structures, error metrics: RMSEpa
     {'force_RMSEpa': Array(0.06592743, dtype=float32),
@@ -135,12 +135,12 @@ Output:
 Calculate distances
 '''''''''''''''''''
 
-.. code:: ipython3
+.. code:: python
 
     dis, _ = s.calculate_distance(atom_index=0)
 
 
-.. code:: ipython3
+.. code:: python
 
     sns.displot(dis, bins=20)
     plt.axvline(dis.mean(), color='r')
@@ -152,7 +152,7 @@ Calculate distances
 .. Add/remove per-atom energy offset
 .. '''''''''''''''''''''''''''''''''
 
-.. .. code:: ipython3
+.. .. code:: python
 
 ..     # structure = structures[0]
 ..     # atom_energy = {'O': 2.4, 'H': 1.2}
@@ -167,7 +167,7 @@ Descriptor
 
 Atomic environment descriptor
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.descriptors.acsf import ACSF, G2, G3, G9, CutoffFunction
 
@@ -176,7 +176,7 @@ ACSF
 ''''
 Atomic-centered symmetry functions (ACSF)
 
-.. code:: ipython3
+.. code:: python
 
     acsf = ACSF('O')
     
@@ -203,7 +203,7 @@ Output:
 
 Computing descriptor values
 '''''''''''''''''''''''''''
-.. code:: ipython3
+.. code:: python
 
     val = acsf(s)
     val[1]
@@ -217,7 +217,7 @@ Output:
                  2.2319485e-04], dtype=float32)
 
 
-.. code:: ipython3
+.. code:: python
 
     sns.displot(val[:, 2], bins=20)
 
@@ -228,7 +228,7 @@ Output:
 Gradient
 ''''''''
 
-.. code:: ipython3
+.. code:: python
 
     acsf.grad(s, 0, 3)
 
@@ -243,14 +243,14 @@ Output:
 Scaler
 ------
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.descriptors.scaler import DescriptorScaler
 
 
 Fitting scaling parameters
 ''''''''''''''''''''''''''
-.. code:: ipython3
+.. code:: python
 
     scaler = DescriptorScaler(scale_type='scale_center')
     # acsf = nnp.descriptor["H"]
@@ -274,7 +274,7 @@ Fitting scaling parameters
 
 Transforming descriptor values
 ''''''''''''''''''''''''''''''
-.. code:: ipython3
+.. code:: python
 
     scaled_x = []
     for structure in tqdm(structures):
@@ -290,7 +290,7 @@ Transforming descriptor values
     100%|██████████| 10/10 [00:00<00:00, 16.46it/s]
 
 
-.. code:: ipython3
+.. code:: python
 
     sx = scaled_x[:, 5]
     sns.displot(sx, bins=30)
@@ -305,7 +305,7 @@ Transforming descriptor values
 Model
 -----
 
-.. code:: ipython3
+.. code:: python
 
     from jaxip.models.nn import NeuralNetworkModel
     from jaxip.models.initializer import UniformInitializer
@@ -313,7 +313,7 @@ Model
 
 Building neural network
 '''''''''''''''''''''''
-.. code:: ipython3
+.. code:: python
 
     nn = NeuralNetworkModel(
         hidden_layers=((8, 't'), (8, 't')),
@@ -321,7 +321,7 @@ Building neural network
         # param_dtype=jnp.float64,
     )
 
-.. code:: ipython3
+.. code:: python
 
     rng = jax.random.PRNGKey(2022)                       # PRNG Key
     x = jnp.ones(shape=(8, acsf.num_symmetry_functions)) # Dummy Input
@@ -352,11 +352,11 @@ Building neural network
 
 Computing output energy
 '''''''''''''''''''''''
-.. code:: ipython3
+.. code:: python
 
     eng = nn.apply(params, scaled_x[:, :])  # this is an untrained model
 
-.. code:: ipython3
+.. code:: python
 
     sns.displot(eng, bins=30);
 
