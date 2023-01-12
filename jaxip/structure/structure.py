@@ -9,6 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
+
 from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
 from jaxip.structure._structure import _calculate_distance
@@ -268,7 +269,7 @@ class Structure(_BaseJaxPytreeDataClass):
         :return:  distances, position differences
         :rtype: Tuple[Array, Array]
         """
-        atom_position = self.position[jnp.asarray(atom_index)].reshape(-1, 3)
+        atom_position = self.position[jnp.asarray([atom_index])].reshape(-1, 3)
         if neighbor_index is not None:
             neighbor_position = self.position[jnp.atleast_1d(neighbor_index)]
         else:
