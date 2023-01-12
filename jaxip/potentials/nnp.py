@@ -5,6 +5,8 @@ from typing import Dict, List, NamedTuple, Optional, Tuple
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import random
+from tqdm import tqdm
+
 from jaxip.datasets.runner import RunnerStructureDataset
 from jaxip.descriptors.acsf.acsf import ACSF
 from jaxip.descriptors.acsf.angular import G3, G9
@@ -21,17 +23,20 @@ from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
 from jaxip.structure import Structure
 from jaxip.structure.element import ElementMap
 from jaxip.types import Array
-from tqdm import tqdm
 
 
 class StaticArgs(NamedTuple):
+    """Static arguments for kernels with jit compilation."""
+
     descriptor: Descriptor
     scaler: DescriptorScaler
     model: NeuralNetworkModel
 
 
-@dataclass()
-class PerElementPotential:
+@dataclass
+class AtomicPotential:
+    """Atomic potential."""
+
     descriptor: Descriptor
     scaler: DescriptorScaler
     model: NeuralNetworkModel
@@ -41,14 +46,14 @@ class PerElementPotential:
 @dataclass
 class NeuralNetworkPotential:
     """
-    A suitcase class of high-dimensional neural network potential (HDNNP).
+    High-dimensional neural network potential (HDNNP) - second generation.
 
     It contains all the required descriptors, scalers, and neural networks for each element,
     and a trainer to fit the potential using reference structure data.
     """
 
     potfile: Path
-    potential: Dict[str, PerElementPotential] = field(default_factory=dict)
+    potential: Dict[str, AtomicPotential] = field(default_factory=dict)
     trainer: Optional[NeuralNetworkPotentialTrainer] = None
 
     def __post_init__(self) -> None:
@@ -65,13 +70,19 @@ class NeuralNetworkPotential:
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
 
     def _init_potential(self) -> None:
-        """Initialize potential for each element"""
+        """Initialize atomic potential for each element."""
         descriptor: Dict[str, Descriptor] = self._init_descriptor()
         scaler: Dict[str, DescriptorScaler] = self._init_scaler()
         model: Dict[str, NeuralNetworkModel] = self._init_model()
-        model_params: Dict[str, frozendict] = self._init_model_params(model, descriptor)
+        model_params: Dict[str, frozendict] = self._init_model_params(
+            model,
+            num_inputs={
+                element: descriptor[element].num_descriptors
+                for element in self.elements
+            },
+        )
         for element in self.elements:
-            self.potential[element] = PerElementPotential(
+            self.potential[element] = AtomicPotential(
                 descriptor=descriptor[element],
                 scaler=scaler[element],
                 model=model[element],
@@ -193,7 +204,7 @@ class NeuralNetworkPotential:
     def _init_model_params(
         self,
         model: Dict[str, NeuralNetworkModel],
-        descriptor: Dict[str, Descriptor],
+        num_inputs: Dict[str, int],
     ) -> Dict[str, frozendict]:
         """Initialize neural network model parameters for each element using model and descriptor parameters."""
         model_params: Dict[str, frozendict] = dict()
@@ -201,7 +212,7 @@ class NeuralNetworkPotential:
         for i, element in enumerate(self.elements):
             model_params[element] = model[element].init(  # type: ignore
                 random_keys[i],
-                jnp.ones((1, descriptor[element].num_descriptors)),
+                jnp.ones((1, num_inputs[element])),
             )["params"]
         return model_params
 
@@ -360,6 +371,9 @@ class NeuralNetworkPotential:
         for pot in self.potential.values():
             pot.scaler.set_max_number_of_warnings(threshold)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
+
     @property
     def extrapolation_warnings(self) -> Dict[str, int]:
         return {
@@ -381,9 +395,6 @@ class NeuralNetworkPotential:
         Return the maximum cutoff radius found between all descriptors.
         """
         return max([pot.descriptor.r_cutoff for pot in self.potential.values()])
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
 
     @property
     def descriptor(self) -> Dict:
