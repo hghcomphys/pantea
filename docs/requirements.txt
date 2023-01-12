@@ -1,0 +1,1 @@
+.[ci]  # install jaxip from the current directory
