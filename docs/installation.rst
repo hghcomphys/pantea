@@ -11,13 +11,14 @@ Requirements
 .. * `JAX`_: An `Autograd` and `XLA` framework for high-performance numerical computing
 
 `JAX`_ is the core of this package and its installation is necessary to use it.
-The CPU version of JAX is included in the installation of JAXIP.  
+The CPU version of JAX is included, as dependency, in the default installation of JAXIP.
 
-For machines with an NVidia GPU, it is recommended to install JAX through `Conda` using the following command:
+For machines with an NVIDIA **GPU**, it is recommended to install JAX separately 
+via `Conda` using the following command (only Linux users):
 
 .. code-block:: bash
 
-    conda install jax cuda-nvcc -c conda-forge -c nvidia
+    $ conda install jax cuda-nvcc -c conda-forge -c nvidia
 
 Please refer to the `JAX Install Guide`_ for full installation instructions.
 

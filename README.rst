@@ -20,26 +20,27 @@ JAXIP
         :alt: Documentation Status
 
 
-JAXIP is a Python library on basis of `JAX`_ that helps 
+Description
+-----------
+JAXIP is an optimized Python library on basis of `JAX`_ that helps 
 in the development of emerging machine learning interatomic potentials 
 for use in computational physics and chemistry. These potentials are necessary for conducting 
 large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
 
-JAXIP is a tool for developing potentials for molecular dynamics simulations, 
-rather than a package for performing molecular dynamics simulations itself.
+JAXIP is for *developing* potentials for molecular dynamics simulations, 
+rather than a package for *performing* molecular dynamics simulations itself.
 
 .. _JAX: https://github.com/google/jax
 
 
 Documentation: https://jaxip.readthedocs.io.
 
-
-Why JAXIP?
-----------
+Main features
+-------------
 * The design of JAXIP is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
 * It uses `autograd` to make defining new descriptors straightforward
 * JAXIP is written purely in Python and optimized with `just-in-time` (JIT) compilation.
-* It also supports `GPU computing`, which can significantly speed up preprocessing and model training.
+* It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
 .. Important
 .. ---------
@@ -113,7 +114,7 @@ Training a machine learning potential
 -------------------------------------
 
 .. warning::
-        The example script below is not currently prepared to be executed.
+        The example script below is not ready yet to be executed.  
 
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) and train it on input structures. 
