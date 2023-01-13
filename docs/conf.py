@@ -38,7 +38,29 @@ extensions = extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
+    "sphinx_autodoc_typehints",
+    # "sphinx_gallery.load_style",
+    # "nbsphinx",
+    # "nbsphinx_link",
+    # "IPython.sphinxext.ipython_console_highlighting",
 ]
+
+
+napoleon_google_docstring = False
+
+autodoc_inherit_docstrings = True
+autodoc_preserve_defaults = True
+autodoc_default_options = {
+    # "members": True,
+    # "inherited-members": True,
+    # "undoc-members": True,
+}
+
+autoclass_content = "both"
+nbsphinx_allow_errors = True
+nbsphinx_execute = "never"
+
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
@@ -90,13 +112,16 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 # html_theme = "alabaster"
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_rtd_theme"  # "pydata_sphinx_theme"
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    # "search_bar_position": "sidebar",
+    # "github_url": "https://github.com/hghcomphys/jaxip",
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
