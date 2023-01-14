@@ -1,8 +1,17 @@
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, Tuple
 
+from jaxip.descriptors.acsf.acsf import ACSF
+from jaxip.descriptors.acsf.angular import G3, G9
+from jaxip.descriptors.acsf.cutoff import CutoffFunction
+from jaxip.descriptors.acsf.radial import G1, G2
+from jaxip.descriptors.base import Descriptor
+from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.logger import logger
+from jaxip.models.initializer import UniformInitializer
+from jaxip.models.nn import NeuralNetworkModel
 from jaxip.structure.element import ElementMap
+from jaxip.utils.attribute import set_as_attribute
 from jaxip.utils.tokenize import tokenize
 
 nnp_default_settings: Mapping[str, Any] = {
@@ -42,7 +51,9 @@ scaler_type_map: Mapping[str, str] = {
 
 
 class NeuralNetworkPotentialSettings:
-    """A container for neural network potential parameters."""
+    """A configuration class for neural network potential parameters."""
+
+    # FIXME: unite setting and configuration class
 
     def __init__(
         self,
@@ -58,6 +69,8 @@ class NeuralNetworkPotentialSettings:
 
         if filename is not None:
             self.read(filename)
+
+        set_as_attribute(self, self._settings)
 
     def read(self, filename: Path) -> None:
         """
@@ -87,6 +100,9 @@ class NeuralNetworkPotentialSettings:
                 elif keyword == "elements":
                     self._settings[keyword] = sorted(
                         set([t for t in tokens]), key=ElementMap.get_atomic_number
+                    )
+                    assert self._settings["number_of_elements"] == len(
+                        self._settings["elements"]
                     )
                 elif keyword == "atom_energy":
                     self._settings[keyword].update({tokens[0]: float(tokens[1])})
@@ -158,6 +174,121 @@ class NeuralNetworkPotentialSettings:
                 elif keyword == "force_weight   ":
                     self._settings[keyword] = float(tokens[0])
 
+    def get_descriptor(self) -> Dict[str, Descriptor]:
+        """Initialize descriptor for each element."""
+        descriptor: Dict[str, Descriptor] = dict()
+        settings = self._settings
+        # Elements
+        logger.info(f"Number of elements: {settings['number_of_elements']}")
+        for element in settings["elements"]:
+            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
+        # Instantiate ACSF for each element
+        for element in settings["elements"]:
+            descriptor[element] = ACSF(element)
+        # Add symmetry functions
+        logger.debug(
+            "Registering symmetry functions (radial and angular)"
+        )  # TODO: move logging inside .add() method
+
+        for cfg in settings["symfunction_short"]:
+            if cfg[1] == 1:
+                descriptor[cfg[0]].add(
+                    symmetry_function=G1(
+                        CutoffFunction(
+                            r_cutoff=cfg[5], cutoff_type=settings["cutoff_type"]
+                        )
+                    ),
+                    neighbor_element_j=cfg[2],
+                )
+            elif cfg[1] == 2:
+                descriptor[cfg[0]].add(
+                    symmetry_function=G2(
+                        CutoffFunction(
+                            r_cutoff=cfg[5], cutoff_type=settings["cutoff_type"]
+                        ),
+                        eta=cfg[3],
+                        r_shift=cfg[4],
+                    ),
+                    neighbor_element_j=cfg[2],
+                )
+            elif cfg[1] == 3:
+                descriptor[cfg[0]].add(
+                    symmetry_function=G3(
+                        CutoffFunction(
+                            r_cutoff=cfg[7], cutoff_type=settings["cutoff_type"]
+                        ),
+                        eta=cfg[4],
+                        zeta=cfg[6],
+                        lambda0=cfg[5],
+                        r_shift=0.0,
+                    ),  # TODO: add r_shift!
+                    neighbor_element_j=cfg[2],
+                    neighbor_element_k=cfg[3],
+                )
+            elif cfg[1] == 9:
+                descriptor[cfg[0]].add(
+                    symmetry_function=G9(
+                        CutoffFunction(
+                            r_cutoff=cfg[7], cutoff_type=settings["cutoff_type"]
+                        ),
+                        eta=cfg[4],
+                        zeta=cfg[6],
+                        lambda0=cfg[5],
+                        r_shift=0.0,
+                    ),  # TODO: add r_shift!
+                    neighbor_element_j=cfg[2],
+                    neighbor_element_k=cfg[3],
+                )
+        return descriptor
+
+    def get_scaler(self) -> Dict[str, DescriptorScaler]:
+        """Initialize descriptor scaler for each element."""
+        scaler: Dict[str, DescriptorScaler] = dict()
+        settings = self._settings
+        # Prepare scaler input argument if exist in settings
+        scaler_kwargs = {
+            first: settings[second]
+            for first, second in {
+                "scale_type": "scale_type",
+                "scale_min": "scale_min_short",
+                "scale_max": "scale_max_short",
+            }.items()
+            if second in self.keywords()
+        }
+        logger.debug(f"Scaler kwargs={scaler_kwargs}")
+        # Assign an ACSF scaler to each element
+        for element in settings["elements"]:
+            scaler[element] = DescriptorScaler(**scaler_kwargs)
+        return scaler
+
+    def get_model(self) -> Dict[str, NeuralNetworkModel]:
+        """Initialize neural network model for each element."""
+        model: Dict[str, NeuralNetworkModel] = dict()
+        settings = self._settings
+        for element in settings["elements"]:
+            logger.debug(f"Element: {element}")
+            # TODO: what if we have a different model architecture for each element
+            hidden_layers = zip(
+                settings["global_nodes_short"],
+                settings["global_activation_short"][:-1],
+            )
+            output_layer: Tuple[int, str] = (
+                1,
+                settings["global_activation_short"][-1],
+            )
+            kernel_initializer: UniformInitializer = UniformInitializer(
+                weights_range=(
+                    settings["weights_min"],
+                    settings["weights_max"],
+                )
+            )
+            model[element] = NeuralNetworkModel(
+                hidden_layers=tuple([(n, t) for n, t in hidden_layers]),
+                output_layer=output_layer,
+                kernel_initializer=kernel_initializer,
+            )
+        return model
+
     def __getitem__(self, keyword: str) -> Any:
         """Get value for the input keyword argument."""
         return self._settings[keyword]
@@ -165,3 +296,6 @@ class NeuralNetworkPotentialSettings:
     def keywords(self):
         """Return list of existing keywords in the potential settings."""
         return self._settings.keys()
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
