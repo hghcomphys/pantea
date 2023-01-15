@@ -22,3 +22,5 @@ LJ*/
 .virtual_documents/
 *.pkl
 *.json
+.coverage
+.tox
