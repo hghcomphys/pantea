@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from turtle import st
+from typing import Dict, List, Optional
 
 import jax.numpy as jnp
 from frozendict import frozendict
@@ -21,22 +22,19 @@ from jaxip.structure.element import ElementMap
 from jaxip.types import Array
 
 
-class StaticArgs(NamedTuple):
-    """Static arguments for kernels with jit compilation."""
-
-    descriptor: Descriptor
-    scaler: DescriptorScaler
-    model: NeuralNetworkModel
-
-
-@dataclass
+@dataclass(frozen=True)
 class AtomicPotential:
     """Atomic potential."""
 
     descriptor: Descriptor
     scaler: DescriptorScaler
     model: NeuralNetworkModel
-    model_params: frozendict = field(repr=False)
+
+    def apply(self, params: frozendict, structure: Structure) -> Array:
+        x = self.descriptor(structure)
+        x = self.scaler(x)
+        x = self.model.apply({"params": params}, x)
+        return x  # type: ignore
 
 
 @dataclass
@@ -50,6 +48,7 @@ class NeuralNetworkPotential:
 
     potfile: Path
     atomic_potential: Dict[str, AtomicPotential] = field(default_factory=dict)
+    model_params: Dict[str, frozendict] = field(default_factory=dict)
     trainer: Optional[NeuralNetworkPotentialTrainer] = None
 
     def __post_init__(self) -> None:
@@ -60,6 +59,8 @@ class NeuralNetworkPotential:
         )
         if len(self.atomic_potential) == 0:
             self._init_atomic_potential()
+        if len(self.model_params) == 0:
+            self._init_model_params()
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
@@ -69,49 +70,33 @@ class NeuralNetworkPotential:
         descriptor: Dict[str, Descriptor] = self.settings.get_descriptor()
         scaler: Dict[str, DescriptorScaler] = self.settings.get_scaler()
         model: Dict[str, NeuralNetworkModel] = self.settings.get_model()
-        model_params: Dict[str, frozendict] = self._init_model_params(
-            model,
-            num_inputs={
-                element: descriptor[element].num_descriptors
-                for element in self.elements
-            },
-        )
         for element in self.elements:
             self.atomic_potential[element] = AtomicPotential(
                 descriptor=descriptor[element],
                 scaler=scaler[element],
                 model=model[element],
-                model_params=model_params[element],
             )
 
-    def _init_model_params(
-        self,
-        model: Dict[str, NeuralNetworkModel],
-        num_inputs: Dict[str, int],
-    ) -> Dict[str, frozendict]:
+    def _init_model_params(self) -> None:
         """Initialize neural network model parameters for each element using model and descriptor parameters."""
-        model_params: Dict[str, frozendict] = dict()
         random_keys = random.split(random.PRNGKey(0), self.num_elements)
         for i, element in enumerate(self.elements):
-            model_params[element] = model[element].init(  # type: ignore
+            self.model_params[element] = self.atomic_potential[element].model.init(  # type: ignore
                 random_keys[i],
-                jnp.ones((1, num_inputs[element])),
-            )["params"]
-        return model_params
+                jnp.ones(
+                    (1, self.atomic_potential[element].descriptor.num_descriptors)
+                ),
+            )[
+                "params"
+            ]
 
     # ------------------------------------------------------------------------
 
-    def get_static_args(self) -> frozendict:
-        return frozendict(
-            {
-                element: StaticArgs(
-                    self.atomic_potential[element].descriptor,
-                    self.atomic_potential[element].scaler,
-                    self.atomic_potential[element].model,
-                )
-                for element in self.elements
-            }
-        )
+    def get_atomic_potential(self) -> frozendict:
+        # return frozendict(
+        #     {element: self.atomic_potential[element] for element in self.elements}
+        # )
+        return frozendict(self.atomic_potential)
 
     def __call__(self, structure: Structure) -> Array:
         """
@@ -123,15 +108,16 @@ class NeuralNetworkPotential:
         :rtype: Array
         """
         return _energy_fn(
-            self.get_static_args(),
+            frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
             self.model_params,
             structure.get_inputs(),
         )
 
     def compute_force(self, structure: Structure) -> Dict[str, Array]:
+        """Compute force components for all atoms in the input structure."""
         forces: Dict[str, Array] = _compute_force(
-            self.get_static_args(),
+            frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
             self.model_params,
             structure.get_inputs(),
@@ -294,6 +280,6 @@ class NeuralNetworkPotential:
     def model(self) -> Dict:
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
 
-    @property
-    def model_params(self) -> Dict:
-        return {elem: pot.model_params for elem, pot in self.atomic_potential.items()}
+    # @property
+    # def model_params(self) -> Dict:
+    #     return {elem: pot.model_params for elem, pot in self.atomic_potential.items()}
