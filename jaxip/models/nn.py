@@ -2,6 +2,7 @@ from typing import Any, Callable, List, Mapping, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict  # type: ignore
+
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
 import jax.numpy as jnp
+
 from jaxip.config import _CFG
 
 Array = jnp.ndarray
 Dtype = jnp.dtype
+Element = str
 
 
 @dataclass

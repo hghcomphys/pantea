@@ -22,7 +22,7 @@ from jaxip.units import units
 
 
 # FIXME: move to the trainer module
-class Input(NamedTuple):
+class Inputs(NamedTuple):
     """
     Represents array data types of Structure.
     """
@@ -355,13 +355,13 @@ class Structure(_BaseJaxPytreeDataClass):
 
     # --------------------------------------------------------------------------------------
 
-    def get_inputs(self) -> Dict[str, Input]:
+    def get_inputs(self) -> Dict[str, Inputs]:
         """A tuple of required info which are used for training and evaluating the potential."""
 
-        def extract_input() -> Generator[Tuple[str, Input], None, None]:
+        def extract_input() -> Generator[Tuple[str, Inputs], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
-                yield element, Input(
+                yield element, Inputs(
                     self.position[atom_index],
                     self.position,
                     self.atom_type,
