@@ -1,11 +1,11 @@
 from functools import partial
-from typing import Dict
+from typing import Dict, Protocol
 
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import grad, jit
 
-from jaxip.descriptors.acsf._acsf import _calculate_descriptor
+from jaxip.potentials._atomic_energy import _compute_atomic_energy
 from jaxip.types import Array
 
 
@@ -24,20 +24,15 @@ def _energy_fn(
     elements: list[str] = list(xbatch.keys())
     total_energy: Array = jnp.array(0.0)
     for element in elements:
-        potential = atomic_potential[element]
-        inputs = xbatch[element]
-        x = _calculate_descriptor(
-            potential.descriptor,
+        # Calculate model output energy
+        atomic_energy = _compute_atomic_energy(
+            atomic_potential[element],
             positions[element],
-            inputs.position,
-            inputs.atype,
-            inputs.lattice,
-            inputs.emap,
+            params[element],
+            xbatch[element],
         )
-        x = potential.scaler(x)
-        x = potential.model.apply({"params": params[element]}, x)
-        total_energy += jnp.sum(x)
-
+        # Accumulate to the total energy
+        total_energy += jnp.sum(atomic_energy)
     return total_energy
 
 

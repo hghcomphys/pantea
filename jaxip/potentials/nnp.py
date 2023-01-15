@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from turtle import st
 from typing import Dict, List, Optional
 
 import jax.numpy as jnp
@@ -12,29 +11,14 @@ from jaxip.datasets.runner import RunnerStructureDataset
 from jaxip.descriptors.base import Descriptor
 from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.logger import logger
-from jaxip.models.initializer import UniformInitializer
 from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_force, _energy_fn
+from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings
 from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
 from jaxip.structure import Structure
 from jaxip.structure.element import ElementMap
 from jaxip.types import Array
-
-
-@dataclass(frozen=True)
-class AtomicPotential:
-    """Atomic potential."""
-
-    descriptor: Descriptor
-    scaler: DescriptorScaler
-    model: NeuralNetworkModel
-
-    def apply(self, params: frozendict, structure: Structure) -> Array:
-        x = self.descriptor(structure)
-        x = self.scaler(x)
-        x = self.model.apply({"params": params}, x)
-        return x  # type: ignore
 
 
 @dataclass
