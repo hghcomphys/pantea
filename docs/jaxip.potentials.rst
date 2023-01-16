@@ -4,6 +4,14 @@ jaxip.potentials package
 Submodules
 ----------
 
+jaxip.potentials.atomic\_potential module
+-----------------------------------------
+
+.. automodule:: jaxip.potentials.atomic_potential
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.potentials.loader module
 ------------------------------
 
