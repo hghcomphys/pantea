@@ -82,9 +82,7 @@ class NeuralNetworkPotential:
         Compute the total energy.
 
         :param structure: Structure
-        :type structure: Structure
         :return: total energy
-        :rtype: Array
         """
         return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
@@ -93,14 +91,12 @@ class NeuralNetworkPotential:
             structure.get_inputs(),
         )
 
-    def compute_force(self, structure: Structure) -> Dict[str, Array]:
+    def compute_force(self, structure: Structure) -> Dict[Element, Array]:
         """
         Compute force components.
 
         :param structure: input structure
-        :type structure: Structure
         :return: per-atom force components
-        :rtype: Dict[str, Array]
         """
         forces: Dict[Element, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
@@ -268,7 +264,3 @@ class NeuralNetworkPotential:
     def model(self) -> Dict:
         """Return model for each element."""
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
-
-    # @property
-    # def model_params(self) -> Dict:
-    #     return {elem: pot.model_params for elem, pot in self.atomic_potential.items()}
