@@ -12,13 +12,14 @@ from jaxip.descriptors.base import Descriptor
 from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.logger import logger
 from jaxip.models.nn import NeuralNetworkModel
-from jaxip.potentials._energy import _compute_force, _energy_fn
+from jaxip.potentials._energy import _compute_energy
+from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings
 from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
 from jaxip.structure import Structure
 from jaxip.structure.element import ElementMap
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 @dataclass
@@ -31,8 +32,8 @@ class NeuralNetworkPotential:
     """
 
     potfile: Path
-    atomic_potential: Dict[str, AtomicPotential] = field(default_factory=dict)
-    model_params: Dict[str, frozendict] = field(default_factory=dict)
+    atomic_potential: Dict[Element, AtomicPotential] = field(default_factory=dict)
+    model_params: Dict[Element, frozendict] = field(default_factory=dict)
     trainer: Optional[NeuralNetworkPotentialTrainer] = None
 
     def __post_init__(self) -> None:
@@ -51,9 +52,9 @@ class NeuralNetworkPotential:
 
     def _init_atomic_potential(self) -> None:
         """Initialize atomic potential for each element."""
-        descriptor: Dict[str, Descriptor] = self.settings.get_descriptor()
-        scaler: Dict[str, DescriptorScaler] = self.settings.get_scaler()
-        model: Dict[str, NeuralNetworkModel] = self.settings.get_model()
+        descriptor: Dict[Element, Descriptor] = self.settings.get_descriptor()
+        scaler: Dict[Element, DescriptorScaler] = self.settings.get_scaler()
+        model: Dict[Element, NeuralNetworkModel] = self.settings.get_model()
         for element in self.elements:
             self.atomic_potential[element] = AtomicPotential(
                 descriptor=descriptor[element],
@@ -76,22 +77,16 @@ class NeuralNetworkPotential:
 
     # ------------------------------------------------------------------------
 
-    def get_atomic_potential(self) -> frozendict:
-        # return frozendict(
-        #     {element: self.atomic_potential[element] for element in self.elements}
-        # )
-        return frozendict(self.atomic_potential)
-
     def __call__(self, structure: Structure) -> Array:
         """
-        Return the total energy of the input structure.
+        Compute the total energy.
 
         :param structure: Structure
         :type structure: Structure
         :return: total energy
         :rtype: Array
         """
-        return _energy_fn(
+        return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
             self.model_params,
@@ -99,7 +94,14 @@ class NeuralNetworkPotential:
         )
 
     def compute_force(self, structure: Structure) -> Dict[str, Array]:
-        """Compute force components for all atoms in the input structure."""
+        """
+        Compute force components.
+
+        :param structure: input structure
+        :type structure: Structure
+        :return: per-atom force components
+        :rtype: Dict[str, Array]
+        """
         forces: Dict[str, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
@@ -239,29 +241,32 @@ class NeuralNetworkPotential:
 
     @property
     def elements(self) -> List[str]:
+        """Return elements."""
         return self.settings["elements"]
 
     @property
     def num_elements(self) -> int:
+        """Return number of elements."""
         return len(self.elements)
 
     @property
     def r_cutoff(self) -> float:
-        """
-        Return the maximum cutoff radius found between all descriptors.
-        """
+        """Return the maximum cutoff radius found between all descriptors."""
         return max([pot.descriptor.r_cutoff for pot in self.atomic_potential.values()])
 
     @property
     def descriptor(self) -> Dict:
+        """Return descriptor for each element."""
         return {elem: pot.descriptor for elem, pot in self.atomic_potential.items()}
 
     @property
     def scaler(self) -> Dict:
+        """Return scaler for each element."""
         return {elem: pot.scaler for elem, pot in self.atomic_potential.items()}
 
     @property
     def model(self) -> Dict:
+        """Return model for each element."""
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
 
     # @property

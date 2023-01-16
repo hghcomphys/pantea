@@ -3,15 +3,48 @@ from typing import Dict, Protocol
 
 import jax.numpy as jnp
 from frozendict import frozendict
-from jax import grad, jit
+from jax import jit
 
-from jaxip.potentials._atomic_energy import _compute_atomic_energy
+from jaxip.descriptors import DescriptorScaler
+from jaxip.descriptors.acsf._acsf import _calculate_descriptor
+from jaxip.descriptors.base import Descriptor
+from jaxip.models import NeuralNetworkModel
+from jaxip.structure.structure import Inputs
 from jaxip.types import Array
+
+
+class AtomicPotentialInterface(Protocol):
+    """An interface for AtomicPotential."""
+
+    descriptor: Descriptor
+    scaler: DescriptorScaler
+    model: NeuralNetworkModel
+
+
+@partial(jit, static_argnums=(0,))  # FIXME
+def _compute_atomic_energy(
+    atomic_potential: AtomicPotentialInterface,
+    positions: Array,
+    params: frozendict,
+    inputs: Inputs,
+) -> Array:
+    """Compute model output per-atom energy."""
+    x = _calculate_descriptor(
+        atomic_potential.descriptor,
+        positions,
+        inputs.position,
+        inputs.atype,
+        inputs.lattice,
+        inputs.emap,
+    )
+    x = atomic_potential.scaler(x)
+    atomic_energy = atomic_potential.model.apply({"params": params}, x)
+    return atomic_energy  # type: ignore
 
 
 @partial(jit, static_argnums=(0,))  # FIXME
 def _energy_fn(
-    atomic_potential: frozendict,
+    atomic_potential: Dict[str, AtomicPotentialInterface],
     positions: Dict[str, Array],
     params: Dict[str, frozendict],
     xbatch: Dict,
@@ -24,38 +57,14 @@ def _energy_fn(
     elements: list[str] = list(xbatch.keys())
     total_energy: Array = jnp.array(0.0)
     for element in elements:
-        # Calculate model output energy
         atomic_energy = _compute_atomic_energy(
             atomic_potential[element],
             positions[element],
             params[element],
             xbatch[element],
         )
-        # Accumulate to the total energy
         total_energy += jnp.sum(atomic_energy)
     return total_energy
 
 
-_grad_energy_fn = jit(
-    grad(_energy_fn, argnums=1),
-    static_argnums=0,
-)
-
-
-# @partial(jit, static_argnums=(0,))  # FIXME
-def _compute_force(
-    atomic_potential: frozendict,
-    positions: Dict[str, Array],
-    params: Dict[str, frozendict],
-    xbatch: Dict,
-) -> Dict[str, Array]:
-    """Compute force components using the gradient of the energy."""
-    grad_energies: Dict[str, Array] = _grad_energy_fn(
-        atomic_potential,
-        positions,
-        params,
-        xbatch,
-    )
-    return {
-        element: -1.0 * grad_energy for element, grad_energy in grad_energies.items()
-    }
+_compute_energy = _energy_fn
