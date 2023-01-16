@@ -10,7 +10,7 @@ from jaxip.descriptors.acsf._acsf import _calculate_descriptor
 from jaxip.descriptors.base import Descriptor
 from jaxip.models import NeuralNetworkModel
 from jaxip.structure.structure import Inputs
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 class AtomicPotentialInterface(Protocol):
@@ -44,10 +44,10 @@ def _compute_atomic_energy(
 
 @partial(jit, static_argnums=(0,))  # FIXME
 def _energy_fn(
-    atomic_potential: Dict[str, AtomicPotentialInterface],
-    positions: Dict[str, Array],
-    params: Dict[str, frozendict],
-    xbatch: Dict,
+    atomic_potential: Dict[Element, AtomicPotentialInterface],
+    positions: Dict[Element, Array],
+    params: Dict[Element, frozendict],
+    xbatch: Dict[Element, Inputs],
 ) -> Array:
     """
     A helper function that allows to calculate gradient of the NNP total energy

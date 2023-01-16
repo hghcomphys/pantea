@@ -102,7 +102,7 @@ class NeuralNetworkPotential:
         :return: per-atom force components
         :rtype: Dict[str, Array]
         """
-        forces: Dict[str, Array] = _compute_force(
+        forces: Dict[Element, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
             self.model_params,

@@ -9,14 +9,16 @@ import optax
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from jax import jit, value_and_grad
+from tqdm import tqdm
+
 from jaxip.base import _Base
 from jaxip.datasets.base import StructureDataset
 from jaxip.logger import logger
-from jaxip.potentials._energy import _compute_force, _energy_fn
+from jaxip.potentials._energy import _energy_fn
+from jaxip.potentials._force import _compute_force
 from jaxip.potentials.loss import mse_loss
 from jaxip.potentials.metrics import ErrorMetric, init_error_metric
-from jaxip.types import Array
-from tqdm import tqdm
+from jaxip.types import Array, Element
 
 
 class NeuralNetworkPotentialTrainer(_Base):
@@ -97,7 +99,7 @@ class NeuralNetworkPotentialTrainer(_Base):
 
         return {element: state for element, state in generate_train_state()}
 
-    def update_potential_model_params(self, states: Dict[str, TrainState]) -> None:
+    def _update_model_params(self, states: Dict[str, TrainState]) -> None:
         for element, train_state in states.items():
             self.potential.model_params[element] = train_state.params
 
@@ -132,7 +134,7 @@ class NeuralNetworkPotentialTrainer(_Base):
                 batch = xbatch, ybatch
                 states, metrics = self.train_step(static_args, states, batch)
 
-            self.update_potential_model_params(states)
+            self._update_model_params(states)
 
             print(
                 f"training loss:{float(metrics['loss']): 0.7f}"
@@ -148,14 +150,14 @@ class NeuralNetworkPotentialTrainer(_Base):
     def train_step(
         self,
         static_args: Dict,
-        states: Dict[str, TrainState],
+        states: Dict[Element, TrainState],
         batch: Tuple,
     ) -> Tuple:
         def loss_fn(
-            params: Dict[str, frozendict],
+            params: Dict[Element, frozendict],
         ) -> Tuple[Array, Any]:
             """
-            Loss function
+            Loss function.
             """
             # TODO: define force loss weights for each element
 
