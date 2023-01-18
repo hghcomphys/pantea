@@ -44,7 +44,7 @@ class NeuralNetworkPotentialTrainer(_Base):
         self.optimizer = self.init_optimizer()
 
         # self.force_weight: float = self.potential.settings["force_weight"]
-        # self.atom_energy: Dict[str, float] = self.potential.settings["atom_energy"]
+        # self.atom_energy: Dict[Element, float] = self.potential.settings["atom_energy"]
 
     def init_optimizer(self) -> Dict:
         """
@@ -84,7 +84,7 @@ class NeuralNetworkPotentialTrainer(_Base):
         # return {element: optimizer for element in self.elements}
         return optimizer
 
-    def init_train_state(self) -> Dict[str, TrainState]:
+    def init_train_state(self) -> Dict[Element, TrainState]:
         """
         Initialize train state for each element.
         """

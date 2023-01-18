@@ -11,6 +11,7 @@ from jaxip.logger import logger
 from jaxip.models.initializer import UniformInitializer
 from jaxip.models.nn import NeuralNetworkModel
 from jaxip.structure.element import ElementMap
+from jaxip.types import Element
 from jaxip.utils.attribute import set_as_attribute
 from jaxip.utils.tokenize import tokenize
 
@@ -58,14 +59,14 @@ class NeuralNetworkPotentialSettings:
     def __init__(
         self,
         filename: Optional[Path] = None,
-        default: Optional[Dict[str, Any]] = None,
+        defaults: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialize potential settings."""
         self._settings: Dict[str, Any] = dict()
 
         self._settings.update(nnp_default_settings)
-        if default is not None:
-            self._settings.update(default)
+        if defaults is not None:
+            self._settings.update(defaults)
 
         if filename is not None:
             self.read(filename)
@@ -174,9 +175,9 @@ class NeuralNetworkPotentialSettings:
                 elif keyword == "force_weight   ":
                     self._settings[keyword] = float(tokens[0])
 
-    def get_descriptor(self) -> Dict[str, Descriptor]:
+    def get_descriptor(self) -> Dict[Element, ACSF]:
         """Initialize descriptor for each element."""
-        descriptor: Dict[str, Descriptor] = dict()
+        descriptor: Dict[Element, ACSF] = dict()
         settings = self._settings
         # Elements
         logger.info(f"Number of elements: {settings['number_of_elements']}")
@@ -241,9 +242,9 @@ class NeuralNetworkPotentialSettings:
                 )
         return descriptor
 
-    def get_scaler(self) -> Dict[str, DescriptorScaler]:
+    def get_scaler(self) -> Dict[Element, DescriptorScaler]:
         """Initialize descriptor scaler for each element."""
-        scaler: Dict[str, DescriptorScaler] = dict()
+        scaler: Dict[Element, DescriptorScaler] = dict()
         settings = self._settings
         # Prepare scaler input argument if exist in settings
         scaler_kwargs = {
@@ -261,9 +262,9 @@ class NeuralNetworkPotentialSettings:
             scaler[element] = DescriptorScaler(**scaler_kwargs)
         return scaler
 
-    def get_model(self) -> Dict[str, NeuralNetworkModel]:
+    def get_model(self) -> Dict[Element, NeuralNetworkModel]:
         """Initialize neural network model for each element."""
-        model: Dict[str, NeuralNetworkModel] = dict()
+        model: Dict[Element, NeuralNetworkModel] = dict()
         settings = self._settings
         for element in settings["elements"]:
             logger.debug(f"Element: {element}")

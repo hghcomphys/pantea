@@ -4,7 +4,7 @@ from typing import NamedTuple, Optional
 from jaxip.base import _BaseJaxPytreeDataClass
 from jaxip.descriptors.acsf.cutoff import CutoffFunction
 from jaxip.logger import logger
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
@@ -27,6 +27,6 @@ class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
 
 
 class EnvironmentElements(NamedTuple):
-    central: str
-    neighbor_j: str
-    neighbor_k: Optional[str] = None
+    central: Element
+    neighbor_j: Element
+    neighbor_k: Optional[Element] = None

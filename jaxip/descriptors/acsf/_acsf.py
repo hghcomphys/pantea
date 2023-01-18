@@ -3,12 +3,13 @@ from typing import Callable, Dict, Protocol, Tuple
 
 import jax.numpy as jnp
 from jax import jit, lax, vmap
+
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements
 from jaxip.structure._neighbor import _calculate_cutoff_mask_per_atom
 from jaxip.structure._structure import _calculate_distance_per_atom
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 class AcsfInterface(Protocol):
@@ -24,7 +25,7 @@ def _calculate_radial_acsf_per_atom(
     radial: Dict[EnvironmentElements, RadialSymmetryFunction],
     atype: Array,
     dist_i: Array,
-    emap: Dict[str, Array],
+    emap: Dict[Element, Array],
 ) -> Array:
 
     elements: EnvironmentElements = [k for k in radial.keys()][0]
@@ -50,7 +51,7 @@ def _calculate_angular_acsf_per_atom(
     diff_i: Array,
     dist_i: Array,
     lattice: Array,
-    emap: Dict[str, Array],
+    emap: Dict[Element, Array],
 ) -> Array:
 
     elements: EnvironmentElements = [k for k in angular.keys()][0]

@@ -16,7 +16,7 @@ from jaxip.structure._structure import _calculate_distance
 from jaxip.structure.box import Box
 from jaxip.structure.element import ElementMap
 from jaxip.structure.neighbor import Neighbor
-from jaxip.types import Array, Dtype
+from jaxip.types import Array, Dtype, Element
 from jaxip.types import dtype as _dtype
 from jaxip.units import units
 
@@ -31,7 +31,7 @@ class Inputs(NamedTuple):
     position: Array
     atype: Array
     lattice: Array
-    emap: Dict[str, Array]
+    emap: Dict[Element, Array]
 
 
 @dataclass
@@ -94,13 +94,9 @@ class Structure(_BaseJaxPytreeDataClass):
         positions, forces, box, neighbor, etc.
 
         :param data: input data
-        :type data: Dict[str, Any]
         :param r_cutoff: neighbor atom cutoff radius, defaults to None
-        :type r_cutoff: Optional[float], optional
         :param dtype: data type of arrays, defaults to _dtype.FLOATX
-        :type dtype: Dtype, optional
         :return: an initialized instance
-        :rtype: Structure
         """
         kwargs: Dict[str, Any] = dict()
         data_: DefaultDict[str, List] = defaultdict(list, data)
@@ -229,7 +225,7 @@ class Structure(_BaseJaxPytreeDataClass):
         return self.box.lattice
 
     @property
-    def elements(self) -> tuple[str, ...]:
+    def elements(self) -> tuple[Element, ...]:
         # FIXME: optimize
         return tuple(sorted({str(self.element_map(int(at))) for at in self.atom_type}))
 
@@ -237,14 +233,12 @@ class Structure(_BaseJaxPytreeDataClass):
         return f"{self.__class__.__name__}(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
 
     # TODO: jit
-    def select(self, element: str) -> Array:
+    def select(self, element: Element) -> Array:
         """
         Return all atom indices of the element.
 
         :param element: element name (e.g. `H` for hydrogen)
-        :type element: str
         :return: atom indices
-        :rtype: Array
         """
         return jnp.nonzero(self.atom_type == self.element_map[element])[0]
 
@@ -320,7 +314,7 @@ class Structure(_BaseJaxPytreeDataClass):
 
     # --------------------------------------------------------------------------------------
 
-    def _get_energy_offset(self, atom_energy: Dict[str, float]) -> Array:
+    def _get_energy_offset(self, atom_energy: Dict[Element, float]) -> Array:
         """Return a array of energy offset."""
 
         energy_offset: Array = jnp.empty_like(self.energy)
@@ -331,23 +325,21 @@ class Structure(_BaseJaxPytreeDataClass):
             )
         return energy_offset
 
-    def remove_energy_offset(self, atom_energy: Dict[str, float]) -> None:
+    def remove_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
         Remove the input atom reference energies from the per-atom and total energy.
 
         :param atom_energy: atom reference energy
-        :type atom_energy: Dict[str, float]
         """
         energy_offset = self._get_energy_offset(atom_energy)
         self.energy -= energy_offset
         self.total_energy -= energy_offset.sum()
 
-    def add_energy_offset(self, atom_energy: Dict[str, float]) -> None:
+    def add_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
         Add the input atom reference energies from the per-atom and total energy.
 
         :param atom_energy: atom reference energy
-        :type atom_energy: Dict[str, float]
         """
         energy_offset = self._get_energy_offset(atom_energy)
         self.energy += energy_offset
@@ -355,10 +347,10 @@ class Structure(_BaseJaxPytreeDataClass):
 
     # --------------------------------------------------------------------------------------
 
-    def get_inputs(self) -> Dict[str, Inputs]:
+    def get_inputs(self) -> Dict[Element, Inputs]:
         """A tuple of required info which are used for training and evaluating the potential."""
 
-        def extract_input() -> Generator[Tuple[str, Inputs], None, None]:
+        def extract_input() -> Generator[Tuple[Element, Inputs], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, Inputs(
@@ -373,20 +365,20 @@ class Structure(_BaseJaxPytreeDataClass):
 
         return {element: input for element, input in extract_input()}
 
-    def get_positions(self) -> Dict[str, Array]:
+    def get_positions(self) -> Dict[Element, Array]:
         """Get position of atoms per element."""
 
-        def extract_position() -> Generator[Tuple[str, Array], None, None]:
+        def extract_position() -> Generator[Tuple[Element, Array], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, self.position[atom_index]
 
         return {element: position for element, position in extract_position()}
 
-    def get_forces(self) -> Dict[str, Array]:
+    def get_forces(self) -> Dict[Element, Array]:
         """Get force components per element."""
 
-        def extract_force() -> Generator[Tuple[str, Array], None, None]:
+        def extract_force() -> Generator[Tuple[Element, Array], None, None]:
             for element in self.elements:
                 atom_index: Array = self.select(element)
                 yield element, self.force[atom_index]
