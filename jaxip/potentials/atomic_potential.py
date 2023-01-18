@@ -46,3 +46,8 @@ class AtomicPotential:
             params,
             structure.get_inputs()[element],
         )
+
+    @property
+    def model_input_size(self) -> int:
+        """Return size of the model input."""
+        return self.descriptor.num_descriptors

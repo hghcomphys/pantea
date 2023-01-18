@@ -8,7 +8,7 @@ from jax import random
 from tqdm import tqdm
 
 from jaxip.datasets.runner import RunnerStructureDataset
-from jaxip.descriptors.base import Descriptor
+from jaxip.descriptors.acsf.acsf import ACSF
 from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.logger import logger
 from jaxip.models.nn import NeuralNetworkModel
@@ -43,16 +43,23 @@ class NeuralNetworkPotential:
             filename=self.potfile
         )
         if len(self.atomic_potential) == 0:
-            self._init_atomic_potential()
+            self.init_atomic_potential()
+
         if len(self.model_params) == 0:
-            self._init_model_params()
+            self.init_model_params()
+
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
 
-    def _init_atomic_potential(self) -> None:
-        """Initialize atomic potential for each element."""
-        descriptor: Dict[Element, Descriptor] = self.settings.get_descriptor()
+    def init_atomic_potential(self) -> None:
+        """
+        Initialize atomic potential for each element.
+
+        This method can be override in case that different atomic potential is
+        going to be used.
+        """
+        descriptor: Dict[Element, ACSF] = self.settings.get_descriptor()
         scaler: Dict[Element, DescriptorScaler] = self.settings.get_scaler()
         model: Dict[Element, NeuralNetworkModel] = self.settings.get_model()
         for element in self.elements:
@@ -62,15 +69,18 @@ class NeuralNetworkPotential:
                 model=model[element],
             )
 
-    def _init_model_params(self) -> None:
-        """Initialize neural network model parameters for each element using model and descriptor parameters."""
-        random_keys = random.split(random.PRNGKey(0), self.num_elements)
+    def init_model_params(self, seed: int = 2023) -> None:
+        """
+        Initialize neural network model parameters for each element
+        (e.g. neural network kernel and bias values).
+
+        This method be used to initialize model params of the potential with a different random seed.
+        """
+        random_keys = random.split(random.PRNGKey(seed), self.num_elements)
         for i, element in enumerate(self.elements):
             self.model_params[element] = self.atomic_potential[element].model.init(  # type: ignore
                 random_keys[i],
-                jnp.ones(
-                    (1, self.atomic_potential[element].descriptor.num_descriptors)
-                ),
+                jnp.ones((1, self.atomic_potential[element].model_input_size)),
             )[
                 "params"
             ]
@@ -229,14 +239,14 @@ class NeuralNetworkPotential:
         return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
 
     @property
-    def extrapolation_warnings(self) -> Dict[str, int]:
+    def extrapolation_warnings(self) -> Dict[Element, int]:
         return {
             element: pot.scaler.number_of_warnings
             for element, pot in self.atomic_potential.items()
         }
 
     @property
-    def elements(self) -> List[str]:
+    def elements(self) -> List[Element]:
         """Return elements."""
         return self.settings["elements"]
 
