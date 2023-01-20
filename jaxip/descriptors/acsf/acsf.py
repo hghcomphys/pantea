@@ -13,7 +13,7 @@ from jaxip.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunctio
 from jaxip.descriptors.base import Descriptor
 from jaxip.logger import logger
 from jaxip.structure.structure import Structure
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 @dataclass
@@ -76,8 +76,8 @@ class ACSF(Descriptor):
     def add(
         self,
         symmetry_function: SymmetryFunction,
-        neighbor_element_j: str,
-        neighbor_element_k: Optional[str] = None,
+        neighbor_element_j: Element,
+        neighbor_element_k: Optional[Element] = None,
     ) -> None:
         """Add the input symmetry function to the list of ACSFs."""
         if isinstance(symmetry_function, RadialSymmetryFunction):

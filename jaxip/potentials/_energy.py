@@ -54,7 +54,7 @@ def _energy_fn(
     respect to the atom positions (for each element).
     """
     # TODO: using jax.lax.scan?
-    elements: list[str] = list(xbatch.keys())
+    elements: list[Element] = list(xbatch.keys())
     total_energy: Array = jnp.array(0.0)
     for element in elements:
         atomic_energy = _compute_atomic_energy(
