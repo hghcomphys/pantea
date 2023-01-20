@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import random
+from this import d
 from tqdm import tqdm
 
 from jaxip.datasets.runner import RunnerStructureDataset
@@ -31,18 +32,20 @@ class NeuralNetworkPotential:
     and a trainer to fit the potential using reference structure data.
     """
 
-    potfile: Path
+    potential_file: Path = Path("input.data")
     atomic_potential: Dict[Element, AtomicPotential] = field(default_factory=dict)
-    model_params: Dict[Element, frozendict] = field(default_factory=dict)
-    trainer: Optional[NeuralNetworkPotentialTrainer] = None
+    model_params: Dict[Element, frozendict] = field(default_factory=dict, repr=False)
+    trainer: Optional[NeuralNetworkPotentialTrainer] = field(default=None, repr=False)
+    settings: Optional[NeuralNetworkPotentialSettings] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Post initialize potential parameters."""
-        # TODO: input settings externally (it conflicts with the potfile input)
-        self.settings: NeuralNetworkPotentialSettings = NeuralNetworkPotentialSettings(
-            filename=self.potfile
-        )
-        if len(self.atomic_potential) == 0:
+        self.potential_file = Path(self.potential_file)
+
+        if self.settings is None:
+            self.settings = NeuralNetworkPotentialSettings(filename=self.potential_file)
+
+        if not self.atomic_potential:
             self.init_atomic_potential()
 
         if len(self.model_params) == 0:
@@ -56,8 +59,7 @@ class NeuralNetworkPotential:
         """
         Initialize atomic potential for each element.
 
-        This method can be override in case that different atomic potential is
-        going to be used.
+        This method can be override in case that different atomic potential is used.
         """
         descriptor: Dict[Element, ACSF] = self.settings.get_descriptor()
         scaler: Dict[Element, DescriptorScaler] = self.settings.get_scaler()
@@ -69,16 +71,19 @@ class NeuralNetworkPotential:
                 model=model[element],
             )
 
-    def init_model_params(self, seed: int = 2023) -> None:
+    def init_model_params(self) -> None:
         """
         Initialize neural network model parameters for each element
         (e.g. neural network kernel and bias values).
 
         This method be used to initialize model params of the potential with a different random seed.
         """
-        random_keys = random.split(random.PRNGKey(seed), self.num_elements)
-        for i, element in enumerate(self.elements):
-            self.model_params[element] = self.atomic_potential[element].model.init(  # type: ignore
+        random_keys = random.split(
+            random.PRNGKey(self.settings["random_seed"]),
+            self.settings["number_of_elements"],
+        )
+        for i, element in enumerate(self.settings["elements"]):
+            self.model_params[element] = atomic_potential[element].model.init(  # type: ignore
                 random_keys[i],
                 jnp.ones((1, self.atomic_potential[element].model_input_size)),
             )[
@@ -168,7 +173,7 @@ class NeuralNetworkPotential:
         for element in self.elements:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
-                self.potfile.parent,
+                self.potential_file.parent,
                 self.settings["scaler_save_naming_format"].format(atomic_number),
             )
             logger.info(
@@ -184,7 +189,7 @@ class NeuralNetworkPotential:
             logger.debug(f"Saving model weights for element: {element}")
             atomic_number = ElementMap.get_atomic_number(element)
             model_file = Path(
-                self.potfile.parent,
+                self.potential_file.parent,
                 self.settings["model_save_naming_format"].format(atomic_number),
             )
             self.atomic_potential[element].model.save(model_file)
@@ -216,7 +221,7 @@ class NeuralNetworkPotential:
             logger.debug(f"Loading model weights for element: {element}")
             atomic_number: int = ElementMap.get_atomic_number(element)
             model_file = Path(
-                self.potfile.parent,
+                self.potential_file.parent,
                 self.settings["model_save_naming_format"].format(atomic_number),
             )
             self.atomic_potential[element].model.load(model_file)
@@ -235,8 +240,8 @@ class NeuralNetworkPotential:
         for pot in self.atomic_potential.values():
             pot.scaler.set_max_number_of_warnings(threshold)
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
+    # def __repr__(self) -> str:
+    #     return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
 
     @property
     def extrapolation_warnings(self) -> Dict[Element, int]:

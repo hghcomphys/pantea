@@ -18,6 +18,7 @@ from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.loss import mse_loss
 from jaxip.potentials.metrics import ErrorMetric, init_error_metric
+from jaxip.potentials.settings import NeuralNetworkPotentialSettings
 from jaxip.types import Array, Element
 
 
@@ -29,16 +30,17 @@ class NeuralNetworkPotentialTrainer(_Base):
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
 
-    def __init__(self, potential, **kwargs) -> None:
+    def __init__(self, potential) -> None:
         """
         Initialize trainer.
         """
         self.potential = potential
-        self.save_best_model: bool = kwargs.get("save_best_model", True)
+        self.settings = potential.settings
+        # self.save_best_model: bool = kwargs.get("save_best_model", True) # FIXME: move to settings
 
         self.criterion: Callable = mse_loss
         self.error_metric: ErrorMetric = init_error_metric(
-            self.potential.settings["main_error_metric"]
+            self.settings["main_error_metric"]
         )
 
         self.optimizer = self.init_optimizer()
@@ -51,9 +53,8 @@ class NeuralNetworkPotentialTrainer(_Base):
         Prepare optimizer using potential settings.
 
         :return: optimizer
-        :rtype: torch.optim.Optimizer
         """
-        settings = self.potential.settings
+        settings = self.settings
 
         if settings["updater_type"] == 0:  # Gradient Descent
 
@@ -99,7 +100,7 @@ class NeuralNetworkPotentialTrainer(_Base):
 
         return {element: state for element, state in generate_train_state()}
 
-    def _update_model_params(self, states: Dict[str, TrainState]) -> None:
+    def _update_model_params(self, states: Dict[Element, TrainState]) -> None:
         for element, train_state in states.items():
             self.potential.model_params[element] = train_state.params
 
@@ -111,7 +112,7 @@ class NeuralNetworkPotentialTrainer(_Base):
         epochs: int = kwargs.get("epochs", 50)
 
         static_args = self.potential.get_static_args()
-        states: Dict[str, TrainState] = self.init_train_state()
+        states: Dict[Element, TrainState] = self.init_train_state()
 
         history = defaultdict(list)
 

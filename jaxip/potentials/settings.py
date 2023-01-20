@@ -29,6 +29,7 @@ nnp_default_settings: Mapping[str, Any] = {
     "atom_energy": dict(),
     "scaler_save_naming_format": "scaling.{:03d}.data",
     "model_save_naming_format": "weights.{:03d}.zip",
+    "random_seed": 2023,
     # TODO: add all default values
 }
 
@@ -122,6 +123,8 @@ class NeuralNetworkPotentialSettings:
                             tokens[3],
                         ) + tuple([float(t) for t in tokens[4:]])
                     self._settings[keyword].append(acsf_)
+                elif keyword == "random_seed":
+                    self._settings[keyword] = int(tokens[0])
 
                 # Neural network
                 elif keyword == "global_hidden_layers_short":
