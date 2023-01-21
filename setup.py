@@ -16,6 +16,7 @@ requirements = [
     "ase>=3.2",
     "frozendict>=2.3",
     "flax>=0.6",
+    "pydantic>=1.10",
 ]
 
 test_requirements = [
