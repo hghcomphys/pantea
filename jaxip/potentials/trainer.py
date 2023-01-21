@@ -18,7 +18,6 @@ from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.loss import mse_loss
 from jaxip.potentials.metrics import ErrorMetric, init_error_metric
-from jaxip.potentials.settings import NeuralNetworkPotentialSettings
 from jaxip.types import Array, Element
 
 
@@ -40,13 +39,13 @@ class NeuralNetworkPotentialTrainer(_Base):
 
         self.criterion: Callable = mse_loss
         self.error_metric: ErrorMetric = init_error_metric(
-            self.settings["main_error_metric"]
+            self.settings.main_error_metric
         )
 
         self.optimizer = self.init_optimizer()
 
-        # self.force_weight: float = self.potential.settings["force_weight"]
-        # self.atom_energy: Dict[Element, float] = self.potential.settings["atom_energy"]
+        # self.force_weight: float = self.potential.settings.force_weight
+        # self.atom_energy: Dict[Element, float] = self.potential.settings.atom_energy
 
     def init_optimizer(self) -> Dict:
         """
@@ -56,26 +55,26 @@ class NeuralNetworkPotentialTrainer(_Base):
         """
         settings = self.settings
 
-        if settings["updater_type"] == 0:  # Gradient Descent
+        if settings.updater_type == 0:  # Gradient Descent
 
-            if settings["gradient_type"] == 1:  # Adam
+            if settings.gradient_type == 1:  # Adam
                 optimizer_cls = optax.adamw
                 optimizer_cls_kwargs = {
-                    "learning_rate": settings["gradient_adam_eta"],
-                    "b1": settings["gradient_adam_beta1"],
-                    "b2": settings["gradient_adam_beta2"],
-                    "eps": settings["gradient_adam_epsilon"],
-                    "weight_decay": settings["gradient_weight_decay"],
+                    "learning_rate": settings.gradient_adam_eta,
+                    "b1": settings.gradient_adam_beta1,
+                    "b2": settings.gradient_adam_beta2,
+                    "eps": settings.gradient_adam_epsilon,
+                    "weight_decay": settings.gradient_adam_weight_decay,
                 }
-            # TODO: self.settings["gradient_type"] == 0:  # fixed Step
+            # TODO: self.settings.gradient_type == 0:  # fixed Step
             else:
                 logger.error(
-                    f'Gradient type {settings["gradient_type"]} is not implemented yet',
+                    f"Gradient type {settings.gradient_type} is not implemented yet",
                     exception=NotImplementedError,
                 )
         else:
             logger.error(
-                f'Unknown updater type {settings["updater_type"]}',
+                f"Unknown updater type {settings.updater_type}",
                 exception=NotImplementedError,
             )
 
