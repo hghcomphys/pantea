@@ -1,17 +1,20 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import random
-from this import d
 from tqdm import tqdm
 
 from jaxip.datasets.runner import RunnerStructureDataset
 from jaxip.descriptors.acsf.acsf import ACSF
+from jaxip.descriptors.acsf.angular import G3, G9
+from jaxip.descriptors.acsf.cutoff import CutoffFunction
+from jaxip.descriptors.acsf.radial import G1, G2
 from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.logger import logger
+from jaxip.models.initializer import UniformInitializer
 from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
@@ -43,7 +46,9 @@ class NeuralNetworkPotential:
         self.potential_file = Path(self.potential_file)
 
         if self.settings is None:
-            self.settings = NeuralNetworkPotentialSettings(filename=self.potential_file)
+            self.settings = NeuralNetworkPotentialSettings.read_from(
+                self.potential_file
+            )
 
         if not self.atomic_potential:
             self.init_atomic_potential()
@@ -61,10 +66,10 @@ class NeuralNetworkPotential:
 
         This method can be override in case that different atomic potential is used.
         """
-        descriptor: Dict[Element, ACSF] = self.settings.get_descriptor()
-        scaler: Dict[Element, DescriptorScaler] = self.settings.get_scaler()
-        model: Dict[Element, NeuralNetworkModel] = self.settings.get_model()
-        for element in self.elements:
+        descriptor: Dict[Element, ACSF] = self.init_descriptor()
+        scaler: Dict[Element, DescriptorScaler] = self.init_scaler()
+        model: Dict[Element, NeuralNetworkModel] = self.init_model()
+        for element in self.settings.elements:
             self.atomic_potential[element] = AtomicPotential(
                 descriptor=descriptor[element],
                 scaler=scaler[element],
@@ -79,16 +84,135 @@ class NeuralNetworkPotential:
         This method be used to initialize model params of the potential with a different random seed.
         """
         random_keys = random.split(
-            random.PRNGKey(self.settings["random_seed"]),
-            self.settings["number_of_elements"],
+            random.PRNGKey(self.settings.random_seed),
+            self.settings.number_of_elements,
         )
-        for i, element in enumerate(self.settings["elements"]):
-            self.model_params[element] = atomic_potential[element].model.init(  # type: ignore
+        for i, element in enumerate(self.settings.elements):
+            self.model_params[element] = self.atomic_potential[element].model.init(  # type: ignore
                 random_keys[i],
                 jnp.ones((1, self.atomic_potential[element].model_input_size)),
             )[
                 "params"
             ]
+
+    def init_descriptor(self) -> Dict[Element, ACSF]:
+        """Initialize descriptor for each element."""
+        descriptor: Dict[Element, ACSF] = dict()
+        settings = self.settings
+        # Elements
+        logger.info(f"Number of elements: {settings.number_of_elements}")
+        for element in settings.elements:
+            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
+        # Instantiate ACSF for each element
+        for element in settings.elements:
+            descriptor[element] = ACSF(element)
+        # Add symmetry functions
+        logger.debug(
+            "Registering symmetry functions (radial and angular)"
+        )  # TODO: move logging inside .add() method
+
+        for args in settings.symfunction_short:
+            if args.acsf_type == 1:
+                descriptor[args.central_element].add(
+                    symmetry_function=G1(
+                        CutoffFunction(
+                            r_cutoff=args.r_cutoff,
+                            cutoff_type=settings.cutoff_type,
+                        )
+                    ),
+                    neighbor_element_j=args.neighbor_element_j,
+                )
+            elif args.acsf_type == 2:
+                descriptor[args.central_element].add(
+                    symmetry_function=G2(
+                        CutoffFunction(
+                            r_cutoff=args.r_cutoff,
+                            cutoff_type=settings.cutoff_type,
+                        ),
+                        eta=args.eta,
+                        r_shift=args.r_shift,
+                    ),
+                    neighbor_element_j=args.neighbor_element_j,
+                )
+            elif args.acsf_type == 3:
+                descriptor[args.central_element].add(
+                    symmetry_function=G3(
+                        CutoffFunction(
+                            r_cutoff=args.r_cutoff,
+                            cutoff_type=settings.cutoff_type,
+                        ),
+                        eta=args.eta,
+                        zeta=args.zeta,
+                        lambda0=args.lambda0,
+                        r_shift=args.r_cutoff,
+                    ),  # TODO: add r_shift!
+                    neighbor_element_j=args.neighbor_element_j,
+                    neighbor_element_k=args.neighbor_element_k,
+                )
+            elif args.acsf_type == 9:
+                descriptor[args.central_element].add(
+                    symmetry_function=G9(
+                        CutoffFunction(
+                            r_cutoff=args.r_cutoff,
+                            cutoff_type=settings.cutoff_type,
+                        ),
+                        eta=args.eta,
+                        zeta=args.zeta,
+                        lambda0=args.lambda0,
+                        r_shift=args.r_shift,
+                    ),
+                    neighbor_element_j=args.neighbor_element_j,
+                    neighbor_element_k=args.neighbor_element_k,
+                )
+        return descriptor
+
+    def init_scaler(self) -> Dict[Element, DescriptorScaler]:
+        """Initialize descriptor scaler for each element."""
+        scaler: Dict[Element, DescriptorScaler] = dict()
+        settings = self.settings
+        # Prepare scaler input argument if exist in settings
+        scaler_kwargs = {
+            first: settings[second]
+            for first, second in {
+                "scale_type": "scale_type",
+                "scale_min": "scale_min_short",
+                "scale_max": "scale_max_short",
+            }.items()
+            if second in self.settings.keywords()
+        }
+        logger.debug(f"Scaler kwargs={scaler_kwargs}")
+        # Assign an ACSF scaler to each element
+        for element in settings.elements:
+            scaler[element] = DescriptorScaler(**scaler_kwargs)
+        return scaler
+
+    def init_model(self) -> Dict[Element, NeuralNetworkModel]:
+        """Initialize neural network model for each element."""
+        model: Dict[Element, NeuralNetworkModel] = dict()
+        settings = self.settings
+        for element in settings.elements:
+            logger.debug(f"Element: {element}")
+            # TODO: what if we have a different model architecture for each element
+            hidden_layers = zip(
+                settings.global_nodes_short,
+                settings.global_activation_short[:-1],
+            )
+            output_layer: Tuple[int, str] = (
+                1,
+                settings.global_activation_short[-1],
+            )
+            kernel_initializer: UniformInitializer = UniformInitializer(
+                weights_range=(
+                    settings.weights_min,
+                    settings.weights_max,
+                )
+            )
+            model[element] = NeuralNetworkModel(
+                hidden_layers=tuple([(n, t) for n, t in hidden_layers]),
+                output_layer=output_layer,
+                kernel_initializer=kernel_initializer,
+            )
+        return model
 
     # ------------------------------------------------------------------------
 
@@ -152,9 +276,9 @@ class NeuralNetworkPotential:
         # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
         # TODO: add validation output (MSE separate for force and energy)
         kwargs["validation_split"] = kwargs.get(
-            "validation_split", self.settings["test_fraction"]
+            "validation_split", self.settings.test_fraction
         )
-        kwargs["epochs"] = kwargs.get("epochs", self.settings["epochs"])
+        kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
         return self.trainer.fit(dataset, **kwargs)  # type: ignore
 
     def fit(self) -> None:
@@ -170,11 +294,11 @@ class NeuralNetworkPotential:
         This method saves scaler parameters for each element into separate files.
         """
         # Save scaler parameters for each element separately
-        for element in self.elements:
+        for element in self.settings.elements:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
                 self.potential_file.parent,
-                self.settings["scaler_save_naming_format"].format(atomic_number),
+                self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.info(
                 f"Saving scaler parameters for element ({element}): {scaler_file.name}"
@@ -190,7 +314,7 @@ class NeuralNetworkPotential:
             atomic_number = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.potential_file.parent,
-                self.settings["model_save_naming_format"].format(atomic_number),
+                self.settings.model_save_naming_format.format(atomic_number),
             )
             self.atomic_potential[element].model.save(model_file)
 
@@ -205,7 +329,7 @@ class NeuralNetworkPotential:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
                 self.potfile.parent,
-                self.settings["scaler_save_naming_format"].format(atomic_number),
+                self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.debug(
                 f"Loading scaler parameters for element {element}: {scaler_file.name}"
@@ -222,7 +346,7 @@ class NeuralNetworkPotential:
             atomic_number: int = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.potential_file.parent,
-                self.settings["model_save_naming_format"].format(atomic_number),
+                self.settings.model_save_naming_format.format(atomic_number),
             )
             self.atomic_potential[element].model.load(model_file)
 
@@ -253,12 +377,12 @@ class NeuralNetworkPotential:
     @property
     def elements(self) -> List[Element]:
         """Return elements."""
-        return self.settings["elements"]
+        return self.settings.elements
 
     @property
     def num_elements(self) -> int:
         """Return number of elements."""
-        return len(self.elements)
+        return self.settings.number_of_elements
 
     @property
     def r_cutoff(self) -> float:
