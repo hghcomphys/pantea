@@ -11,7 +11,7 @@ class Logger:
     """
 
     def __init__(self, level=logging.WARNING, filename=None) -> None:
-        self.logger: Logger = logging.getLogger("JAXIP")
+        self.logger: Logger = logging.getLogger("JAXIP")  # type: ignore
         self.level: int = level
         self.handlers = list()
 
@@ -55,7 +55,7 @@ class Logger:
         :type filename: Path
         """
         # File handler is also useful for multi-process logging.
-        file_handler = RotatingFileHandler(str(Path(filename)), "a", 1e6, 3)
+        file_handler = RotatingFileHandler(str(Path(filename)), "a", 1_000_000, 3)
         file_handler.setFormatter(
             logging.Formatter(
                 "%(levelname)-8s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"
