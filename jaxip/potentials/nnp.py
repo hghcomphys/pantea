@@ -36,26 +36,23 @@ class NeuralNetworkPotential:
     """
 
     potential_file: Path = Path("input.data")
-    atomic_potential: Dict[Element, AtomicPotential] = field(default_factory=dict)
+    atomic_potential: Dict[Element, AtomicPotential] = field(
+        default_factory=dict, repr=False
+    )
     model_params: Dict[Element, frozendict] = field(default_factory=dict, repr=False)
     trainer: Optional[NeuralNetworkPotentialTrainer] = field(default=None, repr=False)
-    settings: Optional[NeuralNetworkPotentialSettings] = field(default=None, repr=False)
+    # settings: Optional[NeuralNetworkPotentialSettings] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Post initialize potential parameters."""
         self.potential_file = Path(self.potential_file)
-
-        if self.settings is None:
-            self.settings = NeuralNetworkPotentialSettings.read_from(
-                self.potential_file
-            )
-
+        self.settings: NeuralNetworkPotentialSettings = (
+            NeuralNetworkPotentialSettings.read_from(self.potential_file)
+        )
         if not self.atomic_potential:
             self.init_atomic_potential()
-
         if len(self.model_params) == 0:
             self.init_model_params()
-
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
@@ -126,8 +123,7 @@ class NeuralNetworkPotential:
                 descriptor[args.central_element].add(
                     symmetry_function=G2(
                         CutoffFunction(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
+                            r_cutoff=args.r_cutoff, cutoff_type=settings.cutoff_type
                         ),
                         eta=args.eta,
                         r_shift=args.r_shift,
@@ -138,16 +134,15 @@ class NeuralNetworkPotential:
                 descriptor[args.central_element].add(
                     symmetry_function=G3(
                         CutoffFunction(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
+                            r_cutoff=args.r_cutoff, cutoff_type=settings.cutoff_type
                         ),
                         eta=args.eta,
-                        zeta=args.zeta,
-                        lambda0=args.lambda0,
+                        zeta=args.zeta,  # type: ignore
+                        lambda0=args.lambda0,  # type: ignore
                         r_shift=args.r_cutoff,
-                    ),  # TODO: add r_shift!
+                    ),
                     neighbor_element_j=args.neighbor_element_j,
-                    neighbor_element_k=args.neighbor_element_k,
+                    neighbor_element_k=args.neighbor_element_k,  # type: ignore
                 )
             elif args.acsf_type == 9:
                 descriptor[args.central_element].add(
@@ -157,12 +152,12 @@ class NeuralNetworkPotential:
                             cutoff_type=settings.cutoff_type,
                         ),
                         eta=args.eta,
-                        zeta=args.zeta,
-                        lambda0=args.lambda0,
+                        zeta=args.zeta,  # type: ignore
+                        lambda0=args.lambda0,  # type: ignore
                         r_shift=args.r_shift,
                     ),
                     neighbor_element_j=args.neighbor_element_j,
-                    neighbor_element_k=args.neighbor_element_k,
+                    neighbor_element_k=args.neighbor_element_k,  # type: ignore
                 )
         return descriptor
 
@@ -257,11 +252,15 @@ class NeuralNetworkPotential:
 
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
         print("Fitting descriptor scaler...")
-        for structure in tqdm(dataset):
-            for element in structure.elements:
-                x = self.atomic_potential[element].descriptor(structure)
-                self.atomic_potential[element].scaler.fit(x)
-        print("Done.\n")
+        try:
+            for structure in tqdm(dataset):
+                for element in structure.elements:
+                    x = self.atomic_potential[element].descriptor(structure)
+                    self.atomic_potential[element].scaler.fit(x)
+        except KeyboardInterrupt:
+            logger.info("Scaler fitting was interrupted by keyboard")
+        else:
+            print("Done.\n")
 
         if save_scaler:
             self.save_scaler()
@@ -328,7 +327,7 @@ class NeuralNetworkPotential:
         for element in self.elements:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
-                self.potfile.parent,
+                self.potential_file.parent,
                 self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.debug(
@@ -363,9 +362,6 @@ class NeuralNetworkPotential:
         logger.info(f"Setting extrapolation warning: {threshold}")
         for pot in self.atomic_potential.values():
             pot.scaler.set_max_number_of_warnings(threshold)
-
-    # def __repr__(self) -> str:
-    #     return f"{self.__class__.__name__}(potfile='{self.potfile.name}')"
 
     @property
     def extrapolation_warnings(self) -> Dict[Element, int]:
