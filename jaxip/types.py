@@ -9,7 +9,6 @@ Dtype = jnp.dtype
 Element = str
 
 
-@dataclass
 class DataType(_CFG):
     """
     A configuration class for arrays data type.
@@ -19,10 +18,10 @@ class DataType(_CFG):
     floating point precision of `FLOATX` to single (float32) or double (float64).
     """
 
-    FLOATX: Dtype = jnp.float32
-    INT: Dtype = jnp.int32
-    UINT: Dtype = jnp.uint32
-    INDEX: Dtype = jnp.int32
+    FLOATX: Dtype = jnp.float32  # type: ignore
+    INT: Dtype = jnp.int32  # type: ignore
+    UINT: Dtype = jnp.uint32  # type: ignore
+    INDEX: Dtype = jnp.int32  # type: ignore
 
 
 dtype: DataType = DataType()

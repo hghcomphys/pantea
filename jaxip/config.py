@@ -1,27 +1,22 @@
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, List
 
-from jaxip.logger import logger
+from pydantic import BaseModel
 
 
-@dataclass
-class _CFG:
-    """A base configuration class of default values for global variables."""
+class _CFG(BaseModel):
+    """A base class for default values as global configuration."""
 
     # TODO: add methods to read configurations from dict and file inputs
+    # Pydantic validators can be added to check attributes in subclasses
 
-    def get(self, name: str) -> Any:
-        return getattr(self, name)
+    def __getitem__(self, keyword: str) -> Any:
+        """Get value for the input name."""
+        return getattr(self, keyword)
 
-    def set(self, name: str, value: Any) -> None:
-        if name in self.__dict__:
-            logger.debug(f"Setting {name}: '{value}'")
-            setattr(self, name, value)
-        else:
-            logger.error(
-                f"Name '{name}' is not allowed!",
-                exception=NameError,
-            )
+    def __setitem__(self, name, value) -> None:
+        """Set value for the input name"""
+        setattr(self, name, value)
 
-    def __getitem__(self, name) -> Any:
-        return self.get(name)
+    def keywords(self) -> List[str]:
+        """Return a list of existing keyword names."""
+        return self.__dict__.keys()  # type: ignore
