@@ -9,4 +9,4 @@ large-scale molecular dynamics simulations of complex materials at the atomic le
 
 __author__ = """Hossein Ghorbanfekr"""
 __email__ = "hgh.comphys@gmail.com"
-__version__ = "0.4.2"
+__version__ = "0.4.3"
