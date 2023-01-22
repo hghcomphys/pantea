@@ -198,7 +198,7 @@ Output:
 
 .. parsed-literal::
 
-    ACSF(element='O', size=5, r_cutoff=12.0)
+    ACSF(element='O', num_symmetry_functions=5, r_cutoff=12.0)
 
 
 Computing descriptor values

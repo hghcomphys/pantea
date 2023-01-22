@@ -57,7 +57,7 @@ class ACSF(Descriptor):
 
     .. code-block:: bash
 
-        ACSF(element='O', size=4, r_cutoff=12.0)
+        ACSF(element='O', num_symmetry_functions=4, r_cutoff=12.0)
 
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
@@ -232,7 +232,7 @@ class ACSF(Descriptor):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
-            f", size={self.num_symmetry_functions}"
+            f", num_symmetry_functions={self.num_symmetry_functions}"
             f", r_cutoff={self.r_cutoff})"
         )
 
