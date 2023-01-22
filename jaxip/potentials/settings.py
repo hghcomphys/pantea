@@ -1,28 +1,41 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, NamedTuple, Optional
+from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import Field, ValidationError, validator
 
+from jaxip.config import _CFG
 from jaxip.logger import logger
 from jaxip.structure.element import ElementMap
 from jaxip.types import Element
 from jaxip.utils.tokenize import tokenize
 
 
-class SymFuncArgs(NamedTuple):
+class RadialSymFuncArgs(NamedTuple):
     """Symmetry function arguments."""
 
     central_element: str
     acsf_type: int
     neighbor_element_j: str
     eta: float
+    r_cutoff: float
     r_shift: float
-    r_cutoff: Optional[float] = None
-    neighbor_element_k: Optional[str] = None
-    lambda0: Optional[float] = None
-    zeta: Optional[float] = None
+
+
+class AngularSymFuncArgs(NamedTuple):
+    """Symmetry function arguments."""
+
+    central_element: str
+    acsf_type: int
+    neighbor_element_j: str
+    eta: float
+    r_cutoff: float
+    r_shift: float
+    neighbor_element_k: str
+    lambda0: float
+    zeta: float
+
+
+SymFuncArgs = Union[RadialSymFuncArgs, AngularSymFuncArgs]
 
 
 cutoff_function_map: Mapping[str, str] = {
@@ -44,48 +57,48 @@ scaler_type_map: Mapping[str, str] = {
 }
 
 
-class NeuralNetworkPotentialSettings(BaseModel):
+class NeuralNetworkPotentialSettings(_CFG):
     """
     A configuration class for neural network potential parameters.
 
     It contains a collections of all potential setting keywords and their default values.
     """
 
-    # Add new setting here
+    # General
+    random_seed: int = 2023
     number_of_elements: int
-    elements: List[Element]
-    number_of_elements: int
-    cutoff_type: str
+    elements: List[Element] = Field(default_factory=list)
+    atom_energy: Dict[Element, float] = Field(default_factory=dict)
+    scaler_save_naming_format: str = "scaling.{:03d}.data"
+    model_save_naming_format: str = "weights.{:03d}.zip"
+    # Neural Network
+    weights_min: float = -1.0
+    weights_max: float = 1.0
     global_hidden_layers_short: int
     global_nodes_short: List[int]
     global_activation_short: List[str]
-    gradient_eta: float
-    force_weight: float
-    scale_type: str
-    symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
-    atom_energy: Dict[Element, float] = Field(default_factory=dict)
+    # Trainer
+    epochs: int = 1
     updater_type: int = 0
     gradient_type: int = 1
+    force_weight: float = 1.0
+    test_fraction: float = 0.1
+    main_error_metric: str = "RMSE"
     gradient_eta: float = 1.0e-5
     gradient_adam_eta: float = 1.0e-3
     gradient_adam_beta1: float = 0.9
     gradient_adam_beta2: float = 0.999
     gradient_adam_epsilon: float = 1.0e-8
     gradient_adam_weight_decay: float = 1.0e-4
+    # Symmetry Function
+    cutoff_type: str
+    scale_type: str
     scale_min_short: float = 0.0
     scale_max_short: float = 1.0
-    epochs: int = 1
-    main_error_metric: str = "RMSE"
-    weights_min: float = -1.0
-    weights_max: float = 1.0
-    test_fraction: float = 0.1
-    force_weight: float = 1.0
-    scaler_save_naming_format: str = "scaling.{:03d}.data"
-    model_save_naming_format: str = "weights.{:03d}.zip"
-    random_seed: int = 2023
+    symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
 
     @classmethod
-    def read_from(cls, filename: Path) -> NeuralNetworkPotentialSettings:
+    def read_from(cls, filename: Path):  # FIXME
         """
         Read all potential settings from the input file.
 
@@ -108,6 +121,7 @@ class NeuralNetworkPotentialSettings(BaseModel):
                 keyword, tokens = tokenize(line, comment="#")
                 if keyword is not None:
                     logger.debug(f"keyword:'{keyword}', values:{tokens}")
+
                 # ------------- General -------------
                 if keyword == "number_of_elements":  # this keyword can be ignored
                     kwargs[keyword] = tokens[0]
@@ -115,40 +129,11 @@ class NeuralNetworkPotentialSettings(BaseModel):
                     kwargs[keyword] = sorted(
                         set([t for t in tokens]), key=ElementMap.get_atomic_number
                     )
-                    # FIXME: define as validator
-                    # assert kwargs["number_of_elements"] == len(kwargs["elements"])
                 elif keyword == "atom_energy":
                     kwargs[keyword].update({tokens[0]: tokens[1]})
-                elif keyword == "cutoff_type":
-                    kwargs[keyword] = cutoff_function_map[tokens[0]]
-                elif keyword == "symfunction_short":
-                    acsf_type = int(tokens[1])
-                    args: SymFuncArgs
-                    if acsf_type < 3:  # radial
-                        args = SymFuncArgs(
-                            central_element=tokens[0],
-                            acsf_type=acsf_type,
-                            neighbor_element_j=tokens[2],
-                            eta=float(tokens[3]),
-                            r_shift=float(tokens[4]),
-                            r_cutoff=float(tokens[5]),
-                        )
-                    else:  # angular
-                        args = SymFuncArgs(
-                            central_element=tokens[0],
-                            acsf_type=acsf_type,
-                            neighbor_element_j=tokens[2],
-                            neighbor_element_k=tokens[3],
-                            eta=float(tokens[4]),
-                            lambda0=float(tokens[5]),
-                            zeta=float(tokens[6]),
-                            r_cutoff=float(tokens[7]),
-                            r_shift=float(tokens[8]) if len(tokens) == 9 else 0.0,
-                        )
-                    kwargs[keyword].append(args)
                 elif keyword == "random_seed":
                     kwargs[keyword] = tokens[0]
-                # ------------- Neural network -------------
+                # ------------- Neural Network -------------
                 elif keyword == "global_hidden_layers_short":
                     kwargs[keyword] = tokens[0]
                 elif keyword == "global_nodes_short":
@@ -158,19 +143,6 @@ class NeuralNetworkPotentialSettings(BaseModel):
                 elif keyword == "weights_min":
                     kwargs[keyword] = tokens[0]
                 elif keyword == "weights_max":
-                    kwargs[keyword] = tokens[0]
-                # ------------- Symmetry function -------------
-                elif keyword == "center_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_center_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_center_symmetry_functions_sigma":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_min_short":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "scale_max_short":
                     kwargs[keyword] = tokens[0]
                 # ------------- Trainer -------------
                 elif keyword == "main_error_metric":
@@ -195,23 +167,64 @@ class NeuralNetworkPotentialSettings(BaseModel):
                     kwargs[keyword] = tokens[0]
                 elif keyword == "gradient_adam_weight_decay":
                     kwargs[keyword] = tokens[0]
-                elif keyword == "force_weight   ":
+                elif keyword == "force_weight":
                     kwargs[keyword] = tokens[0]
-
+                # ------------- Symmetry Function -------------
+                elif keyword == "cutoff_type":
+                    kwargs[keyword] = cutoff_function_map[tokens[0]]
+                elif keyword == "center_symmetry_functions":
+                    kwargs["scale_type"] = scaler_type_map[keyword]
+                elif keyword == "scale_symmetry_functions":
+                    kwargs["scale_type"] = scaler_type_map[keyword]
+                elif keyword == "scale_center_symmetry_functions":
+                    kwargs["scale_type"] = scaler_type_map[keyword]
+                elif keyword == "scale_center_symmetry_functions_sigma":
+                    kwargs["scale_type"] = scaler_type_map[keyword]
+                elif keyword == "scale_min_short":
+                    kwargs[keyword] = tokens[0]
+                elif keyword == "scale_max_short":
+                    kwargs[keyword] = tokens[0]
+                elif keyword == "symfunction_short":
+                    acsf_type = int(tokens[1])
+                    args: SymFuncArgs
+                    if acsf_type < 3:  # radial
+                        args = RadialSymFuncArgs(
+                            central_element=tokens[0],
+                            acsf_type=acsf_type,
+                            neighbor_element_j=tokens[2],
+                            eta=float(tokens[3]),
+                            r_shift=float(tokens[4]),
+                            r_cutoff=float(tokens[5]),
+                        )
+                    else:  # angular
+                        args = AngularSymFuncArgs(
+                            central_element=tokens[0],
+                            acsf_type=acsf_type,
+                            neighbor_element_j=tokens[2],
+                            neighbor_element_k=tokens[3],
+                            eta=float(tokens[4]),
+                            lambda0=float(tokens[5]),
+                            zeta=float(tokens[6]),
+                            r_cutoff=float(tokens[7]),
+                            r_shift=float(tokens[8]) if len(tokens) == 9 else 0.0,
+                        )
+                    kwargs[keyword].append(args)
         try:
             settings = cls(**kwargs)
         except ValidationError as e:
             logger.error(str(e), exception=ValueError)
-
         return settings  # type: ignore
 
-    def __getitem__(self, keyword: str) -> Any:
-        """Get value for the input keyword argument."""
-        return getattr(self, keyword)
+    @validator("elements")
+    def number_of_elements_match(cls, v, values) -> Any:
+        if "number_of_elements" in values and len(v) != values["number_of_elements"]:
+            raise ValueError("number of elements is not consistent")
+        return v
 
-    def keywords(self):
-        """Return list of existing keywords in the potential settings."""
-        return self.__annotations__.keys()
+    @validator("test_fraction")
+    def test_fraction_range(cls, v) -> Any:
+        assert 0.0 <= v <= 1.0, "must be between [0, 1]"
+        return v
 
     # def __repr__(self) -> str:
     #     return f"{self.__class__.__name__}()"
