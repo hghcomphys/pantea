@@ -35,24 +35,39 @@ class NeuralNetworkPotential:
     and a trainer to fit the potential using reference structure data.
     """
 
-    potential_file: Path = Path("input.data")
+    settings: NeuralNetworkPotentialSettings = field(repr=False)
+    output_dir: Path = field(default=Path("."), repr=False)
     atomic_potential: Dict[Element, AtomicPotential] = field(
-        default_factory=dict, repr=False
+        default_factory=dict, repr=True, init=False
     )
-    model_params: Dict[Element, frozendict] = field(default_factory=dict, repr=False)
-    trainer: Optional[NeuralNetworkPotentialTrainer] = field(default=None, repr=False)
-    # settings: Optional[NeuralNetworkPotentialSettings] = field(default=None, repr=False)
+    model_params: Dict[Element, frozendict] = field(
+        default_factory=dict, repr=False, init=False
+    )
+    trainer: Optional[NeuralNetworkPotentialTrainer] = field(
+        default=None, repr=False, init=False
+    )
+
+    @classmethod
+    def create_from(cls, potential_file: Path):
+        """Create instance of the potential from the input settings file."""
+        potential_file = Path(potential_file)
+        settings = NeuralNetworkPotentialSettings.read_from(potential_file)
+        return NeuralNetworkPotential(
+            settings=settings,
+            output_dir=potential_file.parent,
+        )
 
     def __post_init__(self) -> None:
-        """Post initialize potential parameters."""
-        self.potential_file = Path(self.potential_file)
-        self.settings: NeuralNetworkPotentialSettings = (
-            NeuralNetworkPotentialSettings.read_from(self.potential_file)
-        )
+        """
+        Initialize potential components such as atomic potential, model params,
+        and trainer from the potential settings.
+        """
         if not self.atomic_potential:
             self.init_atomic_potential()
-        if len(self.model_params) == 0:
+
+        if not self.model_params:
             self.init_model_params()
+
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
@@ -296,7 +311,7 @@ class NeuralNetworkPotential:
         for element in self.settings.elements:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
-                self.potential_file.parent,
+                self.output_dir,
                 self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.info(
@@ -312,7 +327,7 @@ class NeuralNetworkPotential:
             logger.debug(f"Saving model weights for element: {element}")
             atomic_number = ElementMap.get_atomic_number(element)
             model_file = Path(
-                self.potential_file.parent,
+                self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
             self.atomic_potential[element].model.save(model_file)
@@ -327,7 +342,7 @@ class NeuralNetworkPotential:
         for element in self.elements:
             atomic_number: int = ElementMap.get_atomic_number(element)
             scaler_file = Path(
-                self.potential_file.parent,
+                self.output_dir,
                 self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.debug(
@@ -344,7 +359,7 @@ class NeuralNetworkPotential:
             logger.debug(f"Loading model weights for element: {element}")
             atomic_number: int = ElementMap.get_atomic_number(element)
             model_file = Path(
-                self.potential_file.parent,
+                self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
             self.atomic_potential[element].model.load(model_file)
