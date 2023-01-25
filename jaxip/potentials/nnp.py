@@ -19,7 +19,7 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.settings import NeuralNetworkPotentialSettings
+from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
 from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
 from jaxip.structure import Structure
 from jaxip.structure.element import ElementMap
@@ -33,9 +33,30 @@ class NeuralNetworkPotential:
 
     It contains all the required descriptors, scalers, and neural networks for each element,
     and a trainer to fit the potential using reference structure data.
+
+    Example
+    -------
+    Ways to initialize neural network potential.
+
+    .. code-block:: python
+        :linenos:
+
+        from jaxip.potentials import NeuralNetworkPotential
+        from jaxip.potentials import NeuralNetworkPotentialSettings as Settings
+
+        # Method #1 (potential file)
+        nnp1 = NeuralNetworkPotential.create_from("input.nn")
+
+        # Method #2 (dictionary of parameters)
+        settings = Settings(**params_dict)
+        nnp2 = NeuralNetworkPotential(settings)
+
+        # Method #3 (json file)
+        settings = Settings.from_json('h2o.json')
+        nnp3 = NeuralNetworkPotential(settings)
     """
 
-    settings: NeuralNetworkPotentialSettings = field(repr=False)
+    settings: Settings = field(repr=False)
     output_dir: Path = field(default=Path("."), repr=False)
     atomic_potential: Dict[Element, AtomicPotential] = field(
         default_factory=dict, repr=True, init=False
@@ -49,9 +70,9 @@ class NeuralNetworkPotential:
 
     @classmethod
     def create_from(cls, potential_file: Path):
-        """Create instance of the potential from the input settings file."""
+        """Create an instance of the potential from the input file (RuNNer format)."""
         potential_file = Path(potential_file)
-        settings = NeuralNetworkPotentialSettings.read_from(potential_file)
+        settings = Settings.read_from(potential_file)
         return NeuralNetworkPotential(
             settings=settings,
             output_dir=potential_file.parent,

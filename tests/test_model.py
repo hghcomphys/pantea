@@ -1,14 +1,12 @@
-from typing import Any, Dict, Mapping, Tuple
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import linen as nn
 from frozendict import frozendict
 
 from jaxip.models.initializer import UniformInitializer
 from jaxip.models.nn import NeuralNetworkModel
-from jaxip.structure.structure import Structure
 from jaxip.types import dtype as _dtype
 
 
