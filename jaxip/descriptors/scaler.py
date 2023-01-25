@@ -4,6 +4,7 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 from jaxip.base import _Base
 from jaxip.logger import logger
 from jaxip.types import Array, Dtype
@@ -31,7 +32,7 @@ class DescriptorScaler(_Base):
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-        dtype: Dtype = _dtype.FLOATX,
+        dtype: Optional[Dtype] = None,
     ) -> None:
         """Initialize scaler including scaler type and min/max values."""
         assert scale_min < scale_max
@@ -40,7 +41,7 @@ class DescriptorScaler(_Base):
         self.scale_type: str = scale_type
         self.scale_min: float = scale_min
         self.scale_max: float = scale_max
-        self.dtype: Dtype = dtype
+        self.dtype: Dtype = dtype if dtype is not None else _dtype.FLOATX
         super().__init__()
 
         # Statistical parameters

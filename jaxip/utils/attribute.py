@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import jax.numpy as jnp
+
 from jaxip.logger import logger
-from jaxip.types import Array
+from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
 
@@ -26,9 +27,11 @@ def set_as_attribute(
         setattr(obj, attr_name, item)
 
 
-def cast_to_tensor(x, dtype: jnp.dtype = _dtype.FLOATX) -> Array:
+def cast_to_tensor(x, dtype: Optional[Dtype] = None) -> Array:
     """
     An utility function to cast input variable (scalar, array, etc)
     to torch tensor with predefined data and device types.
     """
+    if dtype is None:
+        dtype = _dtype.FLOATX
     return jnp.asarray(x, dtype=dtype)

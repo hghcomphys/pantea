@@ -2,14 +2,13 @@ from dataclasses import dataclass
 
 import jax.numpy as jnp
 
-from jaxip.config import _CFG
-
 Array = jnp.ndarray
 Dtype = jnp.dtype
 Element = str
 
 
-class DataType(_CFG):
+@dataclass
+class DataType:
     """
     A configuration class for arrays data type.
     It is globally used as default dtype for arrays, indices, etc.

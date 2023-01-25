@@ -3,6 +3,7 @@ from typing import Optional
 
 import jax
 import jax.numpy as jnp
+
 from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
 from jaxip.structure._box import _apply_pbc
@@ -23,10 +24,13 @@ class Box(_BaseJaxPytreeDataClass):
 
     # Array type attributes must be define first (with type hint)
     lattice: Optional[Array] = None
-    dtype: Dtype = _dtype.FLOATX
+    dtype: Optional[Dtype] = None
 
     def __pos_init__(self) -> None:
         """Post initialize simulation box (super-cell)."""
+        if self.dtype is None:
+            self.dtype = _dtype.FLOATX
+
         if self.lattice is not None:
             try:
                 self.lattice = jnp.asarray(

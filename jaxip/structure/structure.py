@@ -87,7 +87,7 @@ class Structure(_BaseJaxPytreeDataClass):
         cls,
         data: Dict[str, Any],
         r_cutoff: Optional[float] = None,
-        dtype: Dtype = _dtype.FLOATX,
+        dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
         Create a new instance of structure from a dictionary of data including
@@ -95,9 +95,12 @@ class Structure(_BaseJaxPytreeDataClass):
 
         :param data: input data
         :param r_cutoff: neighbor atom cutoff radius, defaults to None
-        :param dtype: data type of arrays, defaults to _dtype.FLOATX
+        :param dtype: data type of arrays, defaults to None
         :return: an initialized instance
         """
+        if dtype is None:
+            dtype = _dtype.FLOATX
+
         kwargs: Dict[str, Any] = dict()
         data_: DefaultDict[str, List] = defaultdict(list, data)
         try:

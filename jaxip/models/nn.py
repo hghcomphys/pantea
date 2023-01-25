@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Mapping, Tuple
+from dataclasses import field
+from typing import Callable, List, Mapping, Optional, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict  # type: ignore
@@ -26,7 +27,7 @@ class NeuralNetworkModel(nn.Module):
     # input_size: int
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "l")
-    param_dtype: Dtype = _dtype.FLOATX
+    param_dtype: Optional[Dtype] = field(default_factory=lambda: _dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
     # bias_initializer: Callable = nn.initializers.zeros
 
@@ -69,7 +70,7 @@ class NeuralNetworkModel(nn.Module):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
-            f", output_layer={self.output_layer})"
+            f", output_layer={self.output_layer}, param_dtype={self.param_dtype})"
         )
 
     # TODO:

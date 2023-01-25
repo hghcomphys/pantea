@@ -28,7 +28,7 @@ class RunnerStructureDataset(StructureDataset):
         self,
         filename: Path,
         persist: bool = False,
-        transform: Transformer = ToStructure(),
+        transform: Optional[Transformer] = None,
         # TODO: download: bool = False,
     ) -> None:
         """
@@ -38,12 +38,15 @@ class RunnerStructureDataset(StructureDataset):
         :type filename: path to the RuNNer structure file
         :param persist: Persist structure data in the memory, defaults to False
         :type persist: bool, optional
+        :param transform: applied transformation on raw data, default is ToStructure().
 
         .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
         """
         self.filename: Path = Path(filename)
         self.persist: bool = persist
-        self.transform: Transformer = transform
+        self.transform: Transformer = (
+            transform if transform is not None else ToStructure()
+        )
         self._cached_structures: Dict[int, Structure] = dict()
         self._current_index: int = 0  # used only for direct iteration
         super().__init__()

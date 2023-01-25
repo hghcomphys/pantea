@@ -26,10 +26,10 @@ class ToStructure(Transformer):
     def __init__(
         self,
         r_cutoff: Optional[float] = None,
-        dtype: Dtype = _dtype.FLOATX,
+        dtype: Optional[Dtype] = None,
     ) -> None:
         self.r_cutoff: Optional[float] = r_cutoff
-        self.dtype: Dtype = dtype
+        self.dtype: Dtype = dtype if dtype is not None else _dtype.FLOATX
 
     def __call__(self, data: Dict[str, Any]) -> Structure:  # type: ignore
         return Structure.create_from_dict(
