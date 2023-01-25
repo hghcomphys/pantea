@@ -27,8 +27,11 @@ in the development of emerging machine learning interatomic potentials
 for use in computational physics and chemistry. These potentials are necessary for conducting 
 large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
 
-JAXIP is for *developing* potentials for molecular dynamics simulations, 
-rather than a package for *performing* molecular dynamics simulations itself.
+JAXIP is designed to *develop* potentials for use in molecular dynamics simulations, 
+rather than a package for *performing* the simulations themselves.
+
+
+
 
 .. _JAX: https://github.com/google/jax
 
