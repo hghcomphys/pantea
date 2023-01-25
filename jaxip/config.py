@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
 from typing import Any, List
 
 from pydantic import BaseModel
@@ -6,9 +10,7 @@ from pydantic import BaseModel
 class _CFG(BaseModel):
     """A base class for default values as global configuration."""
 
-    # TODO: add methods to read configurations from dict and file inputs
-    # Pydantic validators can be added to check attributes in subclasses
-
+    # Pydantic validators can be added to check attributes
     def __getitem__(self, keyword: str) -> Any:
         """Get value for the input name."""
         return getattr(self, keyword)
@@ -20,3 +22,15 @@ class _CFG(BaseModel):
     def keywords(self) -> List[str]:
         """Return a list of existing keyword names."""
         return self.__dict__.keys()  # type: ignore
+
+    def to_json(self, file: Path) -> None:
+        """Dump configuration into a json file."""
+        with open(Path(file).as_posix(), "w") as fp:
+            json.dump(self.dict(), fp, indent=4)
+
+    @classmethod
+    def from_json(cls, file: Path) -> _CFG:
+        """Create a configuration instance from the input json file."""
+        with open(Path(file).as_posix(), "r") as fp:
+            kwargs = json.load(fp)
+        return cls(**kwargs)
