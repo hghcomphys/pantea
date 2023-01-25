@@ -25,12 +25,12 @@ class _CFG(BaseModel):
 
     def to_json(self, file: Path) -> None:
         """Dump configuration into a json file."""
-        with open(Path(file).as_posix(), "w") as fp:
+        with open(str(Path(file)), "w") as fp:
             json.dump(self.dict(), fp, indent=4)
 
     @classmethod
     def from_json(cls, file: Path) -> _CFG:
         """Create a configuration instance from the input json file."""
-        with open(Path(file).as_posix(), "r") as fp:
+        with open(str(Path(file)), "r") as fp:
             kwargs = json.load(fp)
         return cls(**kwargs)
