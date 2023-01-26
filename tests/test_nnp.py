@@ -82,8 +82,7 @@ class TestNeuralNetworkPotential:
         nnp.fit_scaler(dataset)
 
         # total energy
-        energy = nnp(dataset[0])
-        assert energy == expected[0]
+        assert jnp.allclose(nnp(dataset[0]), expected[0])
 
         # force components for each element
         force = nnp.compute_force(dataset[0])
