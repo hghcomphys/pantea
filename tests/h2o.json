@@ -1,0 +1,109 @@
+{
+    "random_seed": 1234567,
+    "number_of_elements": 2,
+    "elements": [
+        "H",
+        "O"
+    ],
+    "atom_energy": {
+        "H": -0.45890771,
+        "O": -74.94518524
+    },
+    "scaler_save_naming_format": "scaling.{:03d}.data",
+    "model_save_naming_format": "weights.{:03d}.zip",
+    "weights_min": -1.0,
+    "weights_max": 1.0,
+    "global_hidden_layers_short": 2,
+    "global_nodes_short": [
+        5,
+        5
+    ],
+    "global_activation_short": [
+        "t",
+        "t",
+        "l"
+    ],
+    "epochs": 20,
+    "updater_type": 0,
+    "gradient_type": 1,
+    "force_weight": 10.0,
+    "test_fraction": 0.1,
+    "main_error_metric": "RMSE",
+    "gradient_eta": 1e-05,
+    "gradient_adam_eta": 0.001,
+    "gradient_adam_beta1": 0.9,
+    "gradient_adam_beta2": 0.999,
+    "gradient_adam_epsilon": 1e-08,
+    "gradient_adam_weight_decay": 0.0001,
+    "cutoff_type": "tanhu",
+    "scale_type": "center",
+    "scale_min_short": 0.0,
+    "scale_max_short": 1.0,
+    "symfunction_short": [
+        [
+            "H",
+            2,
+            "H",
+            0.01,
+            12.0,
+            0.0
+        ],
+        [
+            "H",
+            2,
+            "O",
+            0.001,
+            12.0,
+            0.0
+        ],
+        [
+            "O",
+            2,
+            "H",
+            0.001,
+            12.0,
+            0.0
+        ],
+        [
+            "O",
+            2,
+            "O",
+            0.001,
+            12.0,
+            0.0
+        ],
+        [
+            "H",
+            3,
+            "O",
+            0.2,
+            12.0,
+            0.0,
+            "H",
+            1.0,
+            1.0
+        ],
+        [
+            "O",
+            3,
+            "H",
+            0.07,
+            12.0,
+            0.0,
+            "H",
+            1.0,
+            1.0
+        ],
+        [
+            "O",
+            3,
+            "O",
+            0.001,
+            12.0,
+            0.0,
+            "O",
+            -1.0,
+            4.0
+        ]
+    ]
+}
