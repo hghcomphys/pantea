@@ -38,7 +38,7 @@ class RunnerStructureDataset(StructureDataset):
         :type filename: path to the RuNNer structure file
         :param persist: Persist structure data in the memory, defaults to False
         :type persist: bool, optional
-        :param transform: applied transformation on raw data, default is ToStructure().
+        :param transform: applied transformation on raw data, default is ToStructure.
 
         .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
         """
