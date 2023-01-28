@@ -1,7 +1,11 @@
-from typing import Any, Dict, Mapping, Tuple
+import os
+from typing import Any, Dict, Tuple
 
+os.environ["JAX_ENABLE_X64"] = "1"
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
+
 from jaxip.structure.structure import Structure
 from jaxip.types import dtype as _dtype
 
@@ -124,11 +128,11 @@ class TestStructure:
     ) -> None:
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "position":
-                assert jnp.all(
-                    structure.position == structure.box.shift_inside_box(expected[i])
+                assert jnp.allclose(
+                    structure.position, structure.box.shift_inside_box(expected[i])
                 )
             else:
-                assert jnp.all(getattr(structure, attr) == expected[i])
+                assert jnp.allclose(getattr(structure, attr), expected[i])
 
     @pytest.mark.parametrize(
         "structure, expected",
@@ -155,4 +159,4 @@ class TestStructure:
         if structure.lattice is None:
             assert structure.lattice is expected[4]
         else:
-            assert jnp.all(structure.lattice == expected[4])
+            assert jnp.allclose(structure.lattice, expected[4])

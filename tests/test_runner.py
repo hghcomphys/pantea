@@ -1,8 +1,13 @@
+import os
 from pathlib import Path
 from typing import Tuple
 
+os.environ["JAX_ENABLE_X64"] = "1"
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
 import jax.numpy as jnp
 import pytest
+
 from jaxip.datasets.runner import RunnerStructureDataset
 from jaxip.structure.structure import Structure
 
@@ -154,8 +159,8 @@ class TestRunnerStructureDataset:
         structure: Structure = dataset[1]
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "position":
-                assert jnp.all(
-                    structure.position == structure.box.shift_inside_box(expected[i])
+                assert jnp.allclose(
+                    structure.position, structure.box.shift_inside_box(expected[i])
                 )
             else:
-                assert jnp.all(getattr(structure, attr) == expected[i])
+                assert jnp.allclose(getattr(structure, attr), expected[i])

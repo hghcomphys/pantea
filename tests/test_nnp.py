@@ -1,5 +1,9 @@
+import os
 from pathlib import Path
 from typing import Tuple
+
+os.environ["JAX_ENABLE_X64"] = "1"
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
