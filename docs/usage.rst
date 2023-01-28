@@ -354,13 +354,54 @@ Computing output energy
 '''''''''''''''''''''''
 .. code:: python
 
-    eng = nn.apply(params, scaled_x[:, :])  # this is an untrained model
+    energies = nn.apply(params, scaled_x[:, :])  # this is an untrained model
 
 .. code:: python
 
-    sns.displot(eng, bins=30);
+    sns.displot(energies, bins=30);
 
 
 .. image:: images/quick_start/output_44_0.png
+
+
+Atomic Potential
+----------------
+An atomic potential calculates the energy of a specific element in structures. 
+It forms the basic building block of the final potential, which typically contains multiple elements.
+Atomic potential bundles up all the necessary components such as descriptors, scalers, and models 
+in order to output the per-atomic energy.
+
+.. code:: python
+
+    from jaxip.potentials.nnp import AtomicPotential
+
+
+Initialization
+''''''''''''''
+
+.. code:: python
+
+    atomic_potential = AtomicPotential(
+        descriptor=acsf,
+        scaler=scaler,
+        model=nn,
+    )
+
+.. code:: python
+
+    energies = []
+    for structure in tqdm(structures):
+        eng = atomic_potential.apply(params['params'], structure)
+        energies.append(eng)
+
+    energies = jnp.concatenate(energies, axis=0)
+
+.. code:: python
+
+    sns.displot(energies, bins=30)
+
+
+.. image:: images/quick_start/output_44_0.png
+Please note that the above graph is exactly the same graph as we obtained before by using the model.
 
 
