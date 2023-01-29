@@ -18,14 +18,14 @@ def _compute_force(
     atomic_potential: Dict[Element, AtomicPotentialInterface],
     positions: Dict[Element, Array],
     params: Dict[Element, frozendict],
-    xbatch: Dict[Element, Inputs],
+    inputs: Dict[Element, Inputs],
 ) -> Dict[Element, Array]:
     """Compute force components using the gradient of the total energy."""
     grad_energies: Dict[Element, Array] = _grad_energy_fn(
         atomic_potential,
         positions,
         params,
-        xbatch,
+        inputs,
     )
     return {
         element: -1.0 * grad_energy for element, grad_energy in grad_energies.items()

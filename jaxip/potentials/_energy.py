@@ -47,21 +47,21 @@ def _energy_fn(
     atomic_potential: Dict[Element, AtomicPotentialInterface],
     positions: Dict[Element, Array],
     params: Dict[Element, frozendict],
-    xbatch: Dict[Element, Inputs],
+    inputs: Dict[Element, Inputs],
 ) -> Array:
     """
     A helper function that allows to calculate gradient of the NNP total energy
     respect to the atom positions (for each element).
     """
     # TODO: using jax.lax.scan?
-    elements: list[Element] = list(xbatch.keys())
+    elements: list[Element] = list(inputs.keys())
     total_energy: Array = jnp.array(0.0)
     for element in elements:
         atomic_energy = _compute_atomic_energy(
             atomic_potential[element],
             positions[element],
             params[element],
-            xbatch[element],
+            inputs[element],
         )
         total_energy += jnp.sum(atomic_energy)
     return total_energy
