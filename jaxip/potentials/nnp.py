@@ -85,10 +85,8 @@ class NeuralNetworkPotential:
         """
         if not self.atomic_potential:
             self.init_atomic_potential()
-
         if not self.model_params:
             self.init_model_params()
-
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)

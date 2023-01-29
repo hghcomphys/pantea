@@ -84,6 +84,7 @@ class NeuralNetworkPotentialSettings(_CFG):
     force_weight: float = 1.0
     test_fraction: float = 0.1
     main_error_metric: str = "RMSE"
+    save_best_model: bool = True
     gradient_eta: float = 1.0e-5
     gradient_adam_eta: float = 1.0e-3
     gradient_adam_beta1: float = 0.9

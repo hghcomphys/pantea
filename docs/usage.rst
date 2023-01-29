@@ -19,7 +19,7 @@ Initialization
 
     import os
     os.environ["JAX_ENABLE_X64"] = "1"       # enabling double precision (float64)
-    os.environ["JAX_PLATFORM_NAME"] = "cpu"  # enabling GPU-accelerated computing
+    os.environ["JAX_PLATFORM_NAME"] = "cpu"  # disabling GPU-accelerated computing
 
 
 Imports
