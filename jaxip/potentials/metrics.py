@@ -1,34 +1,59 @@
-from typing import Mapping, Optional, Type
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod
+from typing import Callable, Mapping, Optional, Type
 
 import jax.numpy as jnp
-from jaxip.base import _Base
+
 from jaxip.logger import logger
 from jaxip.types import Array
 
 
-class ErrorMetric(_Base):
-    """
-    A base error metric class.
-    Note: gradient calculations is disabled for all error metrics.
-    """
+class ErrorMetric(metaclass=ABCMeta):
+    """A base error metric class."""
 
     def __init__(self) -> None:
+        """Initialize base error metric."""
+
         def mse(*, prediction: Array, target: Array) -> Array:
             return ((target - prediction) ** 2).mean()
 
-        self._mse_metric = mse
+        self._mse_metric: Callable[..., Array] = mse
 
+    @classmethod
+    def create_from(cls, metric_type: str) -> ErrorMetric:
+        """
+        Create the given type of error metric.
+
+        :param metric_type: MSE, RMSE, MSEpa, EMSEpa
+        :return: An instance of desired error metric
+        """
+        _map_error_metric: Mapping[str, Type[ErrorMetric]] = {
+            "MSE": MSE,
+            "RMSE": RMSE,
+            "MSEpa": MSEpa,
+            "RMSEpa": RMSEpa,
+            # Any new defined metrics must be added here.
+        }
+        try:
+            error_metric = _map_error_metric[metric_type]()
+        except KeyError:
+            logger.error(
+                f"Unknown error metric '{metric_type}'",
+                exception=KeyError,
+            )
+        return error_metric  # type: ignore
+
+    @abstractmethod
     def __call__(self, prediction: Array, target: Array, factor=None) -> Array:
-        raise NotImplementedError()
+        pass
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
 
 
 class MSE(ErrorMetric):
-    """
-    Mean squared error metric
-    """
+    """Mean squared error."""
 
     def __call__(
         self, prediction: Array, target: Array, factor: Optional[float] = None
@@ -37,9 +62,7 @@ class MSE(ErrorMetric):
 
 
 class RMSE(MSE):
-    """
-    Root mean squared error metric
-    """
+    """Root mean squared error."""
 
     def __call__(
         self, prediction: Array, target: Array, factor: Optional[float] = None
@@ -49,8 +72,8 @@ class RMSE(MSE):
 
 class MSEpa(MSE):
     """
-    Mean squared error per atom metric.
-    MSE of energy per atom
+    Mean squared error per atom.
+    MSE of energy **per atom**
     MSE of force
     """
 
@@ -60,32 +83,10 @@ class MSEpa(MSE):
 
 class RMSEpa(RMSE):
     """
-    Root mean squared error per atom metric.
-    RMSE of energy per atom
+    Root mean squared error per atom.
+    RMSE of energy **per atom**
     RMSE of force
     """
 
-    def __call__(self, prediction: Array, target: Array, factor: int = 1) -> Array:
+    def __call__(self, prediction: Array, target: Array, factor: float = 1.0) -> Array:
         return jnp.sqrt(self._mse_metric(prediction=prediction, target=target)) / factor
-
-
-def init_error_metric(metric_type: str, **kwargs) -> Optional[MSE]:
-    """
-    An utility function to create a given type of error metric.
-
-    :param metric_type: MSE, RMSE, MSEpa, EMSEpa
-    :type metric_type: str
-    :return: An instance of desired error metric
-    :rtype: ErrorMetric
-    """
-    _map_error_metric: Mapping[str, Type[ErrorMetric]] = {
-        "MSE": MSE,
-        "RMSE": RMSE,
-        "MSEpa": MSEpa,
-        "RMSEpa": RMSEpa,
-        # Any new defined metrics must be added here.
-    }
-    try:
-        return _map_error_metric[metric_type](**kwargs)
-    except KeyError:
-        logger.error(f"Unknown error metric '{metric_type}'", exception=KeyError)
