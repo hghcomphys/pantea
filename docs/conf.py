@@ -18,9 +18,13 @@
 # absolute, like shown here.
 #
 import os
+import shutil
 import sys
 
+from sphinx.ext.apidoc import main
+
 sys.path.insert(0, os.path.abspath(".."))
+
 
 import jaxip
 
@@ -192,3 +196,18 @@ texinfo_documents = [
 #     "exclude-members": "__weakref__",
 #     "private-members": True,
 # }
+
+
+# main(["-e", "-o", "apidoc", "../jaxip", "--force"])
+
+curdir = os.path.dirname(os.path.abspath(__file__))
+notebooks_dir = os.path.join(curdir, "notebooks")
+if os.path.exists(notebooks_dir):
+    shutil.rmtree(notebooks_dir)
+os.makedirs(notebooks_dir, exist_ok=True)
+
+for filename in ["quick_start.ipynb"]:
+    shutil.copyfile(  # copytree(
+        os.path.join(curdir, "..", "examples", filename),
+        os.path.join(curdir, "notebooks", filename),
+    )
