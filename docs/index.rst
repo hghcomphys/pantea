@@ -9,10 +9,12 @@ Welcome to JAXIP's documentation!
    readme
    installation
    usage
+   notebooks/quick_start.ipynb
    modules
    contributing
    authors
    history
+
 
 Indices and tables
 ==================

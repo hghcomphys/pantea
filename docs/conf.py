@@ -39,8 +39,8 @@ extensions = extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
     "sphinx_autodoc_typehints",
+    "nbsphinx",
     # "sphinx_gallery.load_style",
-    # "nbsphinx",
     # "nbsphinx_link",
     # "IPython.sphinxext.ipython_console_highlighting",
 ]

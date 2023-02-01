@@ -13,5 +13,6 @@ black==21.7b0
 #mypy==0.991
 Sphinx==5.3.0
 sphinx-rtd-theme==1.1.1
+nbsphinx==0.8.12
 sphinx_autodoc_typehints==1.20.1
 #pydata_sphinx_theme==0.12.0
