@@ -4,6 +4,14 @@ jaxip.models package
 Submodules
 ----------
 
+jaxip.models.activation module
+------------------------------
+
+.. automodule:: jaxip.models.activation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.models.initializer module
 -------------------------------
 

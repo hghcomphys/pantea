@@ -198,7 +198,7 @@ texinfo_documents = [
 # }
 
 
-# main(["-e", "-o", "apidoc", "../jaxip", "--force"])
+main(["-o", "./", "../jaxip", "--force"])
 
 curdir = os.path.dirname(os.path.abspath(__file__))
 notebooks_dir = os.path.join(curdir, "notebooks")

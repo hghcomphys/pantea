@@ -12,6 +12,14 @@ jaxip.potentials.atomic\_potential module
    :undoc-members:
    :show-inheritance:
 
+jaxip.potentials.base module
+----------------------------
+
+.. automodule:: jaxip.potentials.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.potentials.loader module
 ------------------------------
 
