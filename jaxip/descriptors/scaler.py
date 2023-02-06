@@ -86,7 +86,7 @@ class DescriptorScaler(_Base):
             new_sigma: Array = jnp.std(data, axis=0)
             new_min: Array = jnp.min(data, axis=0)
             new_max: Array = jnp.max(data, axis=0)
-            m, n = float(self.nsamples), data.shape[0]
+            m, n = self.nsamples, data.shape[0]
 
             # Calculate quantities for entire data
             mean = self.mean  # immutable

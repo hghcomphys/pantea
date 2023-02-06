@@ -24,3 +24,4 @@ LJ*/
 *.json
 .coverage
 .tox
+docs/notebooks/
