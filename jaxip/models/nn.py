@@ -1,9 +1,9 @@
 from dataclasses import field
-from typing import Callable, List, Mapping, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from flax import linen as nn
-from frozendict import frozendict  # type: ignore
 
+from jaxip.models.activation import activation_function
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
@@ -11,22 +11,13 @@ from jaxip.types import dtype as _dtype
 # UniformInitializer(self.weights_range)
 # weights_range: Tuple[int, int] = (-1, 1)
 
-# FIXME: move to activation function module
-# see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
-activation_function_map: Mapping[str, Callable] = frozendict(
-    {
-        "t": nn.tanh,
-        "l": lambda x: x,
-    }
-)
-
 
 class NeuralNetworkModel(nn.Module):
     """Neural network model that outputs energy."""
 
     # input_size: int
     hidden_layers: Tuple[Tuple[int, str], ...]
-    output_layer: Tuple[int, str] = (1, "l")
+    output_layer: Tuple[int, str] = (1, "identity")
     param_dtype: Optional[Dtype] = field(default_factory=lambda: _dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
     # bias_initializer: Callable = nn.initializers.zeros
@@ -54,10 +45,10 @@ class NeuralNetworkModel(nn.Module):
         # Hidden layers
         for out_size, af_type in self.hidden_layers:
             layers.append(self.create_layer(out_size))
-            layers.append(activation_function_map[af_type])
+            layers.append(activation_function[af_type])
         # Output layer
         layers.append(self.create_layer(self.output_layer[0]))
-        layers.append(activation_function_map[self.output_layer[1]])
+        layers.append(activation_function[self.output_layer[1]])
         return layers
 
     def __call__(self, inputs: Array) -> Array:

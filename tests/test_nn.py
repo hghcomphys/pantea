@@ -16,17 +16,17 @@ from jaxip.types import dtype as _dtype
 
 class TestNeuralNetworkModel:
 
-    nn_1: NeuralNetworkModel = NeuralNetworkModel(hidden_layers=((2, "t"),))
+    nn_1: NeuralNetworkModel = NeuralNetworkModel(hidden_layers=((2, "tanh"),))
     nn_2: NeuralNetworkModel = NeuralNetworkModel(
-        hidden_layers=((4, "t"), (8, "l")),
+        hidden_layers=((4, "tanh"), (8, "identity")),
         param_dtype=jnp.float64,  # type: ignore
     )
     nn_3: NeuralNetworkModel = NeuralNetworkModel(
-        hidden_layers=((8, "t"), (16, "t")),
+        hidden_layers=((8, "tanh"), (16, "tanh")),
         kernel_initializer=UniformInitializer(weights_range=(-1.0, 1.0)),
     )
     nn_4: NeuralNetworkModel = NeuralNetworkModel(
-        hidden_layers=((8, "t"), (16, "t")),
+        hidden_layers=((8, "tanh"), (16, "tanh")),
         kernel_initializer=UniformInitializer(weights_range=(0.0, 1.0)),
     )
 
@@ -36,24 +36,24 @@ class TestNeuralNetworkModel:
             (
                 nn_1,
                 (
-                    ((2, "t"),),
-                    (1, "l"),
+                    ((2, "tanh"),),
+                    (1, "identity"),
                     _dtype.FLOATX,
                 ),
             ),
             (
                 nn_2,
                 (
-                    ((4, "t"), (8, "l")),
-                    (1, "l"),
+                    ((4, "tanh"), (8, "identity")),
+                    (1, "identity"),
                     jnp.float64,
                 ),
             ),
             (
                 nn_3,
                 (
-                    ((8, "t"), (16, "t")),
-                    (1, "l"),
+                    ((8, "tanh"), (16, "tanh")),
+                    (1, "identity"),
                     _dtype.FLOATX,
                 ),
             ),

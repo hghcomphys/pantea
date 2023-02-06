@@ -56,6 +56,18 @@ scaler_type_map: Mapping[str, str] = {
     "scale_center_symmetry_functions_sigma": "scale_center_sigma",
 }
 
+activation_function_map: Mapping[str, str] = {
+    "l": "identity",
+    "t": "tanh",
+    "s": "logistic",
+    "p": "softplus",
+    "r": "relu",
+    "g": "gaussian",
+    "c": "cos",
+    "e": "exp",
+    "h": "harmonic",
+}
+
 
 class NeuralNetworkPotentialSettings(_CFG):
     """
@@ -93,7 +105,7 @@ class NeuralNetworkPotentialSettings(_CFG):
     gradient_adam_weight_decay: float = 1.0e-4
     # Symmetry Function
     cutoff_type: str
-    scale_type: str
+    scale_type: str = "center"
     scale_min_short: float = 0.0
     scale_max_short: float = 1.0
     symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
@@ -140,7 +152,7 @@ class NeuralNetworkPotentialSettings(_CFG):
                 elif keyword == "global_nodes_short":
                     kwargs[keyword] = [t for t in tokens]
                 elif keyword == "global_activation_short":
-                    kwargs[keyword] = [t for t in tokens]
+                    kwargs[keyword] = [activation_function_map[t] for t in tokens]
                 elif keyword == "weights_min":
                     kwargs[keyword] = tokens[0]
                 elif keyword == "weights_max":

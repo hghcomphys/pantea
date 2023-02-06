@@ -19,9 +19,9 @@
         5
     ],
     "global_activation_short": [
-        "t",
-        "t",
-        "l"
+        "tanh",
+        "tanh",
+        "identity"
     ],
     "epochs": 20,
     "updater_type": 0,
