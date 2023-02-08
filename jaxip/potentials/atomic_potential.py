@@ -51,3 +51,10 @@ class AtomicPotential:
     def model_input_size(self) -> int:
         """Return size of the model input."""
         return self.descriptor.num_descriptors
+
+    def __repr__(self) -> str:
+        out: str = f"{self.__class__.__name__}("
+        for component in self.__annotations__:
+            out += f"\n  {component}={getattr(self, component)},"
+        out += "\n)"
+        return out

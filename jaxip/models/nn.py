@@ -61,7 +61,8 @@ class NeuralNetworkModel(nn.Module):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
-            f", output_layer={self.output_layer}, param_dtype={self.param_dtype})"
+            f", output_layer={self.output_layer}"
+            # f", param_dtype={self.param_dtype.dtype})"  # type: ignore
         )
 
     # TODO:

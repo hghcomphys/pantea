@@ -19,14 +19,3 @@ class StructureDataset(metaclass=ABCMeta):
     @abstractmethod
     def __getitem__(self, index) -> Any:
         pass
-
-    def __repr__(self) -> str:
-        return "{C}({attrs})".format(  # @{id:x}
-            C=self.__class__.__name__,
-            # id=id(self) & 0xFFFFFF,
-            attrs=", ".join(
-                "{}={!r}".format(k, v)
-                for k, v in self.__dict__.items()
-                if not k.startswith("_")
-            ),
-        )

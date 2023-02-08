@@ -49,7 +49,6 @@ class RunnerStructureDataset(StructureDataset):
         )
         self._cached_structures: Dict[int, Structure] = dict()
         self._current_index: int = 0  # used only for direct iteration
-        super().__init__()
 
     def __len__(self) -> int:
         """Return number of structures."""
@@ -70,6 +69,9 @@ class RunnerStructureDataset(StructureDataset):
         # if isinstance(index, list):
         #     return [self._read_cache(idx) for idx in index]
         return self.read_from_cache(index)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(filename='{str(self.filename)}', transform={self.transform})"
 
     # ----------------------------------------------
 
