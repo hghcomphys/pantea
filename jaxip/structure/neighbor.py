@@ -1,9 +1,7 @@
 from dataclasses import dataclass, field
-from email.policy import default
 from typing import Optional
 
 import jax.numpy as jnp
-from jax import tree_util
 
 from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
