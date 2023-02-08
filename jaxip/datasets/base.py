@@ -1,10 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from jaxip.base import _Base
 
-
-class StructureDataset(_Base, metaclass=ABCMeta):
+class StructureDataset(metaclass=ABCMeta):
     """
     A data container for atom data structure.
 
@@ -21,3 +19,14 @@ class StructureDataset(_Base, metaclass=ABCMeta):
     @abstractmethod
     def __getitem__(self, index) -> Any:
         pass
+
+    def __repr__(self) -> str:
+        return "{C}({attrs})".format(  # @{id:x}
+            C=self.__class__.__name__,
+            # id=id(self) & 0xFFFFFF,
+            attrs=", ".join(
+                "{}={!r}".format(k, v)
+                for k, v in self.__dict__.items()
+                if not k.startswith("_")
+            ),
+        )

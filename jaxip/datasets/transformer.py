@@ -1,13 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional
 
-from jaxip.base import _Base
 from jaxip.structure.structure import Structure
 from jaxip.types import Dtype
 from jaxip.types import dtype as _dtype
 
 
-class Transformer(_Base, metaclass=ABCMeta):
+class Transformer(metaclass=ABCMeta):
     """
     A base transformer class which applies on the structure dataset.
     """

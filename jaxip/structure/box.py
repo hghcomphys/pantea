@@ -42,7 +42,8 @@ class Box(_BaseJaxPytreeDataClass):
                     "Unexpected lattice matrix type or dimension",
                     exception=ValueError,  # type:ignore
                 )
-        # super().__init__()
+
+        logger.debug(f"Initializing {self}")
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

@@ -166,8 +166,8 @@ class Structure(_BaseJaxPytreeDataClass):
 
     def __post_init__(self) -> None:
         """Post initializations."""
-        # super().__init__()
         self.position = self.box.shift_inside_box(self.position)
+        logger.debug(f"Initializing {self.__class__.__name__}()")
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

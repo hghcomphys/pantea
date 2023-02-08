@@ -175,21 +175,21 @@ class NeuralNetworkPotentialTrainer:
                 loss += loss_eng
                 # if random.random() < 0.15:
                 # ------ Force ------
-                # forces = _compute_force(
-                #     frozendict(self.potential.atomic_potential),
-                #     positions,
-                #     params,
-                #     inputs,
-                # )
-                # elements = true_forces.keys()
-                # loss_frc = jnp.array(0.0)
-                # for element in elements:
-                #     loss_frc += self.criterion(
-                #         logits=forces[element],
-                #         targets=true_forces[element],
-                #     )
-                # loss_frc /= len(forces)
-                # loss += loss_frc
+                forces = _compute_force(
+                    frozendict(self.potential.atomic_potential),
+                    positions,
+                    params,
+                    inputs,
+                )
+                elements = true_forces.keys()
+                loss_frc = jnp.array(0.0)
+                for element in elements:
+                    loss_frc += self.criterion(
+                        logits=forces[element],
+                        targets=true_forces[element],
+                    )
+                loss_frc /= len(forces)
+                loss += loss_frc
 
             loss /= batch_size
             return loss, (jnp.array(0),)  # (loss_eng, loss_frc) #, (energy, forces))

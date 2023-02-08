@@ -1,6 +1,5 @@
 from typing import Dict, List, Mapping, Set, Tuple, Union
 
-from jaxip.base import _Base
 from jaxip.logger import logger
 from jaxip.types import Element
 
@@ -114,7 +113,7 @@ _KNOWN_ELEMENTS_DICT: Mapping[Element, int] = {
 }
 
 
-class ElementMap(_Base):
+class ElementMap:
     """
     Mapping element to atomic number utility class.
 
@@ -132,7 +131,8 @@ class ElementMap(_Base):
         self._elem_to_atom_type: Dict[Element, int] = dict()
         self._atom_type_to_elem: Dict[int, Element] = dict()
         self.create_mapping_dicts()
-        super().__init__()
+
+        logger.debug(f"Initializing {self.__class__.__name__}()")
 
     def create_mapping_dicts(self) -> None:
         """

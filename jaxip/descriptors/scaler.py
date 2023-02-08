@@ -5,13 +5,12 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from jaxip.base import _Base
 from jaxip.logger import logger
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
 
-class DescriptorScaler(_Base):
+class DescriptorScaler:
     """
     Scale descriptor values.
 
@@ -42,7 +41,6 @@ class DescriptorScaler(_Base):
         self.scale_min: float = scale_min
         self.scale_max: float = scale_max
         self.dtype: Dtype = dtype if dtype is not None else _dtype.FLOATX
-        super().__init__()
 
         # Statistical parameters
         self.nsamples: int = 0  # number of samples
@@ -54,6 +52,8 @@ class DescriptorScaler(_Base):
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: Optional[int] = None
+
+        logger.debug(f"Initializing {self}")
 
         # Set scaler type function
         self._transform = getattr(self, f"{self.scale_type}")

@@ -4,6 +4,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 from jax import tree_util
+
 from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
 from jaxip.structure._neighbor import _calculate_cutoff_mask
@@ -28,7 +29,7 @@ class Neighbor(_BaseJaxPytreeDataClass):
 
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
-        super().__init__()
+        logger.debug(f"Initializing {self}")
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
