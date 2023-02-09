@@ -37,7 +37,7 @@ class AtomicPotential:
         :return: model energy output
         :rtype: Array
         """
-        element = self.descriptor.element  # type: ignore FIXME:
+        element = self.descriptor.element  # type: ignore
         aid = structure.select(element)
 
         return _compute_atomic_energy(

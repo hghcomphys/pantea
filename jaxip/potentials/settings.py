@@ -86,8 +86,15 @@ class NeuralNetworkPotentialSettings(_CFG):
     It contains a collections of all potential setting keywords and their default values.
     """
 
+    # TODO: add docstring for each attribute
+    # sphinx-pydantic can be useful to better document pydantic classes
+    # https://pypi.org/project/autodoc-pydantic/0.1.1/
+
     # General
-    random_seed: int = 2023
+    random_seed: int = Field(
+        2023, description="determine initialize neural network weights."
+    )
+
     number_of_elements: int
     elements: List[Element] = Field(default_factory=list)
     atom_energy: Dict[Element, float] = Field(default_factory=dict)
