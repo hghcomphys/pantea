@@ -68,6 +68,16 @@ activation_function_map: Mapping[str, str] = {
     "h": "harmonic",
 }
 
+updater_type_map: Mapping[str, str] = {
+    "0": "gradient_descent",
+    "1": "kalman_filter",
+}
+
+gradient_type_map: Mapping[str, str] = {
+    "0": "fixed_step",
+    "1": "adam",
+}
+
 
 class NeuralNetworkPotentialSettings(_CFG):
     """
@@ -91,11 +101,11 @@ class NeuralNetworkPotentialSettings(_CFG):
     global_activation_short: List[str]
     # Trainer
     epochs: int = 1
-    updater_type: int = 0
-    gradient_type: int = 1
+    updater_type: str = "gradient_descent"
+    gradient_type: str = "adam"
+    main_error_metric: str = "RMSE"
     force_weight: float = 1.0
     test_fraction: float = 0.1
-    main_error_metric: str = "RMSE"
     save_best_model: bool = True
     gradient_eta: float = 1.0e-5
     gradient_adam_eta: float = 1.0e-3
@@ -165,9 +175,9 @@ class NeuralNetworkPotentialSettings(_CFG):
                 elif keyword == "test_fraction":
                     kwargs[keyword] = tokens[0]
                 elif keyword == "updater_type":
-                    kwargs[keyword] = tokens[0]
+                    kwargs[keyword] = updater_type_map[tokens[0]]
                 elif keyword == "gradient_type":
-                    kwargs[keyword] = tokens[0]
+                    kwargs[keyword] = gradient_type_map[tokens[0]]
                 elif keyword == "gradient_eta":
                     kwargs[keyword] = tokens[0]
                 elif keyword == "gradient_adam_eta":

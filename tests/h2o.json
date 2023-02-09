@@ -24,8 +24,8 @@
         "identity"
     ],
     "epochs": 20,
-    "updater_type": 0,
-    "gradient_type": 1,
+    "updater_type": "gradient_descent",
+    "gradient_type": "adam",
     "force_weight": 10.0,
     "test_fraction": 0.1,
     "main_error_metric": "RMSE",

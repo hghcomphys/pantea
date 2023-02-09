@@ -60,8 +60,8 @@ class NeuralNetworkPotentialTrainer:
     def init_optimizer(self) -> Any:
         """Create optimizer using the potential settings."""
 
-        if self.settings.updater_type == 0:  # Gradient Descent
-            if self.settings.gradient_type == 1:  # Adam
+        if self.settings.updater_type == "gradient_descent":
+            if self.settings.gradient_type == "adam":
                 optimizer_cls: Callable = optax.adamw
                 optimizer_kwargs: Dict[str, Any] = {
                     "learning_rate": self.settings.gradient_adam_eta,
@@ -70,7 +70,7 @@ class NeuralNetworkPotentialTrainer:
                     "eps": self.settings.gradient_adam_epsilon,
                     "weight_decay": self.settings.gradient_adam_weight_decay,
                 }
-            # TODO: self.settings.gradient_type == 0:  # fixed Step
+            # TODO: self.settings.gradient_type == "fixed_step":
             else:
                 logger.error(
                     f"Gradient type {self.settings.gradient_type} is not implemented yet",
