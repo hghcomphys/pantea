@@ -43,6 +43,7 @@ extensions = extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
     "sphinx_autodoc_typehints",
+    "sphinxcontrib.autodoc_pydantic",
     "nbsphinx",
     # "sphinx_gallery.load_style",
     # "nbsphinx_link",
