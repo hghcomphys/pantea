@@ -27,6 +27,11 @@ class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
 
 
 class EnvironmentElements(NamedTuple):
+    """
+    Representative elements for the
+    chemical environment including central elements and its neighbors.
+    """
+
     central: Element
     neighbor_j: Element
     neighbor_k: Optional[Element] = None

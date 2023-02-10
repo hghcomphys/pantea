@@ -13,6 +13,8 @@ from jaxip.utils.tokenize import tokenize
 class RadialSymFuncArgs(NamedTuple):
     """Symmetry function arguments."""
 
+    # TODO: add description for each attribute
+    # it can be added as docstring after each attribute
     central_element: str
     acsf_type: int
     neighbor_element_j: str
@@ -24,6 +26,7 @@ class RadialSymFuncArgs(NamedTuple):
 class AngularSymFuncArgs(NamedTuple):
     """Symmetry function arguments."""
 
+    # TODO: add description for attributes
     central_element: str
     acsf_type: int
     neighbor_element_j: str
