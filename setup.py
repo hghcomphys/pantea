@@ -23,6 +23,11 @@ test_requirements = [
     "pytest>=3",
 ]
 
+_dct = {}
+with open("jaxip/_version.py") as f:
+    exec(f.read(), _dct)  # FIXME: avoid using exec
+__version__ = _dct["__version__"]
+
 setup(
     author="Hossein Ghorbanfekr",
     author_email="hgh.comphys@gmail.com",
@@ -32,7 +37,7 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3",
+        # "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         # "Programming Language :: Python :: 3.9",
         # "Programming Language :: Python :: 3.10",
@@ -53,6 +58,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/hghcomphys/jaxip",
-    version="0.4.4",
+    version=__version__,
     zip_safe=False,
 )
