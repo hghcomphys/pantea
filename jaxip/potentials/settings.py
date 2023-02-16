@@ -124,7 +124,7 @@ class NeuralNetworkPotentialSettings(_CFG):
     gradient_adam_epsilon: float = 1.0e-8
     gradient_adam_weight_decay: float = 1.0e-4
     # Symmetry Function
-    cutoff_type: str
+    cutoff_type: str = "tanh"
     scale_type: str = "center"
     scale_min_short: float = 0.0
     scale_max_short: float = 1.0
