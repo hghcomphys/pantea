@@ -119,6 +119,67 @@ class Structure(_BaseJaxPytreeDataClass):
             )
         return cls(**kwargs)
 
+    @classmethod
+    def create_from_ase(
+        cls,
+        atoms: AseAtoms,
+        r_cutoff: Optional[float] = None,
+        dtype: Optional[Dtype] = None,
+    ) -> Structure:
+        """
+        Create a new instance of structure from the ASE atoms.
+
+        :param atoms: input ASE atoms instance
+        :param r_cutoff: neighbor atom cutoff radius, defaults to None
+        :param dtype: data type of arrays, defaults to None
+        :return: an initialized instance
+        """
+        # TODO: add test
+
+        if dtype is None:
+            dtype = _dtype.FLOATX
+
+        kwargs: Dict[str, Any] = dict()
+
+        # Extract atom info from the ASE atoms instance
+        data = {
+            "element": [
+                ElementMap.atomic_number_to_element(n)
+                for n in atoms.get_atomic_numbers()
+            ],
+            "lattice": np.asarray(atoms.get_cell()),
+            "position": atoms.get_positions(),
+        }
+        for key, attr in zip(
+            ("charge", "energy"),
+            ("charges", "potential_energies"),
+        ):
+            try:
+                data[key] = getattr(atoms, f"get_{attr}")()
+            except RuntimeError:
+                continue
+        for attr in ("energy", "charge"):
+            if attr in data:
+                data[f"total_{attr}"] = sum(data[attr])
+
+        # Use extracted info to initialize structure # FIXME: avoid DRY
+        data_: DefaultDict[str, List] = defaultdict(list, data)
+        try:
+            element_map: ElementMap = ElementMap(data_["element"])
+            kwargs.update(
+                cls._init_arrays(data_, element_map=element_map, dtype=dtype),
+            )
+            kwargs["box"] = cls._init_box(data_["lattice"], dtype=dtype)
+            kwargs["element_map"] = element_map
+            kwargs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
+
+        except KeyError:
+            logger.error(
+                f"Cannot find at least one of the expected keyword in the input data.",
+                exception=KeyError,
+            )
+        return cls(**kwargs)
+
     @staticmethod
     def _init_arrays(
         data: Dict, element_map: ElementMap, dtype: Dtype
@@ -310,9 +371,11 @@ class Structure(_BaseJaxPytreeDataClass):
             positions=[
                 units.BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position
             ],
-            cell=[units.BOHR_TO_ANGSTROM * float(l) for l in self.box.length]  # type: ignore
+            cell=units.BOHR_TO_ANGSTROM * np.asarray(self.box.lattice)
             if self.box
-            else None,  # FIXME: non-orthogonal cells
+            else None,
+            pbc=True if self.box else False,
+            charges=[np.asarray(ch) for ch in self.charge],
         )
 
     # --------------------------------------------------------------------------------------

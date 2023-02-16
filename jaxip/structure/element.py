@@ -209,3 +209,11 @@ class ElementMap:
         :return: a dictionary of mapping an element (string) to the corresponding atom type (integer)
         """
         return self._elem_to_atom_type
+
+    @staticmethod
+    def atomic_number_to_element(atomic_number: int) -> Element:
+        return _KNOWN_ELEMENTS_LIST[atomic_number - 1]
+
+    @staticmethod
+    def element_to_atomic_number(element: Element) -> int:
+        return _KNOWN_ELEMENTS_DICT[element]
