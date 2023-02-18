@@ -6,15 +6,15 @@ from jaxip.types import Array
 
 def create_batch(array: Array, batch_size: int) -> Generator[Array, None, None]:
     """
-    Return the input array in form of batches (generator).
+    Create baches of the input array.
 
-    Args:
-        array (jnp.ndarray): input array
-        batch_size (int): desired batch size
-
-    Yields:
-        Iterator[jnp.ndarray]: a batch of input array
+    :param array: input array
+    :type array: Array
+    :param batch_size: desired batch size
+    :type batch_size: int
+    :yield: a batch of input array
+    :rtype: Generator[Array, None, None]
     """
-    nb = int(math.ceil(len(array) / batch_size))
-    for i in range(nb):
-        yield array[i * batch_size : (i + 1) * batch_size, ...]
+    n_batches = int(math.ceil(len(array) / batch_size))
+    for i in range(n_batches):
+        yield array[i * batch_size : (i + 1) * batch_size, ...]  # type: ignore

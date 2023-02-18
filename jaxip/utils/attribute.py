@@ -14,11 +14,16 @@ def set_as_attribute(
     postfix: str = "",
 ) -> None:
     """
-    An utility function to set an input dictionary of items as the given object attributes.
+    An utility function to set a dictionary of items as the input object attributes.
 
-    Args:
-        obj (Any): an instance
-        Any (Dict): a dictionary of items
+
+    :param obj: instance
+    :param items: dictionary of attributes
+    :type items: Dict[str, Any]
+    :param prefix: _description_, defaults to ""
+    :type prefix: str, optional
+    :param postfix: _description_, defaults to ""
+    :type postfix: str, optional
     """
     logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__} attributes:")
     for name, item in items.items():
@@ -27,11 +32,17 @@ def set_as_attribute(
         setattr(obj, attr_name, item)
 
 
-def cast_to_tensor(x, dtype: Optional[Dtype] = None) -> Array:
+def asarray(data: Any, dtype: Optional[Dtype] = None) -> Array:
     """
-    An utility function to cast input variable (scalar, array, etc)
-    to torch tensor with predefined data and device types.
+    An utility function to cast input data (scalar, array, etc) to Array type with predefined dtype.
+
+    :param value: input data
+    :type value: Any
+    :param dtype: casted dtype. Default dtype will be used otherwise.
+    :type dtype: Optional[Dtype], optional
+    :return: casted input
+    :rtype: Array
     """
     if dtype is None:
         dtype = _dtype.FLOATX
-    return jnp.asarray(x, dtype=dtype)
+    return jnp.asarray(data, dtype=dtype)

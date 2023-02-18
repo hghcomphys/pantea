@@ -1,6 +1,7 @@
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 import jax.numpy as jnp
+
 from jaxip.structure.structure import Structure
 from jaxip.types import Array
 
@@ -12,7 +13,7 @@ def compare(
     return_difference: bool = False,
 ) -> Dict[str, Array]:
     """
-    An utility function that compares `force` and `total energy` values
+    Compare the `force` and `total energy` values
     between two input structures and returning the desired errors metrics.
 
     :param structure1: first structure
@@ -29,11 +30,11 @@ def compare(
     # TODO: add charge, total_charge
     assert all(
         structure1.atom_type == structure2.atom_type
-    ), "Expected similar structures."
+    ), "Expected similar structures with the same atom types."
 
-    result = dict()
-    frc_diff = structure1.force - structure2.force
-    eng_diff = structure1.total_energy - structure2.total_energy
+    result: Dict[str, Any] = dict()
+    frc_diff: Array = structure1.force - structure2.force
+    eng_diff: Array = structure1.total_energy - structure2.total_energy
     errors = [errors] if isinstance(errors, str) else errors
     print(f"Comparing two structures, error metrics: {', '.join(errors)}")
     errors = [x.lower() for x in errors]

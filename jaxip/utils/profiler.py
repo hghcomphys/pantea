@@ -4,7 +4,9 @@ import copy
 import functools
 import time
 from collections import defaultdict
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
+
+import pandas as pd
 
 from jaxip.logger import logger
 
@@ -13,13 +15,11 @@ _default_profiler = None
 
 class Profiler:
     """
-    An implementation of a basic profiler for investigating code performance.
-    How to use it:
-    1) add profile() as a decorator before each targeted method
-    2) use context manager to collect stats from the region of interest
+    An implementation of a basic profiler for debugging.
 
-    Otherwise, the introduced decorators are ignored.
-    There will be small overheads.
+    How to use it:
+        1) add profile() as a decorator before each targeted method
+        2) use context manager to collect stats from the region of interest
     """
 
     # TODO: testing multi-thread applications
@@ -43,9 +43,7 @@ class Profiler:
         )
 
     def __enter__(self) -> Profiler:
-        """
-        Enter the profiler with context.
-        """
+        """Start profiling."""
         logger.info(f"{self.name} started")
         self.active = True
         global _default_profiler
@@ -54,9 +52,7 @@ class Profiler:
         return self
 
     def __exit__(self, type, value, traceback) -> None:
-        """
-        Exit the with context.
-        """
+        """Stop profiling."""
         self.active = False
         global _default_profiler
         self.stats = copy.deepcopy(_default_profiler.stats)
@@ -65,15 +61,15 @@ class Profiler:
         logger.info(self)
 
     @staticmethod
-    def profile(func):
+    def profile(func) -> Callable:
         @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self, *args, **kwargs) -> Any:
             global _default_profiler
             if _default_profiler is not None and _default_profiler.active:
-                start_time = time.perf_counter()
+                start_time: float = time.perf_counter()
                 retval = func(self, *args, **kwargs)
-                end_time = time.perf_counter()
-                func_info = f"{self.__class__.__name__}.{func.__name__}"
+                end_time: float = time.perf_counter()
+                func_info: str = f"{self.__class__.__name__}.{func.__name__}"
                 _default_profiler.stats[func_info]["ncalls"] += 1
                 _default_profiler.stats[func_info]["cumtime"] += end_time - start_time
                 if _default_profiler.stats[func_info]["startwt"] is None:
@@ -90,12 +86,9 @@ class Profiler:
         return wrapper
 
     def get_dataframe(self):  # -> pd.DataFrame:
-        """
-        Return a dataframe representation of profiler statistics.
-        """
+        """Return a dataframe representation of profiler statistics."""
         if len(self.stats) == 0:
             return None
-        import pandas as pd
 
         df = defaultdict(list)
         for func, stats in self.stats.items():
@@ -107,18 +100,17 @@ class Profiler:
     def __repr__(self) -> str:
         df_ = self.get_dataframe()
         if df_ is not None:
-            return f"Profiler statistics (dataframe):\n{df_.to_string()}"
+            return f"Profiler statistics:\n{df_.to_string()}"
         return ""
 
 
 class Timer:
-    """
-    A class to measure elapsed time.
-    """
+    """A class to measure elapsed time."""
 
     def __init__(self, name: str = "Timer") -> None:
-        self.name = name
-        self.elapsed_time = None
+        self.name: str = name
+        self.elapsed_time: float = 0.0
+        self._start: float
 
     def __enter__(self) -> Timer:
         self._start = time.perf_counter()
@@ -133,9 +125,7 @@ class Timer:
 
 
 def timer(func):
-    """
-    A decorator to measure elapsed time when calling a function.
-    """
+    """A decorator to measure elapsed time when calling a function."""
     print(func.__name__)
 
     @functools.wraps(func)
