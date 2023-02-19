@@ -131,6 +131,25 @@ class NeuralNetworkPotentialSettings(_CFG):
     symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
 
     @classmethod
+    def _read_from(cls, filename) -> Dict:
+        """Read all keywords from the input setting file."""
+        dict_ = dict()
+        with open(str(filename), "r") as file:
+            while True:
+                line = file.readline()
+                if not line:
+                    break
+                # Read keyword and values
+                keyword, tokens = tokenize(line, comment="#")
+                if keyword is not None:
+                    if keyword not in cls.__annotations__:
+                        logger.debug(f"Unknown keyword:'{keyword}'")
+                    else:
+                        logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
+                        dict_[keyword] = tokens
+        return dict_
+
+    @classmethod
     def create_from(cls, filename: Path):  # FIXME
         """
         Read all potential settings from the input file.
@@ -142,106 +161,100 @@ class NeuralNetworkPotentialSettings(_CFG):
         logger.debug("[Reading potential settings]")
         logger.debug(f"Potential file:'{str(filename)}'")
 
+        dict_ = cls._read_from(filename)
+
         kwargs: Dict[str, Any] = dict()
         kwargs["atom_energy"] = dict()
         kwargs["symfunction_short"] = list()
-        with open(str(filename), "r") as file:
-            while True:
-                line = file.readline()
-                if not line:
-                    break
-                # Read keyword and values
-                keyword, tokens = tokenize(line, comment="#")
-                if keyword is not None:
-                    logger.debug(f"keyword:'{keyword}', values:{tokens}")
 
-                # ------------- General -------------
-                if keyword == "number_of_elements":  # this keyword can be ignored
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "elements":
-                    kwargs[keyword] = sorted(
-                        set([t for t in tokens]), key=ElementMap.get_atomic_number
+        for keyword, tokens in dict_.items():
+            # ------------- General -------------
+            if keyword == "number_of_elements":  # this keyword can be ignored
+                kwargs[keyword] = tokens[0]
+            elif keyword == "elements":
+                kwargs[keyword] = sorted(
+                    set([t for t in tokens]), key=ElementMap.get_atomic_number
+                )
+            elif keyword == "atom_energy":
+                kwargs[keyword].update({tokens[0]: tokens[1]})
+            elif keyword == "random_seed":
+                kwargs[keyword] = tokens[0]
+            # ------------- Neural Network -------------
+            elif keyword == "global_hidden_layers_short":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "global_nodes_short":
+                kwargs[keyword] = [t for t in tokens]
+            elif keyword == "global_activation_short":
+                kwargs[keyword] = [activation_function_map[t] for t in tokens]
+            elif keyword == "weights_min":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "weights_max":
+                kwargs[keyword] = tokens[0]
+            # ------------- Trainer -------------
+            elif keyword == "main_error_metric":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "epochs":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "test_fraction":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "updater_type":
+                kwargs[keyword] = updater_type_map[tokens[0]]
+            elif keyword == "gradient_type":
+                kwargs[keyword] = gradient_type_map[tokens[0]]
+            elif keyword == "gradient_eta":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "gradient_adam_eta":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "gradient_adam_beta1":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "gradient_adam_beta2":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "gradient_adam_epsilon":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "gradient_adam_weight_decay":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "force_weight":
+                kwargs[keyword] = tokens[0]
+            # ------------- Symmetry Function -------------
+            elif keyword == "cutoff_type":
+                kwargs[keyword] = cutoff_function_map[tokens[0]]
+            elif keyword == "center_symmetry_functions":
+                kwargs["scale_type"] = scaler_type_map[keyword]
+            elif keyword == "scale_symmetry_functions":
+                kwargs["scale_type"] = scaler_type_map[keyword]
+            elif keyword == "scale_center_symmetry_functions":
+                kwargs["scale_type"] = scaler_type_map[keyword]
+            elif keyword == "scale_center_symmetry_functions_sigma":
+                kwargs["scale_type"] = scaler_type_map[keyword]
+            elif keyword == "scale_min_short":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "scale_max_short":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "symfunction_short":
+                acsf_type = int(tokens[1])
+                args: SymFuncArgs
+                if acsf_type < 3:  # radial
+                    args = RadialSymFuncArgs(
+                        central_element=tokens[0],
+                        acsf_type=acsf_type,
+                        neighbor_element_j=tokens[2],
+                        eta=float(tokens[3]),
+                        r_shift=float(tokens[4]),
+                        r_cutoff=float(tokens[5]),
                     )
-                elif keyword == "atom_energy":
-                    kwargs[keyword].update({tokens[0]: tokens[1]})
-                elif keyword == "random_seed":
-                    kwargs[keyword] = tokens[0]
-                # ------------- Neural Network -------------
-                elif keyword == "global_hidden_layers_short":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "global_nodes_short":
-                    kwargs[keyword] = [t for t in tokens]
-                elif keyword == "global_activation_short":
-                    kwargs[keyword] = [activation_function_map[t] for t in tokens]
-                elif keyword == "weights_min":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "weights_max":
-                    kwargs[keyword] = tokens[0]
-                # ------------- Trainer -------------
-                elif keyword == "main_error_metric":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "epochs":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "test_fraction":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "updater_type":
-                    kwargs[keyword] = updater_type_map[tokens[0]]
-                elif keyword == "gradient_type":
-                    kwargs[keyword] = gradient_type_map[tokens[0]]
-                elif keyword == "gradient_eta":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "gradient_adam_eta":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "gradient_adam_beta1":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "gradient_adam_beta2":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "gradient_adam_epsilon":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "gradient_adam_weight_decay":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "force_weight":
-                    kwargs[keyword] = tokens[0]
-                # ------------- Symmetry Function -------------
-                elif keyword == "cutoff_type":
-                    kwargs[keyword] = cutoff_function_map[tokens[0]]
-                elif keyword == "center_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_center_symmetry_functions":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_center_symmetry_functions_sigma":
-                    kwargs["scale_type"] = scaler_type_map[keyword]
-                elif keyword == "scale_min_short":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "scale_max_short":
-                    kwargs[keyword] = tokens[0]
-                elif keyword == "symfunction_short":
-                    acsf_type = int(tokens[1])
-                    args: SymFuncArgs
-                    if acsf_type < 3:  # radial
-                        args = RadialSymFuncArgs(
-                            central_element=tokens[0],
-                            acsf_type=acsf_type,
-                            neighbor_element_j=tokens[2],
-                            eta=float(tokens[3]),
-                            r_shift=float(tokens[4]),
-                            r_cutoff=float(tokens[5]),
-                        )
-                    else:  # angular
-                        args = AngularSymFuncArgs(
-                            central_element=tokens[0],
-                            acsf_type=acsf_type,
-                            neighbor_element_j=tokens[2],
-                            neighbor_element_k=tokens[3],
-                            eta=float(tokens[4]),
-                            lambda0=float(tokens[5]),
-                            zeta=float(tokens[6]),
-                            r_cutoff=float(tokens[7]),
-                            r_shift=float(tokens[8]) if len(tokens) == 9 else 0.0,
-                        )
-                    kwargs[keyword].append(args)
+                else:  # angular
+                    args = AngularSymFuncArgs(
+                        central_element=tokens[0],
+                        acsf_type=acsf_type,
+                        neighbor_element_j=tokens[2],
+                        neighbor_element_k=tokens[3],
+                        eta=float(tokens[4]),
+                        lambda0=float(tokens[5]),
+                        zeta=float(tokens[6]),
+                        r_cutoff=float(tokens[7]),
+                        r_shift=float(tokens[8]) if len(tokens) == 9 else 0.0,
+                    )
+                kwargs[keyword].append(args)
         try:
             settings = cls(**kwargs)
         except ValidationError as e:
