@@ -15,8 +15,8 @@ class AtomicPotential:
     """
     Atomic potential.
 
-    It chains all the required transformers (descriptor, scaler, model, etc.) to calculate
-    per-atom energy.
+    It chains all the required transformers (descriptor, scaler, model, etc.)
+    to calculate per-atom energy.
     """
 
     descriptor: Descriptor

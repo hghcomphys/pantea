@@ -130,7 +130,7 @@ class NeuralNetworkPotentialTrainer:
                 )
 
                 batch = xbatch, ybatch
-                states, metrics = self._train_step(states, batch)
+                states, metrics = self.train_step(states, batch)
 
                 self._update_model_params(states)
 
@@ -145,7 +145,7 @@ class NeuralNetworkPotentialTrainer:
         return history
 
     @partial(jit, static_argnums=(0,))  # FIXME
-    def _train_step(
+    def train_step(
         self,
         states: Dict[Element, TrainState],
         batch: Tuple,
