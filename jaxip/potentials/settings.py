@@ -131,7 +131,7 @@ class NeuralNetworkPotentialSettings(_CFG):
     symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
 
     @classmethod
-    def read_from(cls, filename: Path):  # FIXME
+    def create_from(cls, filename: Path):  # FIXME
         """
         Read all potential settings from the input file.
 

@@ -55,9 +55,9 @@ class NeuralNetworkPotentialTrainer:
         self.error_metric: ErrorMetric = ErrorMetric.create_from(
             self.settings.main_error_metric
         )
-        self.optimizer = self.init_optimizer()
+        self.optimizer = self._init_optimizer()
 
-    def init_optimizer(self) -> Any:
+    def _init_optimizer(self) -> Any:
         """Create optimizer using the potential settings."""
 
         if self.settings.updater_type == "gradient_descent":
@@ -86,7 +86,7 @@ class NeuralNetworkPotentialTrainer:
         # return {element: optimizer for element in self.elements}
         return optimizer
 
-    def init_train_state(self) -> Dict[Element, TrainState]:
+    def _init_train_state(self) -> Dict[Element, TrainState]:
         """Initialize train state for each element."""
 
         def generate_train_state():
@@ -110,7 +110,7 @@ class NeuralNetworkPotentialTrainer:
         steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))
         epochs: int = kwargs.get("epochs", 50)
 
-        states: Dict[Element, TrainState] = self.init_train_state()
+        states: Dict[Element, TrainState] = self._init_train_state()
         history = defaultdict(list)
 
         # Loop over epochs
@@ -130,9 +130,9 @@ class NeuralNetworkPotentialTrainer:
                 )
 
                 batch = xbatch, ybatch
-                states, metrics = self.train_step(states, batch)
+                states, metrics = self._train_step(states, batch)
 
-                self.update_model_params(states)
+                self._update_model_params(states)
 
             print(
                 f"training loss:{float(metrics['loss']): 0.7f}"
@@ -145,7 +145,7 @@ class NeuralNetworkPotentialTrainer:
         return history
 
     @partial(jit, static_argnums=(0,))  # FIXME
-    def train_step(
+    def _train_step(
         self,
         states: Dict[Element, TrainState],
         batch: Tuple,
@@ -175,21 +175,21 @@ class NeuralNetworkPotentialTrainer:
                 loss += loss_eng
                 # if random.random() < 0.15:
                 # ------ Force ------
-                forces = _compute_force(
-                    frozendict(self.potential.atomic_potential),
-                    positions,
-                    params,
-                    inputs,
-                )
-                elements = true_forces.keys()
-                loss_frc = jnp.array(0.0)
-                for element in elements:
-                    loss_frc += self.criterion(
-                        logits=forces[element],
-                        targets=true_forces[element],
-                    )
-                loss_frc /= len(forces)
-                loss += loss_frc
+                # forces = _compute_force(
+                #     frozendict(self.potential.atomic_potential),
+                #     positions,
+                #     params,
+                #     inputs,
+                # )
+                # elements = true_forces.keys()
+                # loss_frc = jnp.array(0.0)
+                # for element in elements:
+                #     loss_frc += self.criterion(
+                #         logits=forces[element],
+                #         targets=true_forces[element],
+                #     )
+                # loss_frc /= len(forces)
+                # loss += loss_frc
 
             loss /= batch_size
             return loss, (jnp.array(0),)  # (loss_eng, loss_frc) #, (energy, forces))
@@ -212,7 +212,7 @@ class NeuralNetworkPotentialTrainer:
         }
         return states, metrics
 
-    def update_model_params(self, states: Dict[Element, TrainState]) -> None:
+    def _update_model_params(self, states: Dict[Element, TrainState]) -> None:
         """Update model params for all the elements."""
         for element, train_state in states.items():
             self.potential.model_params[element] = train_state.params  # type: ignore

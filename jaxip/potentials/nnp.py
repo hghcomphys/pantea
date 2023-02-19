@@ -72,7 +72,7 @@ class NeuralNetworkPotential:
     def create_from(cls, potential_file: Path):
         """Create an instance of the potential from the input file (RuNNer format)."""
         potential_file = Path(potential_file)
-        settings = Settings.read_from(potential_file)
+        settings = Settings.create_from(potential_file)
         return NeuralNetworkPotential(
             settings=settings,
             output_dir=potential_file.parent,
@@ -84,22 +84,22 @@ class NeuralNetworkPotential:
         and trainer from the potential settings.
         """
         if not self.atomic_potential:
-            self.init_atomic_potential()
+            self._init_atomic_potential()
         if not self.model_params:
-            self.init_model_params()
+            self._init_model_params()
         if self.trainer is None:
             logger.debug("[Setting trainer]")
             self.trainer = NeuralNetworkPotentialTrainer(potential=self)
 
-    def init_atomic_potential(self) -> None:
+    def _init_atomic_potential(self) -> None:
         """
         Initialize atomic potential for each element.
 
         This method can be override in case that different atomic potential is used.
         """
-        descriptor: Dict[Element, ACSF] = self.init_descriptor()
-        scaler: Dict[Element, DescriptorScaler] = self.init_scaler()
-        model: Dict[Element, NeuralNetworkModel] = self.init_model()
+        descriptor: Dict[Element, ACSF] = self._init_descriptor()
+        scaler: Dict[Element, DescriptorScaler] = self._init_scaler()
+        model: Dict[Element, NeuralNetworkModel] = self._init_model()
         for element in self.settings.elements:
             self.atomic_potential[element] = AtomicPotential(
                 descriptor=descriptor[element],
@@ -107,7 +107,7 @@ class NeuralNetworkPotential:
                 model=model[element],
             )
 
-    def init_model_params(self) -> None:
+    def _init_model_params(self) -> None:
         """
         Initialize neural network model parameters for each element
         (e.g. neural network kernel and bias values).
@@ -126,7 +126,7 @@ class NeuralNetworkPotential:
                 "params"
             ]
 
-    def init_descriptor(self) -> Dict[Element, ACSF]:
+    def _init_descriptor(self) -> Dict[Element, ACSF]:
         """Initialize descriptor for each element."""
         descriptor: Dict[Element, ACSF] = dict()
         settings = self.settings
@@ -195,7 +195,7 @@ class NeuralNetworkPotential:
                 )
         return descriptor
 
-    def init_scaler(self) -> Dict[Element, DescriptorScaler]:
+    def _init_scaler(self) -> Dict[Element, DescriptorScaler]:
         """Initialize descriptor scaler for each element."""
         scaler: Dict[Element, DescriptorScaler] = dict()
         settings = self.settings
@@ -215,7 +215,7 @@ class NeuralNetworkPotential:
             scaler[element] = DescriptorScaler(**scaler_kwargs)
         return scaler
 
-    def init_model(self) -> Dict[Element, NeuralNetworkModel]:
+    def _init_model(self) -> Dict[Element, NeuralNetworkModel]:
         """Initialize neural network model for each element."""
         model: Dict[Element, NeuralNetworkModel] = dict()
         settings = self.settings
