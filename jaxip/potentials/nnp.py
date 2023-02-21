@@ -21,8 +21,8 @@ from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
 from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
-from jaxip.structure import Structure
 from jaxip.structure.element import ElementMap
+from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
 
