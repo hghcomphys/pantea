@@ -130,11 +130,11 @@ class ElementMap:
         self._elem_to_atomic_num: Dict[Element, int] = dict()
         self._elem_to_atom_type: Dict[Element, int] = dict()
         self._atom_type_to_elem: Dict[int, Element] = dict()
-        self.create_mapping_dicts()
+        self._create_mapping_dicts()
 
         logger.debug(f"Initializing {self.__class__.__name__}()")
 
-    def create_mapping_dicts(self) -> None:
+    def _create_mapping_dicts(self) -> None:
         """
         Create dictionary to map elements, atom types, and atomic numbers.
         The given atom types are given and sorted based on elements' atomic number.

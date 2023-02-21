@@ -54,7 +54,7 @@ class RunnerStructureDataset(StructureDataset):
         """Return number of structures."""
         num_structures: int = 0
         with open(str(self.filename), "r") as file:
-            while self.ignore(file):
+            while self._ignore(file):
                 num_structures += 1
         return num_structures
 
@@ -68,14 +68,14 @@ class RunnerStructureDataset(StructureDataset):
         # TODO: Multiple-indexing
         # if isinstance(index, list):
         #     return [self._read_cache(idx) for idx in index]
-        return self.read_from_cache(index)
+        return self._read_from_cache(index)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(filename='{str(self.filename)}', transform={self.transform})"
 
     # ----------------------------------------------
 
-    def read_raw(self, file: TextIO) -> Optional[Dict[str, List]]:
+    def _read_raw(self, file: TextIO) -> Optional[Dict[str, List]]:
         """
         Read the next structure from the input file.
 
@@ -110,7 +110,7 @@ class RunnerStructureDataset(StructureDataset):
                 break
         return dict_data
 
-    def ignore(self, file: TextIO) -> bool:
+    def _ignore(self, file: TextIO) -> bool:
         """
         Ignore the next structure.
 
@@ -129,7 +129,7 @@ class RunnerStructureDataset(StructureDataset):
                 break
         return True
 
-    def read(self, index: int) -> Structure:
+    def _read(self, index: int) -> Structure:
         """
         Read the i-th structure from the input file.
 
@@ -141,11 +141,11 @@ class RunnerStructureDataset(StructureDataset):
         logger.debug(f"Reading structure[{index}]")
         with open(str(self.filename), "r") as file:
             for _ in range(index):
-                self.ignore(file)
-            sample = self.read_raw(file)
+                self._ignore(file)
+            sample = self._read_raw(file)
         return self.transform(sample)
 
-    def read_from_cache(self, index: int) -> Structure:
+    def _read_from_cache(self, index: int) -> Structure:
         """
         Read from the cached structures if the `persist` input flag is enabled.
 
@@ -155,11 +155,11 @@ class RunnerStructureDataset(StructureDataset):
         :rtype: Any
         """
         if not self.persist:
-            return self.read(index)
+            return self._read(index)
 
         sample: Structure
         if index not in self._cached_structures:
-            sample = self.read(index)
+            sample = self._read(index)
             self._cached_structures[index] = sample
         else:
             # logger.debug(f"Using cached structure {index}")
