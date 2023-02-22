@@ -292,7 +292,7 @@ class NeuralNetworkPotential:
                     x = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)
         except KeyboardInterrupt:
-            logger.info("Scaler fitting was interrupted by keyboard")
+            print("Keyboard Interrupt")
         else:
             print("Done.\n")
 

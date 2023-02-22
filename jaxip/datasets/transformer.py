@@ -20,7 +20,7 @@ class Transformer(metaclass=ABCMeta):
 
 
 class ToStructure(Transformer):
-    """Transform a dictionary of data into to a `Structure`."""
+    """Transform a dictionary of data into to a Structure."""
 
     def __init__(
         self,

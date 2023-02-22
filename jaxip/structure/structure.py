@@ -360,7 +360,7 @@ class Structure(_BaseJaxPytreeDataClass):
         The returned atoms object can be used to visualize or modify the structure using the ASE package.
 
         .. warning::
-            This works only for for orthogonal cells.
+            This works only for orthogonal cells.
 
         :return: ASE representation of the structure
         :rtype: AseAtoms
