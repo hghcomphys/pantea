@@ -1,3 +1,4 @@
+from ast import keyword
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
@@ -134,19 +135,21 @@ class NeuralNetworkPotentialSettings(_CFG):
     def _read_from(cls, filename) -> Dict:
         """Read all keywords from the input setting file."""
         dict_ = dict()
+        n_line: int = 0
         with open(str(filename), "r") as file:
             while True:
                 line = file.readline()
+                n_line += 1
                 if not line:
                     break
                 # Read keyword and values
-                keyword, tokens = tokenize(line, comment="#")
+                keyword, tokens = tokenize(line, comment="#")  # type: ignore
                 if keyword is not None:
                     if keyword not in cls.__annotations__:
                         logger.debug(f"Unknown keyword:'{keyword}'")
                     else:
                         logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
-                        dict_[keyword] = tokens
+                        dict_[f"line{n_line:04d}_{keyword}"] = tokens
         return dict_
 
     @classmethod
@@ -167,7 +170,8 @@ class NeuralNetworkPotentialSettings(_CFG):
         kwargs["atom_energy"] = dict()
         kwargs["symfunction_short"] = list()
 
-        for keyword, tokens in dict_.items():
+        for line_keyword, tokens in dict_.items():
+            keyword: str = "_".join(line_keyword.split("_")[1:])  # type: ignore
             # ------------- General -------------
             if keyword == "number_of_elements":  # this keyword can be ignored
                 kwargs[keyword] = tokens[0]
