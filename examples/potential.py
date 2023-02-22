@@ -17,17 +17,16 @@ from jaxip.potentials import NeuralNetworkPotential
 from jaxip.types import dtype as default_dtype
 
 # default_dtype.FLOATX = jnp.float64
-
 # set_logging_level(logging.INFO)
 
 potdir = Path("./H2O_2")
 
 # Dataset
 structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
-structures = [structures[i] for i in range(100)]
+structures = [structures[i] for i in range(10)]
 
 # Potential
-nnp = NeuralNetworkPotential(Path(potdir, "input.nn"))
+nnp = NeuralNetworkPotential.create_from(Path(potdir, "input.nn"))
 
 # nnp.load_scaler()
 nnp.fit_scaler(structures)
