@@ -6,7 +6,10 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.base import register_jax_pytree_node
-from jaxip.descriptors.acsf._acsf import _calculate_descriptor
+from jaxip.descriptors.acsf._acsf import (
+    _calculate_descriptor,
+    _calculate_grad_descriptor_per_atom,
+)
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunction
@@ -152,7 +155,6 @@ class ACSF(Descriptor):
     def grad(
         self,
         structure: Structure,
-        acsf_index: int,
         atom_index: int,
     ) -> Array:
         """
@@ -160,43 +162,29 @@ class ACSF(Descriptor):
 
         :param structure: input structure instance
         :type structure: Structure
-        :param acsf_index: index in descriptor array, [0, `num_of_symmetry_functions`)
-        :type acsf_index: int
         :param atom_index: atom index in the structure [0, natoms)
         :type atom_index: int
         :return: gradient of the descriptor value respect to the atom position
         :rtype: Array
         """
-        if not (0 <= acsf_index < self.num_symmetry_functions):
-            logger.error(
-                f"Unexpected {acsf_index=}."
-                f" The index must be between [0, {self.num_symmetry_functions})",
-                ValueError,
-            )
-
         if not (0 <= atom_index < structure.natoms):
             logger.error(
-                f"Unexpected {acsf_index=}."
+                f"Unexpected {atom_index=}."
                 f" The index must be between [0, {structure.natoms})",
                 ValueError,
             )
 
-        def acsf_fn(position: Array) -> Array:
-            return _calculate_descriptor(
-                self,
-                position,
-                structure.position,
-                structure.atom_type,
-                structure.box.lattice,
-                structure.element_map.element_to_atype,
-            )[0][acsf_index]
-
-        # FIXME: error when using vmap on grad over aids
-        # TODO: add jit
-        grad_acsf_fn = jax.grad(acsf_fn)
-        pos: Array = structure.position[atom_index]
-
-        return grad_acsf_fn(pos[None, :])
+        # TODO: extend it to multiple atom indices
+        return _calculate_grad_descriptor_per_atom(
+            self,
+            structure.position[
+                atom_index
+            ],  # must be a single atom position shape=(1, 3)
+            structure.position,
+            structure.atom_type,
+            structure.box.lattice,
+            structure.element_map.element_to_atype,
+        )
 
     @property
     def num_radial_symmetry_functions(self) -> int:

@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Callable, Dict, Protocol, Tuple
 
+import jax
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
@@ -181,6 +182,15 @@ _calculate_descriptor = jit(
     vmap(
         _calculate_descriptor_per_atom,
         in_axes=(None, 0, None, None, None, None),
+    ),
+    static_argnums=(0,),
+)
+
+
+_calculate_grad_descriptor_per_atom = jit(
+    jax.jacfwd(
+        _calculate_descriptor_per_atom,
+        argnums=1,
     ),
     static_argnums=(0,),
 )
