@@ -1,13 +1,12 @@
 import random
 from collections import defaultdict
-from math import prod
-from typing import Callable, Dict, List, Protocol, Tuple
+from typing import Callable, Dict, Protocol
 
-import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
 from frozendict import frozendict
+from jax import flatten_util
 from tqdm import tqdm
 
 from jaxip.datasets.base import StructureDataset
@@ -21,30 +20,8 @@ from jaxip.types import Array, Element
 from jaxip.types import dtype as default_dtype
 
 
-def tree_unflatten(state_vector: Array, tree_shape: Dict) -> Dict[Element, frozendict]:
-    # FIXME: use tree_map instead of direct looping over the tree items
-    global_index: int = 0
-    dict_: Dict[Element, defaultdict] = defaultdict(lambda: defaultdict(dict))
-    for element in tree_shape:
-        for layer in tree_shape[element]:
-            for weight_type in tree_shape[element][layer]:
-                shape = tree_shape[element][layer][weight_type]
-                assert isinstance(
-                    shape, tuple
-                ), "expected shape tuple[int, ...] for each item in the tree"
-                size: int = prod(shape)
-                dict_[element][layer][weight_type] = state_vector[
-                    global_index : global_index + size, ...
-                ].reshape(shape)
-                global_index += size
-    return flax.core.frozen_dict.FrozenDict(dict_)  # type: ignore
-
-
-def tree_flatten(params, shape: Tuple[int, int] = (-1, 1), axis: int = 0) -> Array:
-    # TODO: investigate jax.flatten_util.ravel_pytree(model_params)
-    var: List[Array] = list()
-    jax.tree_util.tree_map(lambda x: var.append(x.reshape(shape)), params)
-    return jnp.concatenate(var, axis=axis)
+def _tree_flatten(pytree: Dict) -> Array:
+    return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
 
 
 class Potential(Protocol):
@@ -55,10 +32,12 @@ class Potential(Protocol):
 
 class KalmanFilterTrainer:
     """
-    Potential training which uses Kalman filter to update trainable weights (see this paper_).
+    Potential training which uses Kalman filter to update trainable weights (see this_).
 
-    .. _paper: https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
+    .. _this: https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
     """
+
+    # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
     def __init__(self, potential: Potential) -> None:
         self.potential: Potential = potential
@@ -80,7 +59,6 @@ class KalmanFilterTrainer:
         self.eta: float = settings.kalman_eta
         self.eta_tau: float = settings.kalman_eta
         self.eta_max: float = settings.kalman_etamax
-
         # Fading memory
         if self.kalman_type == 1:
             self.lambda0: float = settings.kalman_lambda_short
@@ -92,16 +70,14 @@ class KalmanFilterTrainer:
         model_params: Dict[str, frozendict] = self.potential.model_params
         # TODO: add dtype
 
-        # state vector
-        self.W: Array = tree_flatten(model_params)
+        # Initialize state vector
+        W, tree_unflatten = flatten_util.ravel_pytree(model_params)  # type: ignore
+        self.W: Array = W.reshape(-1, 1)
+        self._unflatten_state_vector: Callable = tree_unflatten
         self.num_states: int = self.W.shape[0]
         # Error covariance matrix
         self.P: Array = (1.0 / self.epsilon) * jnp.identity(
             self.num_states, dtype=default_dtype.FLOATX
-        )
-        # This will be used to reconstruct model_params dict from the state vector
-        self.tree_shape: Dict[Element, frozendict] = jax.tree_util.tree_map(
-            lambda x: x.shape, model_params
         )
 
     def train(
@@ -122,6 +98,8 @@ class KalmanFilterTrainer:
 
         model_params: Dict[Element, frozendict] = self.potential.model_params
 
+        # ----------------------
+
         def compute_energy_error(
             model_params: Dict[Element, frozendict], structure: Structure
         ) -> Array:
@@ -134,14 +112,10 @@ class KalmanFilterTrainer:
             )
             return (E_ref - E_pot)[0]
 
-        # ----------------------
-
-        def compute_force_error(
-            state_vector: Array, structure: Structure, tree_shape: Dict
-        ) -> Array:
-            model_params = tree_unflatten(state_vector, tree_shape)
-            F_ref: Array = tree_flatten(structure.get_forces())
-            F_pot: Array = tree_flatten(
+        def compute_force_error(state_vector: Array, structure: Structure) -> Array:
+            model_params: Dict = self._unflatten_state_vector(state_vector)
+            F_ref: Array = _tree_flatten(structure.get_forces())
+            F_pot: Array = _tree_flatten(
                 _compute_force(
                     frozendict(atomic_potential),
                     structure.get_positions(),
@@ -157,16 +131,14 @@ class KalmanFilterTrainer:
         def compute_energy_error_gradient(
             model_params: Dict[Element, frozendict], structure: Structure
         ) -> Array:
-            return tree_flatten(
+            return _tree_flatten(
                 grad_energy_error(model_params, structure),
             )
 
         def compute_force_error_jacobian(
-            state_vector: Array, structure: Structure, tree_shape: Dict
+            state_vector: Array, structure: Structure
         ) -> Array:
-            return jacob_force_error(
-                state_vector[..., 0], structure, tree_shape
-            ).transpose()
+            return jacob_force_error(state_vector[..., 0], structure).transpose()
 
         # ----------------------
 
@@ -190,12 +162,10 @@ class KalmanFilterTrainer:
                     Xi = self.beta * compute_force_error(
                         self.W,
                         structure,
-                        self.tree_shape,
                     ).reshape(-1, 1)
                     H = -self.beta * compute_force_error_jacobian(
                         self.W,
                         structure,
-                        self.tree_shape,
                     )
                 else:
                     Xi = compute_energy_error(model_params, structure).reshape(-1, 1)
@@ -251,7 +221,7 @@ class KalmanFilterTrainer:
                     self.gamma = 1.0 / (1.0 + self.lambda0 / self.gamma)
 
                 # Get params from state vector
-                model_params = tree_unflatten(self.W, self.tree_shape)
+                model_params = self._unflatten_state_vector(self.W)
 
                 loss_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                 num_update_per_epoch += 1
