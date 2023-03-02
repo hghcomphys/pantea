@@ -20,6 +20,22 @@ jaxip.potentials.base module
    :undoc-members:
    :show-inheritance:
 
+jaxip.potentials.gradient\_descent module
+-----------------------------------------
+
+.. automodule:: jaxip.potentials.gradient_descent
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+jaxip.potentials.kalman\_filter module
+--------------------------------------
+
+.. automodule:: jaxip.potentials.kalman_filter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.potentials.loader module
 ------------------------------
 
@@ -56,14 +72,6 @@ jaxip.potentials.settings module
 --------------------------------
 
 .. automodule:: jaxip.potentials.settings
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-jaxip.potentials.trainer module
--------------------------------
-
-.. automodule:: jaxip.potentials.trainer
    :members:
    :undoc-members:
    :show-inheritance:

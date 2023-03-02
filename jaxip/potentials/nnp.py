@@ -19,7 +19,7 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.kalman import KalmanFilterTrainer as Trainer
+from jaxip.potentials.kalman_filter import KalmanFilterTrainer as Trainer
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
 from jaxip.structure.element import ElementMap
 from jaxip.structure.structure import Structure
@@ -310,6 +310,10 @@ class NeuralNetworkPotential:
         #     "validation_split", self.settings.test_fraction
         # )
         # kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
+        # FIXME: add trainer factory
+        assert (
+            self.settings.updater_type == "kalman_filter"
+        ), "Only Kalman trainer is implemented"
         return self.trainer.train(dataset)  # , **kwargs)  # type: ignore
 
     def fit(self) -> None:

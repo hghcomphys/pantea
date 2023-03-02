@@ -91,33 +91,30 @@ descriptor values that are required to build machine learning potentials.
         values = descriptor(structure)
 
 
-Outputs:
+.. Outputs:
 
-.. code-block:: bash
+.. .. code-block:: bash
 
-        >> values.shape
-        (128, 2)
+..         >> values.shape
+..         (128, 2)
 
-        >> values[:3]
-        DeviceArray([[1.9689142e-03, 3.3253882e+00],
-                [1.9877939e-03, 3.5034561e+00],
-                [1.5204106e-03, 3.5458331e+00]], dtype=float32)
+..         >> values[:3]
+..         DeviceArray([[1.9689142e-03, 3.3253882e+00],
+..                 [1.9877939e-03, 3.5034561e+00],
+..                 [1.5204106e-03, 3.5458331e+00]], dtype=float32)
 
  
-The **gradient** of the defined descriptor can be obtained by using the `grad` method.
+.. The **gradient** of the defined descriptor can be obtained by using the `grad` method.
 
-.. code-block:: bash
+.. .. code-block:: bash
 
-        >> descriptor.grad(structure, acsf_index=0, atom_index=2)
-        DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
+..         >> descriptor.grad(structure, acsf_index=0, atom_index=2)
+..         DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
 
 
 -------------------------------------
 Training a machine learning potential
 -------------------------------------
-
-.. warning::
-        The example script below is not ready yet to be executed.  
 
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) and train it on input structures. 
@@ -133,6 +130,7 @@ The trained potential can then be used to evaluate the energy and force componen
 
         # Atomic data
         structures = RunnerStructureDataset("input.data")
+        structure = structures[0]
 
         # Potential
         nnp = NeuralNetworkPotential("input.nn")
@@ -145,9 +143,8 @@ The trained potential can then be used to evaluate the energy and force componen
         nnp.fit_model(structures)
         #nnp.load_model()
 
-        # Predict energy and force components
-        structure = structures[0]
-        energy = nnp(structure)
+        # Predict the total energy and force components
+        total_energy = energy = nnp(structure)
         force = nnp.compute_force(structure)
 
 
