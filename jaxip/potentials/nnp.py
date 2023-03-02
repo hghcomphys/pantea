@@ -19,8 +19,8 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
+from jaxip.potentials.kalman import KalmanFilterTrainer as Trainer
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
-from jaxip.potentials.trainer import NeuralNetworkPotentialTrainer
 from jaxip.structure.element import ElementMap
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
@@ -64,9 +64,7 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    trainer: Optional[NeuralNetworkPotentialTrainer] = field(
-        default=None, repr=False, init=False
-    )
+    trainer: Optional[Trainer] = field(default=None, repr=False, init=False)
 
     @classmethod
     def create_from(cls, potential_file: Path):
@@ -89,7 +87,7 @@ class NeuralNetworkPotential:
             self._init_model_params()
         if self.trainer is None:
             logger.debug("[Setting trainer]")
-            self.trainer = NeuralNetworkPotentialTrainer(potential=self)
+            self.trainer = Trainer(potential=self)
 
     def _init_atomic_potential(self) -> None:
         """
@@ -289,7 +287,7 @@ class NeuralNetworkPotential:
         try:
             for structure in tqdm(dataset):
                 for element in structure.elements:
-                    x = self.atomic_potential[element].descriptor(structure)
+                    x: Array = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)
         except KeyboardInterrupt:
             print("Keyboard Interrupt")
@@ -308,11 +306,11 @@ class NeuralNetworkPotential:
         # TODO: descriptor element should be the same atom type as the aid
         # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
         # TODO: add validation output (MSE separate for force and energy)
-        kwargs["validation_split"] = kwargs.get(
-            "validation_split", self.settings.test_fraction
-        )
-        kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
-        return self.trainer.fit(dataset, **kwargs)  # type: ignore
+        # kwargs["validation_split"] = kwargs.get(
+        #     "validation_split", self.settings.test_fraction
+        # )
+        # kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
+        return self.trainer.train(dataset)  # , **kwargs)  # type: ignore
 
     def fit(self) -> None:
         """

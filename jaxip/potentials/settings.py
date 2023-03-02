@@ -116,6 +116,8 @@ class NeuralNetworkPotentialSettings(_CFG):
     gradient_type: str = "adam"
     main_error_metric: str = "RMSE"
     force_weight: float = 1.0
+    short_force_fraction: float = 0.1
+    short_energy_fraction: float = 1.0
     test_fraction: float = 0.1
     save_best_model: bool = True
     gradient_eta: float = 1.0e-5
@@ -124,6 +126,16 @@ class NeuralNetworkPotentialSettings(_CFG):
     gradient_adam_beta2: float = 0.999
     gradient_adam_epsilon: float = 1.0e-8
     gradient_adam_weight_decay: float = 1.0e-4
+    kalman_type: int = 0
+    kalman_epsilon: float = 0.01
+    kalman_q0: float = 0.01
+    kalman_qtau: float = 2.302
+    kalman_qmin: float = 1.0e-6
+    kalman_eta: float = 0.01
+    kalman_etatau: float = 2.302
+    kalman_etamax: float = 1.0
+    kalman_lambda_short: float = 0.96000
+    kalman_neu_short: float = 0.99950
     # Symmetry Function
     cutoff_type: str = "tanh"
     scale_type: str = "center"
@@ -218,6 +230,30 @@ class NeuralNetworkPotentialSettings(_CFG):
             elif keyword == "gradient_adam_weight_decay":
                 kwargs[keyword] = tokens[0]
             elif keyword == "force_weight":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "short_force_fraction":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "short_energy_fraction":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_type":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_epsilon":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_q0":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_qtau":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_qmin":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_eta":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_etatau":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_etamax":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_lambda_short":
+                kwargs[keyword] = tokens[0]
+            elif keyword == "kalman_neu_short":
                 kwargs[keyword] = tokens[0]
             # ------------- Symmetry Function -------------
             elif keyword == "cutoff_type":
