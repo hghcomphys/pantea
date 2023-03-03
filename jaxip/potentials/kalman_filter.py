@@ -24,7 +24,7 @@ def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
 
 
-class Potential(Protocol):
+class _Potential(Protocol):
     settings: Settings
     model_params: Dict[Element, frozendict]
     atomic_potential: Dict[Element, AtomicPotential]
@@ -39,8 +39,8 @@ class KalmanFilterTrainer:
 
     # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
-    def __init__(self, potential: Potential) -> None:
-        self.potential: Potential = potential
+    def __init__(self, potential: _Potential) -> None:
+        self.potential: _Potential = potential
         self._init_parameters()
         self._init_matrices()
 
@@ -148,7 +148,7 @@ class KalmanFilterTrainer:
         history = defaultdict(list)
         for epoch in range(settings.epochs):
 
-            print(f"Epoch: {epoch}")
+            print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
             loss_per_epoch: Array = jnp.asarray(0.0)
             num_update_per_epoch: int = 0
