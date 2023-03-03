@@ -74,7 +74,6 @@ descriptor values that are required to build machine learning potentials.
         from jaxip.descriptors import ACSF
         from jaxip.descriptors.acsf import CutoffFunction, G2, G3
         
-
         # Read atomic structure dataset (e.g. water molecules)
         structures = RunnerStructureDataset('input.data')
         structure = structures[0]
