@@ -29,7 +29,7 @@ class TestNeuralNetworkPotential:
                 nnp,
                 (
                     2,
-                    ["H", "O"],
+                    ("H", "O"),
                 ),
             ),
         ],

@@ -1,6 +1,7 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 from frozendict import frozendict
@@ -314,7 +315,17 @@ class NeuralNetworkPotential:
         assert (
             self.settings.updater_type == "kalman_filter"
         ), "Only Kalman trainer is implemented"
-        return self.trainer.train(dataset)  # , **kwargs)  # type: ignore
+
+        history = defaultdict(list)
+        print("Training potential...")
+        try:
+            history = self.trainer.train(dataset)  # type: ignore
+        except KeyboardInterrupt:
+            print("Keyboard Interrupt")
+        else:
+            print("Done.\n")
+
+        return history
 
     def fit(self) -> None:
         """
@@ -407,9 +418,9 @@ class NeuralNetworkPotential:
         }
 
     @property
-    def elements(self) -> List[Element]:
+    def elements(self) -> Tuple[Element, ...]:
         """Return elements."""
-        return self.settings.elements
+        return tuple(element for element in self.settings.elements)
 
     @property
     def num_elements(self) -> int:
