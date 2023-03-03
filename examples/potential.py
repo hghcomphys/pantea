@@ -19,11 +19,11 @@ from jaxip.types import dtype as default_dtype
 # default_dtype.FLOATX = jnp.float64
 # set_logging_level(logging.INFO)
 
-potdir = Path("./H2O_2")
+potdir = Path("./LJ")
 
 # Dataset
 structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
-structures = [structures[i] for i in range(10)]
+structures = [structures[i] for i in range(len(structures))]
 
 # Potential
 nnp = NeuralNetworkPotential.create_from(Path(potdir, "input.nn"))
@@ -32,7 +32,7 @@ nnp = NeuralNetworkPotential.create_from(Path(potdir, "input.nn"))
 nnp.fit_scaler(structures)
 
 # nnp.load_model()
-# history = nnp.fit_model(structures, epochs=10)
+history = nnp.fit_model(structures)
 
 # df = pd.DataFrame(history)
 # print(df.tail())
