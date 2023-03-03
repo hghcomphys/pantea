@@ -18,16 +18,19 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.loss import mse_loss
 from jaxip.potentials.metrics import ErrorMetric
 from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
 
-class Potential(Protocol):
+def _mse_loss(*, logits: Array, targets: Array) -> Array:
+    return ((targets - logits) ** 2).mean()
+
+
+class _Potential(Protocol):
     settings: Settings
-    elements: List[Element]
+    elements: Tuple[Element, ...]
     atomic_potential: Dict[Element, AtomicPotential]
     model_params: Dict[Element, frozendict]
 
@@ -47,11 +50,11 @@ class GradientDescentTrainer:
     # error_metric: ErrorMetric
     # optimizer: Dict[Element, Any]
 
-    def __init__(self, potential) -> None:
+    def __init__(self, potential: _Potential) -> None:
 
-        self.potential = potential
+        self.potential: _Potential = potential
         self.settings: Settings = potential.settings
-        self.criterion: Callable[..., Array] = mse_loss
+        self.criterion: Callable[..., Array] = _mse_loss
         self.error_metric: ErrorMetric = ErrorMetric.create_from(
             self.settings.main_error_metric
         )
@@ -175,21 +178,21 @@ class GradientDescentTrainer:
                 loss += loss_eng
                 # if random.random() < 0.15:
                 # ------ Force ------
-                # forces = _compute_force(
-                #     frozendict(self.potential.atomic_potential),
-                #     positions,
-                #     params,
-                #     inputs,
-                # )
-                # elements = true_forces.keys()
-                # loss_frc = jnp.array(0.0)
-                # for element in elements:
-                #     loss_frc += self.criterion(
-                #         logits=forces[element],
-                #         targets=true_forces[element],
-                #     )
-                # loss_frc /= len(forces)
-                # loss += loss_frc
+                forces = _compute_force(
+                    frozendict(self.potential.atomic_potential),
+                    positions,
+                    params,
+                    inputs,
+                )
+                elements = true_forces.keys()
+                loss_frc = jnp.array(0.0)
+                for element in elements:
+                    loss_frc += self.criterion(
+                        logits=forces[element],
+                        targets=true_forces[element],
+                    )
+                loss_frc /= len(forces)
+                loss += loss_frc
 
             loss /= batch_size
             return loss, (jnp.array(0),)  # (loss_eng, loss_frc) #, (energy, forces))
