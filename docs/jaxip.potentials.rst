@@ -28,14 +28,6 @@ jaxip.potentials.kalman\_filter module
    :undoc-members:
    :show-inheritance:
 
-jaxip.potentials.loader module
-------------------------------
-
-.. automodule:: jaxip.potentials.loader
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 jaxip.potentials.metrics module
 -------------------------------
 
