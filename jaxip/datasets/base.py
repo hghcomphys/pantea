@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 from typing import Any
+
+from jaxip.structure.structure import Structure
 
 
 class StructureDataset(metaclass=ABCMeta):
@@ -14,8 +18,16 @@ class StructureDataset(metaclass=ABCMeta):
 
     @abstractmethod
     def __len__(self) -> int:
-        pass
+        ...
 
     @abstractmethod
     def __getitem__(self, index) -> Any:
-        pass
+        ...
+    
+    @abstractmethod
+    def __next__(self) -> Structure:
+        ...
+
+    @abstractmethod
+    def __iter__(self) -> StructureDataset:
+        ...

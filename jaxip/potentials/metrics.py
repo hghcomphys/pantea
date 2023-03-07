@@ -46,7 +46,7 @@ class ErrorMetric(metaclass=ABCMeta):
 
     @abstractmethod
     def __call__(self, prediction: Array, target: Array, factor=None) -> Array:
-        pass
+        ...
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"

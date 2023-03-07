@@ -20,10 +20,10 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
+from jaxip.potentials.base import Updater
 from jaxip.potentials.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.kalman_filter import KalmanFilterUpdater
 from jaxip.potentials.settings import PotentialSettings
-from jaxip.potentials.updater import Updater
 from jaxip.structure.element import ElementMap
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
@@ -343,7 +343,7 @@ class NeuralNetworkPotential:
         """
         This method provides a user-friendly interface to fit both descriptor and model in one step.
         """
-        pass
+        ...
 
     # ------------------------------------------------------------------------
 

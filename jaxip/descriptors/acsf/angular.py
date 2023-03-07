@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
+
 from jaxip.base import register_jax_pytree_node
 from jaxip.descriptors.acsf.cutoff import CutoffFunction
 from jaxip.descriptors.acsf.symmetry import SymmetryFunction
@@ -26,7 +27,7 @@ class AngularSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
         rjk: Array,
         cost: Array,
     ) -> Array:
-        pass
+        ...
 
 
 @dataclass

@@ -19,7 +19,7 @@ class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> Array:
-        pass
+        ...
 
     @property
     def r_cutoff(self) -> float:

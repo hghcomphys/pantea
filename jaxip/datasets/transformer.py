@@ -16,7 +16,7 @@ class Transformer(metaclass=ABCMeta):
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> Any:
-        pass
+        ...
 
 
 class ToStructure(Transformer):

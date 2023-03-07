@@ -329,7 +329,7 @@ class RuNNerAdaptorForLAMMPS(RunnerAdaptor):
 
     def write_lammps(self, filename, uc=UnitConversion()):
         """A method that writes lammps input data."""
-        pass
+        ...
 
 
 # ----------------------------------------------------------------------------

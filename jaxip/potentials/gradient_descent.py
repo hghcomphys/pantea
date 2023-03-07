@@ -17,10 +17,9 @@ from jaxip.datasets.base import StructureDataset
 from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
-from jaxip.potentials.base import Potential
+from jaxip.potentials.base import Potential, Updater
 from jaxip.potentials.metrics import ErrorMetric
 from jaxip.potentials.settings import PotentialSettings
-from jaxip.potentials.updater import Updater
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
