@@ -42,7 +42,7 @@ class Logger:
         """
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setFormatter(
-            logging.Formatter("%(message)s")
+            logging.Formatter("%(levelname)s %(message)s")
         )  # logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         console_handler.setLevel(self.level)
         self.handlers.append(console_handler)

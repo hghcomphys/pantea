@@ -83,7 +83,7 @@ gradient_type_map: Mapping[str, str] = {
 }
 
 
-class NeuralNetworkPotentialSettings(_CFG):
+class PotentialSettings(_CFG):
     """
     A configuration class for neural network potential parameters.
 
