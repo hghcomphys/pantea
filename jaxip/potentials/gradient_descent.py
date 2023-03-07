@@ -4,7 +4,7 @@ import math
 import random
 from collections import defaultdict
 from functools import partial
-from typing import Any, Callable, Dict, List, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import jax.numpy as jnp
 import optax
@@ -17,9 +17,10 @@ from jaxip.datasets.base import StructureDataset
 from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
-from jaxip.potentials.atomic_potential import AtomicPotential
+from jaxip.potentials.base import Potential
 from jaxip.potentials.metrics import ErrorMetric
-from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
+from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.updater import Updater
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
@@ -28,32 +29,25 @@ def _mse_loss(*, logits: Array, targets: Array) -> Array:
     return ((targets - logits) ** 2).mean()
 
 
-class _Potential(Protocol):
-    settings: Settings
-    elements: Tuple[Element, ...]
-    atomic_potential: Dict[Element, AtomicPotential]
-    model_params: Dict[Element, frozendict]
-
-
 # @dataclass
-class GradientDescentTrainer:
+class GradientDescentUpdater(Updater):
     """
-    A trainer class to fit a generic NNP potential using target values of the total
+    A trainer class to fit a generic NNP potential weights using target values of the total
     energy and force components.
 
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
 
     # potential: PotentialInterface
-    # settings: Settings
+    # settings: PotentialSettings
     # criterion: Callable = field(default_factory=lambda: mse_loss)
     # error_metric: ErrorMetric
     # optimizer: Dict[Element, Any]
 
-    def __init__(self, potential: _Potential) -> None:
+    def __init__(self, potential: Potential) -> None:
 
-        self.potential: _Potential = potential
-        self.settings: Settings = potential.settings
+        self.potential: Potential = potential
+        self.settings: PotentialSettings = potential.settings
         self.criterion: Callable[..., Array] = _mse_loss
         self.error_metric: ErrorMetric = ErrorMetric.create_from(
             self.settings.main_error_metric
@@ -111,7 +105,7 @@ class GradientDescentTrainer:
 
         batch_size: int = kwargs.get("batch_size", 1)
         steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))
-        epochs: int = kwargs.get("epochs", 50)
+        epochs: int = kwargs.get("epochs", 10)
 
         states: Dict[Element, TrainState] = self._init_train_state()
         history = defaultdict(list)

@@ -20,8 +20,10 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.kalman_filter import KalmanFilterTrainer as Trainer
-from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
+from jaxip.potentials.gradient_descent import GradientDescentUpdater
+from jaxip.potentials.kalman_filter import KalmanFilterUpdater
+from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.updater import Updater
 from jaxip.structure.element import ElementMap
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
@@ -33,7 +35,7 @@ class NeuralNetworkPotential:
     High-dimensional neural network potential (HDNNP) - second generation.
 
     It contains all the required descriptors, scalers, and neural networks for each element,
-    and a trainer to fit the potential using reference structure data.
+    and an updater to fit the potential model using the reference structure data.
 
     Example
     -------
@@ -43,21 +45,21 @@ class NeuralNetworkPotential:
         :linenos:
 
         from jaxip.potentials import NeuralNetworkPotential
-        from jaxip.potentials import NeuralNetworkPotentialSettings as Settings
+        from jaxip.potentials import PotentialSettings
 
         # Method #1 (potential file)
         nnp1 = NeuralNetworkPotential.create_from("input.nn")
 
         # Method #2 (dictionary of parameters)
-        settings = Settings(**params_dict)
+        settings = PotentialSettings(**params_dict)
         nnp2 = NeuralNetworkPotential(settings)
 
         # Method #3 (json file)
-        settings = Settings.from_json('h2o.json')
+        settings = PotentialSettings.from_json('h2o.json')
         nnp3 = NeuralNetworkPotential(settings)
     """
 
-    settings: Settings = field(repr=False)
+    settings: PotentialSettings = field(repr=False)
     output_dir: Path = field(default=Path("."), repr=False)
     atomic_potential: Dict[Element, AtomicPotential] = field(
         default_factory=dict, repr=True, init=False
@@ -65,13 +67,13 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    trainer: Optional[Trainer] = field(default=None, repr=False, init=False)
+    updater: Optional[Updater] = field(default=None, repr=False, init=False) # FIXME
 
     @classmethod
     def create_from(cls, potential_file: Path):
         """Create an instance of the potential from the input file (RuNNer format)."""
         potential_file = Path(potential_file)
-        settings = Settings.create_from(potential_file)
+        settings = PotentialSettings.create_from(potential_file)
         return NeuralNetworkPotential(
             settings=settings,
             output_dir=potential_file.parent,
@@ -80,15 +82,29 @@ class NeuralNetworkPotential:
     def __post_init__(self) -> None:
         """
         Initialize potential components such as atomic potential, model params,
-        and trainer from the potential settings.
+        and updater from the potential settings.
         """
         if not self.atomic_potential:
             self._init_atomic_potential()
         if not self.model_params:
             self._init_model_params()
-        if self.trainer is None:
-            logger.debug("[Setting trainer]")
-            self.trainer = Trainer(potential=self)
+        if self.updater is None:
+            self._init_updater()
+           
+    def _init_updater(self) -> None:
+        """Initialize selected updater from the settings."""
+        logger.debug("[Setting updater]")
+        updater_type: str = self.settings.updater_type
+        if updater_type == "kalman_filter":
+            self.updater = KalmanFilterUpdater(potential=self)
+        elif updater_type == "gradient_descent":
+            self.updater = GradientDescentUpdater(potential=self)
+        else:
+            logger.error(
+                f"Unknown updater type: {updater_type}", 
+                exception=TypeError,
+            )
+        logger.info(f"Updater type: '{updater_type}'")
 
     def _init_atomic_potential(self) -> None:
         """
@@ -276,12 +292,12 @@ class NeuralNetworkPotential:
     # ------------------------------------------------------------------------
 
     # @Profiler.profile
-    def fit_scaler(self, dataset: RunnerStructureDataset, **kwargs) -> None:
+    def fit_scaler(self, dataset: RunnerStructureDataset) -> None:
         """
         Fit scaler parameters for each element using the input structure data.
         No gradient history is required here.
         """
-        save_scaler: bool = kwargs.get("save_scaler", True)
+        # save_scaler: bool = kwargs.get("save_scaler", True)
 
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
         print("Fitting descriptor scaler...")
@@ -293,37 +309,33 @@ class NeuralNetworkPotential:
         except KeyboardInterrupt:
             print("Keyboard Interrupt")
         else:
-            print("Done.\n")
+            print("Done.")
 
-        if save_scaler:
-            self.save_scaler()
+        # if save_scaler:
+        self.save_scaler()
 
     # @Profiler.profile
-    def fit_model(self, dataset: RunnerStructureDataset, **kwargs) -> Dict:
+    def fit_model(self, dataset: RunnerStructureDataset) -> Dict:
         """
         Fit energy model for all elements using the input structure loader.
         """
         # TODO: avoid reading and calculating descriptor multiple times
-        # TODO: descriptor element should be the same atom type as the aid
         # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
         # TODO: add validation output (MSE separate for force and energy)
+        
         # kwargs["validation_split"] = kwargs.get(
         #     "validation_split", self.settings.test_fraction
         # )
         # kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
-        # FIXME: add trainer factory
-        assert (
-            self.settings.updater_type == "kalman_filter"
-        ), "Only Kalman trainer is implemented"
 
         history = defaultdict(list)
         print("Training potential...")
         try:
-            history = self.trainer.train(dataset)  # type: ignore
+            history = self.updater.fit(dataset)  # type: ignore
         except KeyboardInterrupt:
             print("Keyboard Interrupt")
         else:
-            print("Done.\n")
+            print("Done.")
 
         return history
 

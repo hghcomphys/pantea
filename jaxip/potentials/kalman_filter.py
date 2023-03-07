@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import Callable, Dict, Protocol
+from typing import Callable, Dict
 
 import jax
 import jax.numpy as jnp
@@ -14,7 +14,9 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.settings import NeuralNetworkPotentialSettings as Settings
+from jaxip.potentials.base import Potential
+from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.updater import Updater
 from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 from jaxip.types import dtype as default_dtype
@@ -24,29 +26,23 @@ def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
 
 
-class _Potential(Protocol):
-    settings: Settings
-    model_params: Dict[Element, frozendict]
-    atomic_potential: Dict[Element, AtomicPotential]
-
-
-class KalmanFilterTrainer:
+class KalmanFilterUpdater(Updater):
     """
-    Potential training which uses Kalman filter to update trainable weights (see this_).
+    A potential traienr which uses Kalman filter to update model weights (see this_).
 
     .. _this: https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
     """
 
     # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
-    def __init__(self, potential: _Potential) -> None:
-        self.potential: _Potential = potential
+    def __init__(self, potential: Potential) -> None:
+        self.potential: Potential = potential
         self._init_parameters()
         self._init_matrices()
 
     def _init_parameters(self) -> None:
         """Set required parameters from the potential settings."""
-        settings: Settings = self.potential.settings
+        settings: PotentialSettings = self.potential.settings
 
         self.kalman_type: int = settings.kalman_type
         self.beta: float = settings.force_weight
@@ -80,17 +76,17 @@ class KalmanFilterTrainer:
             self.num_states, dtype=default_dtype.FLOATX
         )
 
-    def train(
+    def fit(
         self,
         dataset: StructureDataset,
     ) -> defaultdict:
         """
-        Train potential weights.
+        Fit potential weights.
 
         :param dataset: training dataset
         :type dataset: StructureDataset
         """
-        settings: Settings = self.potential.settings
+        settings: PotentialSettings = self.potential.settings
 
         atomic_potential: Dict[
             Element, AtomicPotential
