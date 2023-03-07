@@ -9,8 +9,8 @@ import jax.numpy as jnp
 import pytest
 
 from jaxip.datasets import RunnerStructureDataset
-from jaxip.potentials import NeuralNetworkPotential
-from jaxip.potentials import NeuralNetworkPotentialSettings as Settings
+from jaxip.potentials.nnp import NeuralNetworkPotential
+from jaxip.potentials.settings import PotentialSettings
 
 dataset_file = Path("tests", "h2o.data")
 potential_file = Path("tests", "h2o.json")
@@ -20,7 +20,7 @@ class TestNeuralNetworkPotential:
 
     # TODO: add more tests
     dataset = RunnerStructureDataset(dataset_file)
-    nnp = NeuralNetworkPotential(Settings.from_json(potential_file))  # type: ignore
+    nnp = NeuralNetworkPotential(PotentialSettings.from_json(potential_file))  # type: ignore
 
     @pytest.mark.parametrize(
         "nnp, expected",
@@ -41,7 +41,7 @@ class TestNeuralNetworkPotential:
     ) -> None:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
-        assert nnp.settings == Settings.from_json(potential_file)
+        assert nnp.settings == PotentialSettings.from_json(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
