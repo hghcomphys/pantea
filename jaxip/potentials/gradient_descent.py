@@ -55,28 +55,22 @@ class GradientDescentUpdater(Updater):
 
     def _init_optimizer(self) -> Any:
         """Create optimizer using the potential settings."""
-
-        if self.settings.updater_type == "gradient_descent":
-            if self.settings.gradient_type == "adam":
-                optimizer_cls: Callable = optax.adamw
-                optimizer_kwargs: Dict[str, Any] = {
-                    "learning_rate": self.settings.gradient_adam_eta,
-                    "b1": self.settings.gradient_adam_beta1,
-                    "b2": self.settings.gradient_adam_beta2,
-                    "eps": self.settings.gradient_adam_epsilon,
-                    "weight_decay": self.settings.gradient_adam_weight_decay,
-                }
-            # TODO: self.settings.gradient_type == "fixed_step":
-            else:
-                logger.error(
-                    f"Gradient type {self.settings.gradient_type} is not implemented yet",
-                    exception=NotImplementedError,
-                )
+        
+        if self.settings.gradient_type == "adam":
+            optimizer_cls: Callable = optax.adamw
+            optimizer_kwargs: Dict[str, Any] = {
+                "learning_rate": self.settings.gradient_adam_eta,
+                "b1": self.settings.gradient_adam_beta1,
+                "b2": self.settings.gradient_adam_beta2,
+                "eps": self.settings.gradient_adam_epsilon,
+                "weight_decay": self.settings.gradient_adam_weight_decay,
+            }
+        # TODO: self.settings.gradient_type == "fixed_step":
         else:
             logger.error(
-                f"Unknown updater type {self.settings.updater_type}",
-                exception=NotImplementedError,
-            )
+                f"Gradient type {self.settings.gradient_type} is not implemented yet",
+                exception=TypeError,
+            )    
         # TODO: either as a single but global optimizer or multiple optimizers:
         optimizer = optimizer_cls(**optimizer_kwargs)  # type: ignore
         # return {element: optimizer for element in self.elements}
