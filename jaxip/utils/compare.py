@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Union
 
 import jax.numpy as jnp
 
-from jaxip.structure.structure import Structure
+from jaxip.atoms.structure import Structure
 from jaxip.types import Array
 
 
@@ -17,15 +17,10 @@ def compare(
     between two input structures and returning the desired errors metrics.
 
     :param structure1: first structure
-    :type structure1: Structure
     :param structure2: second structure
-    :type structure2: Structure
     :param error: a list of error metrics including `RMSE`, `RMSEpa`, `MSE`, and `MSEpa`. Defaults to [`RMSEpa`]
-    :type errors: list, optional
     :param return_difference: whether return energy and force array differences or not, defaults to False
-    :type return_difference: bool, optional
     :return: a dictionary of error metrics.
-    :rtype: Dict[str, Array]
     """
     # TODO: add charge, total_charge
     assert all(
