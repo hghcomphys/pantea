@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional
 
-from jaxip.structure.structure import Structure
+from jaxip.atoms.structure import Structure
 from jaxip.types import Dtype
 from jaxip.types import dtype as _dtype
 

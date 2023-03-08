@@ -7,11 +7,11 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   jaxip.atoms
    jaxip.datasets
    jaxip.descriptors
    jaxip.models
    jaxip.potentials
-   jaxip.structure
    jaxip.utils
 
 Submodules

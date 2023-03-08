@@ -4,10 +4,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import DefaultDict, Dict, List, Optional, TextIO
 
+from jaxip.atoms.structure import Structure
 from jaxip.datasets.base import StructureDataset
 from jaxip.datasets.transformer import ToStructure, Transformer
 from jaxip.logger import logger
-from jaxip.structure.structure import Structure
 from jaxip.utils.tokenize import tokenize
 
 

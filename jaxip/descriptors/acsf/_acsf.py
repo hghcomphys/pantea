@@ -5,11 +5,11 @@ import jax
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
+from jaxip.atoms._neighbor import _calculate_cutoff_mask_per_atom
+from jaxip.atoms._structure import _calculate_distance_per_atom
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements
-from jaxip.structure._neighbor import _calculate_cutoff_mask_per_atom
-from jaxip.structure._structure import _calculate_distance_per_atom
 from jaxip.types import Array, Element
 
 

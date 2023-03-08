@@ -8,8 +8,8 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
 
+from jaxip.atoms.structure import Structure
 from jaxip.datasets.runner import RunnerStructureDataset
-from jaxip.structure.structure import Structure
 
 h2o_filename = Path("tests", "h2o.data")
 H2O_DATA = {

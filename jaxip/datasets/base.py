@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from jaxip.structure.structure import Structure
+from jaxip.atoms.structure import Structure
 
 
 class StructureDataset(metaclass=ABCMeta):

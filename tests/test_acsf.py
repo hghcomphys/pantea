@@ -7,9 +7,9 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
 
+from jaxip.atoms.structure import Structure
 from jaxip.descriptors.acsf import ACSF, G2, G3, CutoffFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements
-from jaxip.structure.structure import Structure
 from jaxip.types import Array
 
 

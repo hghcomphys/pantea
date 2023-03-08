@@ -6,7 +6,7 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
 
-from jaxip.structure.structure import Structure
+from jaxip.atoms.structure import Structure
 from jaxip.types import dtype as _dtype
 
 LJ_DATA: Dict[str, Any] = {

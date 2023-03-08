@@ -5,11 +5,11 @@ import jax.numpy as jnp
 from frozendict import frozendict
 from jax import jit
 
+from jaxip.atoms.structure import Inputs
 from jaxip.descriptors import DescriptorScaler
 from jaxip.descriptors.acsf._acsf import _calculate_descriptor
 from jaxip.descriptors.base import Descriptor
 from jaxip.models import NeuralNetworkModel
-from jaxip.structure.structure import Inputs
 from jaxip.types import Array, Element
 
 

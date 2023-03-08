@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 from frozendict import frozendict
 
+from jaxip.atoms.structure import Structure
 from jaxip.descriptors.base import Descriptor
 from jaxip.descriptors.scaler import DescriptorScaler
 from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_atomic_energy
-from jaxip.structure.structure import Structure
 from jaxip.types import Array
 
 
@@ -28,14 +28,11 @@ class AtomicPotential:
         Calculate model output energy.
         It must be noted model output for each element has no physical meaning.
         It's only the total energy, sum of the atomic energies over all atom in the structure,
-        which has physical meaning.
+        which has actually physical meaning.
 
         :param params: model parameters
-        :type params: frozendict
         :param structure: input structure
-        :type structure: Structure
         :return: model energy output
-        :rtype: Array
         """
         element = self.descriptor.element  # type: ignore
         aid = structure.select(element)

@@ -8,6 +8,8 @@ from frozendict import frozendict
 from jax import random
 from tqdm import tqdm
 
+from jaxip.atoms.element import ElementMap
+from jaxip.atoms.structure import Structure
 from jaxip.datasets.runner import RunnerStructureDataset
 from jaxip.descriptors.acsf.acsf import ACSF
 from jaxip.descriptors.acsf.angular import G3, G9
@@ -24,8 +26,6 @@ from jaxip.potentials.base import Updater
 from jaxip.potentials.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.kalman_filter import KalmanFilterUpdater
 from jaxip.potentials.settings import PotentialSettings
-from jaxip.structure.element import ElementMap
-from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
 

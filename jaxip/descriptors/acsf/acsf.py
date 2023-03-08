@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import jax
 import jax.numpy as jnp
 
+from jaxip.atoms.structure import Structure
 from jaxip.base import register_jax_pytree_node
 from jaxip.descriptors.acsf._acsf import (
     _calculate_descriptor,
@@ -15,7 +16,6 @@ from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunction
 from jaxip.descriptors.base import Descriptor
 from jaxip.logger import logger
-from jaxip.structure.structure import Structure
 from jaxip.types import Array, Element
 
 
@@ -24,12 +24,12 @@ class ACSF(Descriptor):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor.
 
-    ACSF describes the local environment of an atom (neighbors' distribution).
+    ACSF describes the local environment of an atom (neighbor distributions).
     It usually contains multiple combinations of `radial` (two-body)
     and `angular` (three-body) symmetry functions.
 
     .. note::
-        The ACSF is independent of input structure
+        The ACSF is independent of input Structure
         but it knows how to calculate the descriptor values for any given structures.
 
     Example
@@ -160,12 +160,9 @@ class ACSF(Descriptor):
         """
         Compute gradient of ACSF descriptor respect to atom position (x, y, and z).
 
-        :param structure: input structure instance
-        :type structure: Structure
-        :param atom_index: atom index in the structure [0, natoms)
-        :type atom_index: int
+        :param structure: input Structure instance
+        :param atom_index: atom index in Structure [0, natoms)
         :return: gradient of the descriptor value respect to the atom position
-        :rtype: Array
         """
         if not (0 <= atom_index < structure.natoms):
             logger.error(

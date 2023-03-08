@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
 from pydantic import Field, ValidationError, validator
 
+from jaxip.atoms.element import ElementMap
 from jaxip.config import _CFG
 from jaxip.logger import logger
-from jaxip.structure.element import ElementMap
 from jaxip.types import Element
 from jaxip.utils.tokenize import tokenize
 

@@ -3,8 +3,8 @@ from typing import Dict
 from frozendict import frozendict
 from jax import grad, jit
 
+from jaxip.atoms.structure import Inputs
 from jaxip.potentials._energy import AtomicPotentialInterface, _energy_fn
-from jaxip.structure.structure import Inputs
 from jaxip.types import Array, Element
 
 _grad_energy_fn = jit(
