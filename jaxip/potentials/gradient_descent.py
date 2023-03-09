@@ -3,14 +3,15 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
-from functools import partial
 from typing import Any, Callable, Dict, List, Tuple
 
 import jax.numpy as jnp
+import numpy as np
 import optax
 from flax.training.train_state import TrainState
 from frozendict import frozendict
 from jax import jit, value_and_grad
+from optax import GradientTransformation
 from tqdm import tqdm
 
 from jaxip.atoms.structure import Structure
@@ -44,41 +45,43 @@ class GradientDescentUpdater(Updater):
     # optimizer: Dict[Element, Any]
 
     def __init__(self, potential: Potential) -> None:
-
+        """Initialize potential."""
         self.potential: Potential = potential
-        self.settings: PotentialSettings = potential.settings
         self.criterion: Callable[..., Array] = _mse_loss
         self.error_metric: ErrorMetric = ErrorMetric.create_from(
-            self.settings.main_error_metric
+            self.potential.settings.main_error_metric
         )
-        self.optimizer = self._init_optimizer()
-
-    def _init_optimizer(self) -> Any:
+        self._init_parameters()
+        self._init_optimizer()
+       
+    def _init_parameters(self) -> None:
+        """Set required parameters from the potential settings."""
+        settings: PotentialSettings = self.potential.settings
+        self.gradient_type: str = settings.gradient_type
+        self.beta: float = settings.force_weight
+        self.force_fraction: float = settings.short_force_fraction
+   
+    def _init_optimizer(self) -> None:
         """Create optimizer using the potential settings."""
-        
-        if self.settings.gradient_type == "adam":
-            optimizer_cls: Callable = optax.adamw
-            optimizer_kwargs: Dict[str, Any] = {
-                "learning_rate": self.settings.gradient_adam_eta,
-                "b1": self.settings.gradient_adam_beta1,
-                "b2": self.settings.gradient_adam_beta2,
-                "eps": self.settings.gradient_adam_epsilon,
-                "weight_decay": self.settings.gradient_adam_weight_decay,
-            }
-        # TODO: self.settings.gradient_type == "fixed_step":
-        else:
+        settings: PotentialSettings = self.potential.settings
+        if self.gradient_type == "adam":
+            self.optimizer: GradientTransformation = optax.adamw(
+                learning_rate=settings.gradient_adam_eta,
+                b1=settings.gradient_adam_beta1,
+                b2=settings.gradient_adam_beta2,
+                eps=settings.gradient_adam_epsilon,
+                weight_decay=settings.gradient_adam_weight_decay,
+            )
+        else:  # TODO: self.settings.gradient_type == "fixed_step":
             logger.error(
-                f"Gradient type {self.settings.gradient_type} is not implemented yet",
+                f"Gradient type {settings.gradient_type} is not implemented yet",
                 exception=TypeError,
-            )    
+            )  
         # TODO: either as a single but global optimizer or multiple optimizers:
-        optimizer = optimizer_cls(**optimizer_kwargs)  # type: ignore
         # return {element: optimizer for element in self.elements}
-        return optimizer
 
     def _init_train_state(self) -> Dict[Element, TrainState]:
         """Initialize train state for each element."""
-
         def generate_train_state():
             for element in self.potential.elements:
                 yield element, TrainState.create(
@@ -108,8 +111,13 @@ class GradientDescentUpdater(Updater):
 
             print(f"[Epoch {epoch+1} of {epochs}]")
             history["epoch"].append(epoch)
+            
+            loss_per_epoch: Array = jnp.array(0.0)
+            loss_energy_per_epoch: Array = jnp.array(0.0)
+            loss_force_per_epoch: Array = jnp.array(0.0)
+            num_updates_per_epoch: int = 0
 
-            # Loop over batch of structures
+            # Loop over batches
             for _ in tqdm(range(steps)):
 
                 structures: List[Structure] = random.choices(dataset, k=batch_size)
@@ -121,20 +129,29 @@ class GradientDescentUpdater(Updater):
 
                 batch = xbatch, ybatch
                 states, metrics = self.train_step(states, batch)
+                
+                loss_per_epoch += metrics["loss"]
+                loss_energy_per_epoch += metrics["loss_energy"]
+                loss_force_per_epoch += metrics["loss_force"]
+                num_updates_per_epoch += 1
 
-                self._update_model_params(states)
+            loss_per_epoch /= num_updates_per_epoch
+            loss_energy_per_epoch /= num_updates_per_epoch
+            loss_force_per_epoch /= num_updates_per_epoch
+            
+            self._update_model_params(states)
 
             print(
-                f"training loss:{float(metrics['loss']): 0.7f}"
-                # f", loss[energy]:{float(metrics['loss_eng']): 0.7f}"
-                # f", loss[force]:{float(metrics['loss_frc']): 0.7f}"
+                f"training loss:{float(loss_per_epoch): 0.7f}"
+                f", loss_energy:{float(loss_energy_per_epoch): 0.7f}"
+                f", loss_force:{float(loss_force_per_epoch): 0.7f}"
                 # f"\n"
             )
-            history["loss"].append(metrics["loss"])
+            history["loss"].append(loss_per_epoch)
 
         return history
 
-    @partial(jit, static_argnums=(0,))  # FIXME
+    # @partial(jit, static_argnums=(0,))  # FIXME
     def train_step(
         self,
         states: Dict[Element, TrainState],
@@ -147,46 +164,55 @@ class GradientDescentUpdater(Updater):
             # TODO: define force loss weights for each element
             xbatch, ybatch = batch
             batch_size = len(xbatch)
-            loss = jnp.array(0.0)
+            
+            loss_energy_per_batch: Array = jnp.array(0.0)
+            loss_force_per_batch: Array = jnp.array(0.0)
+            
             for inputs, (true_energy, true_forces) in zip(xbatch, ybatch):
 
                 positions = {
                     element: input.atom_position for element, input in inputs.items()
                 }
-                natoms: int = sum(array.shape[0] for array in positions.values())
-                # ------ energy ------
-                energy = _energy_fn(
-                    frozendict(self.potential.atomic_potential),
-                    positions,
-                    params,
-                    inputs,
-                )
-                loss_eng = self.criterion(logits=energy, targets=true_energy) / natoms
-                loss += loss_eng
-                # if random.random() < 0.15:
-                # ------ Force ------
-                forces = _compute_force(
-                    frozendict(self.potential.atomic_potential),
-                    positions,
-                    params,
-                    inputs,
-                )
-                elements = true_forces.keys()
-                loss_frc = jnp.array(0.0)
-                for element in elements:
-                    loss_frc += self.criterion(
-                        logits=forces[element],
-                        targets=true_forces[element],
+                # natoms: int = sum(array.shape[0] for array in positions.values())
+                
+                if np.random.rand() < self.force_fraction:
+                    # ------ Force ------
+                    forces = _compute_force(
+                        frozendict(self.potential.atomic_potential),
+                        positions,
+                        params,
+                        inputs,
                     )
-                loss_frc /= len(forces)
-                loss += loss_frc
-
-            loss /= batch_size
-            return loss, (jnp.array(0),)  # (loss_eng, loss_frc) #, (energy, forces))
+                    elements = true_forces.keys()
+                    loss_force = jnp.array(0.0)
+                    for element in elements:
+                        loss_force += self.criterion(
+                            logits=forces[element],
+                            targets=true_forces[element],
+                        )
+                    loss_force /= len(forces)
+                    loss_force_per_batch += self.beta * self.beta * loss_force
+    
+                else:
+                    # ------ energy ------
+                    energy = _energy_fn(
+                        frozendict(self.potential.atomic_potential),
+                        positions,
+                        params,
+                        inputs,
+                    )
+                    loss_energy = self.criterion(logits=energy, targets=true_energy)
+                    loss_energy_per_batch += loss_energy
+                   
+            loss_energy_per_batch /= batch_size
+            loss_force_per_batch /= batch_size
+            loss_per_batch = loss_energy_per_batch + loss_force_per_batch
+            
+            return loss_per_batch, (loss_energy_per_batch, loss_force_per_batch)
 
         value_and_grad_fn = value_and_grad(loss_fn, has_aux=True)
 
-        (loss, (_,)), grads = value_and_grad_fn(
+        (loss, (loss_energy, loss_force)), grads = value_and_grad_fn(
             {element: state.params for element, state in states.items()}
         )
         states = {
@@ -197,8 +223,8 @@ class GradientDescentUpdater(Updater):
         # TODO: add more metrics for force
         metrics = {
             "loss": loss,
-            # "loss_eng": loss_eng,
-            # "loss_frc": loss_frc,
+            "loss_energy": loss_energy,
+            "loss_force": loss_force,
         }
         return states, metrics
 
