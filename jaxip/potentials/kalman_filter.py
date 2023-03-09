@@ -42,7 +42,6 @@ class KalmanFilterUpdater(Updater):
     def _init_parameters(self) -> None:
         """Set required parameters from the potential settings."""
         settings: PotentialSettings = self.potential.settings
-
         self.kalman_type: int = settings.kalman_type
         self.beta: float = settings.force_weight
         self.force_fraction: float = settings.short_force_fraction
@@ -146,7 +145,7 @@ class KalmanFilterUpdater(Updater):
             print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
             loss_per_epoch: Array = jnp.asarray(0.0)
-            num_update_per_epoch: int = 0
+            num_updates_per_epoch: int = 0
 
             for index in tqdm(indices):
 
@@ -219,13 +218,13 @@ class KalmanFilterUpdater(Updater):
                 model_params = self._unflatten_state_vector(self.W)
 
                 loss_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
-                num_update_per_epoch += 1
+                num_updates_per_epoch += 1
 
             # Update model params
             logger.debug(f"Updating potential weights after epoch {epoch + 1}")
             self.potential.model_params = model_params
 
-            loss_per_epoch /= num_update_per_epoch
+            loss_per_epoch /= num_updates_per_epoch
             print(f"loss: {loss_per_epoch}")
             history["epoch"].append(epoch + 1)
             history["loss"].append(loss_per_epoch)
