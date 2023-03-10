@@ -218,7 +218,7 @@ class ACSF(Descriptor):
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
             f", num_symmetry_functions={self.num_symmetry_functions}"
-            f", r_cutoff={self.r_cutoff})"
+            f", max_r_cutoff={self.r_cutoff})"
         )
 
 
