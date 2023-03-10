@@ -73,42 +73,43 @@ descriptor values that are required to build machine learning potentials.
         from jaxip.datasets import RunnerStructureDataset
         from jaxip.descriptors import ACSF
         from jaxip.descriptors.acsf import CutoffFunction, G2, G3
-        
+
         # Read atomic structure dataset (e.g. water molecules)
         structures = RunnerStructureDataset('input.data')
         structure = structures[0]
 
-        # Define ACSF descriptor for hydrogen element 
+        # Define ACSF descriptor for hydrogen element
         descriptor = ACSF(element='H')
-        
+
         # Add radial and angular symmetry functions
         cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
         descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
 
         # Calculate descriptor values
-        values = descriptor(structure)
+        dsc = descriptor(structure)
 
 
-.. Outputs:
+Outputs:
 
-.. .. code-block:: bash
+.. code-block:: bash
 
-..         >> values.shape
-..         (128, 2)
+        >> descriptor
+        ACSF(element='H', num_symmetry_functions=2, max_r_cutoff=12.0)
 
-..         >> values[:3]
-..         DeviceArray([[1.9689142e-03, 3.3253882e+00],
-..                 [1.9877939e-03, 3.5034561e+00],
-..                 [1.5204106e-03, 3.5458331e+00]], dtype=float32)
+        >> dsc[:3]
+        Array([[1.9689146e-03, 3.3253896e+00],
+               [1.9877951e-03, 3.5034575e+00],
+               [1.5204106e-03, 3.5458338e+00]], dtype=float32)
 
  
-.. The **gradient** of the defined descriptor can be obtained by using the `grad` method.
+The **gradient** of the defined descriptor can be obtained for an atom using the `grad` method.
 
-.. .. code-block:: bash
+.. code-block:: bash
 
-..         >> descriptor.grad(structure, acsf_index=0, atom_index=2)
-..         DeviceArray([[ 0.00576886,  0.00219238, -0.00206053]], dtype=float32)
+        >> descriptor.grad(structure, atom_index=0)
+        Array([[-0.04337483,  0.22992024, -0.04233539],
+               [-0.07089673,  0.03088031, -0.16785064]], dtype=float32)
 
 
 -------------------------------------
@@ -116,7 +117,7 @@ Training a machine learning potential
 -------------------------------------
 
 This example illustrates how to quickly create a `high-dimensional neural network 
-potential` (`HDNNP`_) and train it on input structures. 
+potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
 The trained potential can then be used to evaluate the energy and force components for new structures.
 
 .. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
@@ -132,7 +133,7 @@ The trained potential can then be used to evaluate the energy and force componen
         structure = structures[0]
 
         # Potential
-        nnp = NeuralNetworkPotential("input.nn")
+        nnp = NeuralNetworkPotential.create_from("input.nn")
 
         # Descriptor
         nnp.fit_scaler(structures)
@@ -143,15 +144,35 @@ The trained potential can then be used to evaluate the energy and force componen
         #nnp.load_model()
 
         # Predict the total energy and force components
-        total_energy = energy = nnp(structure)
+        total_energy = nnp(structure)
         force = nnp.compute_force(structure)
+
+
+Outputs:
+
+.. code-block:: bash
+
+        >> nnp
+        NeuralNetworkPotential(atomic_potential={'C': AtomicPotential(
+                descriptor=ACSF(element='C', num_symmetry_functions=30, r_cutoff_max=12.0),
+                scaler=DescriptorScaler(scale_type='center', scale_min=0.0, scale_max=1.0),
+                model=NeuralNetworkModel(hidden_layers=((15, 'tanh'), (15, 'tanh'))),
+        )})
+
+        >> total_energy
+        Array(-8.16754983, dtype=float64)
+
+        >> force
+        {'C': Array([[-4.1423317e-02, -1.7819289e-02,  6.5731630e-03],
+                     [-5.2372105e-03,  1.3765628e-03, -1.5538651e-05],
+                     [-5.7118265e-03,  6.4179506e-03,  3.0147154e-02],
+                     ...], dtype=float32)}
 
 
 License
 -------
 
 .. _license-file: LICENSE
-
 
 This project is licensed under the GNU General Public License (GPL) version 3 - 
 see the LICENSE file for details.
