@@ -1,7 +1,10 @@
+import pickle
 from dataclasses import field
+from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 from flax import linen as nn
+from frozendict import frozendict
 
 from jaxip.models.activation import activation_function
 from jaxip.types import Array, Dtype
@@ -61,22 +64,18 @@ class NeuralNetworkModel(nn.Module):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
-            # f", output_layer={self.output_layer}"
+            f", output_layer={self.output_layer}"
             # f", param_dtype={self.param_dtype.dtype}"
             ")"  # type: ignore
         )
 
-    # TODO:
-    # def save(self, filename: Path) -> None:
-    #     """
-    #     Save model weights.
-    #     """
-    #     torch.save(self.state_dict(), str(filename))
+    def save(self, filename: Path, params: frozendict) -> None:        
+        """Save model weights."""
+        with open(str(Path(filename)), 'wb') as handle:
+            pickle.dump(params, handle)
 
-    # TODO:
-    # def load(self, filename: Path) -> None:
-    #     """
-    #     Load model weights.
-    #     """
-    #     self.load_state_dict(torch.load(str(filename)))
-    #     self.eval()
+    def load(self, filename: Path) -> frozendict:
+        """Load model weights."""
+        with open(str(Path(filename)), 'rb') as handle:
+            params: frozendict = pickle.load(handle)
+        return params

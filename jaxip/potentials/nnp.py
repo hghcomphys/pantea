@@ -291,7 +291,6 @@ class NeuralNetworkPotential:
 
     # ------------------------------------------------------------------------
 
-    # @Profiler.profile
     def fit_scaler(self, dataset: RunnerStructureDataset) -> None:
         """
         Fit scaler parameters for each element using the input structure data.
@@ -314,7 +313,6 @@ class NeuralNetworkPotential:
         # if save_scaler:
         self.save_scaler()
 
-    # @Profiler.profile
     def fit_model(self, dataset: RunnerStructureDataset) -> Dict:
         """
         Fit energy model for all elements using the input structure loader.
@@ -336,6 +334,8 @@ class NeuralNetworkPotential:
             print("Keyboard Interrupt")
         else:
             print("Done.")
+            
+        self.save_model()
 
         return history
 
@@ -344,9 +344,9 @@ class NeuralNetworkPotential:
         This method provides a user-friendly interface to fit both descriptor and model in one step.
         """
         ...
-
+        
     # ------------------------------------------------------------------------
-
+    
     def save_scaler(self) -> None:
         """
         This method saves scaler parameters for each element into separate files.
@@ -368,15 +368,19 @@ class NeuralNetworkPotential:
         Save model weights separately for all elements.
         """
         for element in self.elements:
-            logger.debug(f"Saving model weights for element: {element}")
+            logger.info(f"Saving model weights for element: {element}")
             atomic_number = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
-            self.atomic_potential[element].model.save(model_file)
+            self.atomic_potential[element].model.save(model_file, self.model_params[element])
+            
+    def save(self) -> None:
+        """Save scaler and model parameters into corresponding files for each element."""
+        self.save_scaler()
+        self.save_model()
 
-    # @Profiler.profile
     def load_scaler(self) -> None:
         """
         This method loads scaler parameters of each element from separate files.
@@ -389,24 +393,28 @@ class NeuralNetworkPotential:
                 self.output_dir,
                 self.settings.scaler_save_naming_format.format(atomic_number),
             )
-            logger.debug(
+            logger.info(
                 f"Loading scaler parameters for element {element}: {scaler_file.name}"
             )
             self.atomic_potential[element].scaler.load(scaler_file)
 
-    # @Profiler.profile
     def load_model(self) -> None:
         """
         Load model weights separately for all elements.
         """
         for element in self.elements:
-            logger.debug(f"Loading model weights for element: {element}")
+            logger.info(f"Loading model weights for element: {element}")
             atomic_number: int = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
-            self.atomic_potential[element].model.load(model_file)
+            self.model_params[element] = self.atomic_potential[element].model.load(model_file)
+            
+    def load(self) -> None:
+        """Load elemen scaler and model parameters from their corresponding files."""
+        self.load_scaler()
+        self.load_model()
 
     def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
         """
