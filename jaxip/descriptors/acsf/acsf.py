@@ -2,7 +2,6 @@ import itertools
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-import jax
 import jax.numpy as jnp
 
 from jaxip.atoms.structure import Structure
@@ -218,7 +217,8 @@ class ACSF(Descriptor):
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
             f", num_symmetry_functions={self.num_symmetry_functions}"
-            f", max_r_cutoff={self.r_cutoff})"
+            f", r_cutoff={self.r_cutoff}"
+            ")"
         )
 
 

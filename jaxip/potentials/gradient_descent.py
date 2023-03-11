@@ -110,7 +110,6 @@ class GradientDescentUpdater(Updater):
         for epoch in range(epochs):
 
             print(f"[Epoch {epoch+1} of {epochs}]")
-            history["epoch"].append(epoch)
             
             loss_per_epoch: Array = jnp.array(0.0)
             loss_energy_per_epoch: Array = jnp.array(0.0)
@@ -145,8 +144,8 @@ class GradientDescentUpdater(Updater):
                 f"training loss:{float(loss_per_epoch): 0.7f}"
                 f", loss_energy:{float(loss_energy_per_epoch): 0.7f}"
                 f", loss_force:{float(loss_force_per_epoch): 0.7f}"
-                # f"\n"
             )
+            history["epoch"].append(epoch)
             history["loss"].append(loss_per_epoch)
 
         return history
@@ -173,7 +172,7 @@ class GradientDescentUpdater(Updater):
                 positions = {
                     element: input.atom_position for element, input in inputs.items()
                 }
-                # natoms: int = sum(array.shape[0] for array in positions.values())
+                natoms: int = sum(array.shape[0] for array in positions.values())
                 
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
@@ -201,7 +200,7 @@ class GradientDescentUpdater(Updater):
                         params,
                         inputs,
                     )
-                    loss_energy = self.criterion(logits=energy, targets=true_energy)
+                    loss_energy = self.criterion(logits=energy, targets=true_energy) / natoms
                     loss_energy_per_batch += loss_energy
                    
             loss_energy_per_batch /= batch_size

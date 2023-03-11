@@ -7,7 +7,7 @@ from jaxip.types import Array, Dtype
 
 
 class UniformInitializer:
-    """Custom uniform initializer for FLAX model."""
+    """Custom uniform initializer for the FLAX model."""
 
     def __init__(self, weights_range: Tuple[float, float]) -> None:
         self.weights_range = weights_range
