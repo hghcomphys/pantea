@@ -86,18 +86,15 @@ descriptor values that are required to build machine learning potentials.
         descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
 
-        # Calculate descriptor values
-        dsc = descriptor(structure)
-
 
 Outputs:
 
 .. code-block:: bash
 
         >> descriptor
-        ACSF(element='H', num_symmetry_functions=2, max_r_cutoff=12.0)
+        ACSF(element='H', num_symmetry_functions=2, r_cutoff=12.0)
 
-        >> dsc[:3]
+        >> descriptor(structure)
         Array([[1.9689146e-03, 3.3253896e+00],
                [1.9877951e-03, 3.5034575e+00],
                [1.5204106e-03, 3.5458338e+00]], dtype=float32)
@@ -128,24 +125,18 @@ The trained potential can then be used to evaluate the energy and force componen
         from jaxip.datasets import RunnerStructureDataset
         from jaxip.potentials import NeuralNetworkPotential
 
-        # Atomic data
+        # Read atomic data
         structures = RunnerStructureDataset("input.data")
         structure = structures[0]
 
-        # Potential
+        # Instantiate potential from input settings file
         nnp = NeuralNetworkPotential.create_from("input.nn")
 
-        # Descriptor
+        # Fit descriptor scaler
         nnp.fit_scaler(structures)
-        #nnp.load_scaler()
 
-        # Train
+        # Fit model weights
         nnp.fit_model(structures)
-        #nnp.load_model()
-
-        # Predict the total energy and force components
-        total_energy = nnp(structure)
-        force = nnp.compute_force(structure)
 
 
 Outputs:
@@ -154,15 +145,15 @@ Outputs:
 
         >> nnp
         NeuralNetworkPotential(atomic_potential={'C': AtomicPotential(
-                descriptor=ACSF(element='C', num_symmetry_functions=30, r_cutoff_max=12.0),
+                descriptor=ACSF(element='C', num_symmetry_functions=30, r_cutoff=12.0),
                 scaler=DescriptorScaler(scale_type='center', scale_min=0.0, scale_max=1.0),
-                model=NeuralNetworkModel(hidden_layers=((15, 'tanh'), (15, 'tanh'))),
+                model=NeuralNetworkModel(hidden_layers=((15, 'tanh'), (15, 'tanh')), output_layer=(1, 'identity')), 
         )})
 
-        >> total_energy
-        Array(-8.16754983, dtype=float64)
+        >> nnp(structure)
+        Array(-8.16754983, dtype=float64)  # total energy
 
-        >> force
+        >> nnp.compute_force(structure)
         {'C': Array([[-4.1423317e-02, -1.7819289e-02,  6.5731630e-03],
                      [-5.2372105e-03,  1.3765628e-03, -1.5538651e-05],
                      [-5.7118265e-03,  6.4179506e-03,  3.0147154e-02],
