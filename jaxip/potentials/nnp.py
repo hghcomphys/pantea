@@ -368,16 +368,18 @@ class NeuralNetworkPotential:
         Save model weights separately for all elements.
         """
         for element in self.elements:
-            logger.info(f"Saving model weights for element: {element}")
             atomic_number = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
+            logger.info(
+                f"Saving model weights for element ({element}): {model_file.name}"
+            )
             self.atomic_potential[element].model.save(model_file, self.model_params[element])
             
     def save(self) -> None:
-        """Save scaler and model parameters into corresponding files for each element."""
+        """Save scaler and model into corresponding files for each element."""
         self.save_scaler()
         self.save_model()
 
@@ -394,7 +396,7 @@ class NeuralNetworkPotential:
                 self.settings.scaler_save_naming_format.format(atomic_number),
             )
             logger.info(
-                f"Loading scaler parameters for element {element}: {scaler_file.name}"
+                f"Loading scaler parameters for element ({element}): {scaler_file.name}"
             )
             self.atomic_potential[element].scaler.load(scaler_file)
 
@@ -403,16 +405,18 @@ class NeuralNetworkPotential:
         Load model weights separately for all elements.
         """
         for element in self.elements:
-            logger.info(f"Loading model weights for element: {element}")
             atomic_number: int = ElementMap.get_atomic_number(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
             )
+            logger.info(
+                f"Loading model weights for element ({element}): {model_file.name}"
+            )
             self.model_params[element] = self.atomic_potential[element].model.load(model_file)
             
     def load(self) -> None:
-        """Load elemen scaler and model parameters from their corresponding files."""
+        """Load element scaler and model from their corresponding files."""
         self.load_scaler()
         self.load_model()
 

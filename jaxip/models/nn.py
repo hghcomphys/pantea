@@ -6,13 +6,10 @@ from typing import Callable, List, Optional, Tuple
 from flax import linen as nn
 from frozendict import frozendict
 
+from jaxip.logger import logger
 from jaxip.models.activation import activation_function
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
-
-# FIXME: add kernel initializer as input argument
-# UniformInitializer(self.weights_range)
-# weights_range: Tuple[int, int] = (-1, 1)
 
 
 class NeuralNetworkModel(nn.Module):
@@ -69,13 +66,17 @@ class NeuralNetworkModel(nn.Module):
             ")"  # type: ignore
         )
 
-    def save(self, filename: Path, params: frozendict) -> None:        
+    def save(self, filename: Path, params: frozendict) -> None:     
         """Save model weights."""
-        with open(str(Path(filename)), 'wb') as handle:
+        file = str(Path(filename))
+        logger.debug(f"Saving model weights into '{file}'")
+        with open(file, 'wb') as handle:
             pickle.dump(params, handle)
 
     def load(self, filename: Path) -> frozendict:
         """Load model weights."""
-        with open(str(Path(filename)), 'rb') as handle:
+        file = str(Path(filename))
+        logger.debug(f"Loading model weights from '{file}'")
+        with open(file, 'rb') as handle:
             params: frozendict = pickle.load(handle)
         return params
