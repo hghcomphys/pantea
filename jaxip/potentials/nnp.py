@@ -296,8 +296,6 @@ class NeuralNetworkPotential:
         Fit scaler parameters for each element using the input structure data.
         No gradient history is required here.
         """
-        # save_scaler: bool = kwargs.get("save_scaler", True)
-
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
         print("Fitting descriptor scaler...")
         try:
@@ -309,9 +307,6 @@ class NeuralNetworkPotential:
             print("Keyboard Interrupt")
         else:
             print("Done.")
-
-        # if save_scaler:
-        self.save_scaler()
 
     def fit_model(self, dataset: RunnerStructureDataset) -> Dict:
         """
@@ -334,8 +329,6 @@ class NeuralNetworkPotential:
             print("Keyboard Interrupt")
         else:
             print("Done.")
-            
-        self.save_model()
 
         return history
 

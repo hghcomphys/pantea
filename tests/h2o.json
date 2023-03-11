@@ -10,7 +10,7 @@
         "O": -74.94518524
     },
     "scaler_save_naming_format": "scaling.{:03d}.data",
-    "model_save_naming_format": "weights.{:03d}.zip",
+    "model_save_naming_format": "weights.{:03d}.pkl",
     "weights_min": -1.0,
     "weights_max": 1.0,
     "global_hidden_layers_short": 2,

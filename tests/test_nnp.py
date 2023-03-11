@@ -42,7 +42,7 @@ class TestNeuralNetworkPotential:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
         assert nnp.settings == PotentialSettings.from_json(potential_file)
-
+        
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
         [
@@ -92,3 +92,33 @@ class TestNeuralNetworkPotential:
         force = nnp.compute_force(dataset[0])
         for element in nnp.elements:
             assert jnp.allclose(force[element], expected[1][element])
+
+    @pytest.mark.parametrize(
+        "nnp, dataset",
+        [
+            (
+                nnp,
+                dataset,
+            ),
+        ],
+    )
+    def test_save_and_load(
+        self,
+        nnp: NeuralNetworkPotential,
+        dataset: RunnerStructureDataset,
+    ) -> None:
+    
+        structure = dataset[0]
+        nnp.output_dir = potential_file.parent
+        nnp.save()
+        
+        settings_new = nnp.settings.copy()
+        settings_new.random_seed = 4321
+        nnp_new = NeuralNetworkPotential(settings_new)
+        nnp_new.fit_scaler(dataset)
+        nnp_new.output_dir = potential_file.parent
+        
+        assert not nnp.settings == nnp_new.settings
+        assert not jnp.allclose(nnp(structure), nnp_new(structure))
+        nnp_new.load()
+        assert jnp.allclose(nnp(structure), nnp_new(structure))
