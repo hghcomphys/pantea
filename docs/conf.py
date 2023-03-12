@@ -208,9 +208,7 @@ if os.path.exists(notebooks_dir):
 os.makedirs(notebooks_dir, exist_ok=True)
 
 for filename in (
-    "atomic_descriptor.ipynb", 
-    "potential_prediction.ipynb",
-    "tutorial.ipynb", 
+    "tutorial.ipynb",
 ):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),

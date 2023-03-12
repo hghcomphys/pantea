@@ -68,6 +68,9 @@ descriptor values that are required to build machine learning potentials.
 
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
+.. include:: ../notebooks/atomic_descriptor.ipynb
+
+
 .. code-block:: python
 
         from jaxip.datasets import RunnerStructureDataset
@@ -86,27 +89,32 @@ descriptor values that are required to build machine learning potentials.
         descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
 
+        # Compute descriptor values
+        descriptor(structure)
 
-Outputs:
+        # Compute gradient
+        descriptor.grad(structure, atom_index=0)
 
-.. code-block:: bash
+.. Outputs:
 
-        >> descriptor
-        ACSF(element='H', num_symmetry_functions=2, r_cutoff=12.0)
+.. .. code-block:: bash
 
-        >> descriptor(structure)
-        Array([[1.9689146e-03, 3.3253896e+00],
-               [1.9877951e-03, 3.5034575e+00],
-               [1.5204106e-03, 3.5458338e+00]], dtype=float32)
+..         >> descriptor
+..         ACSF(element='H', num_symmetry_functions=2, r_cutoff=12.0)
+
+..         >> descriptor(structure)
+..         Array([[1.9689146e-03, 3.3253896e+00],
+..                [1.9877951e-03, 3.5034575e+00],
+..                [1.5204106e-03, 3.5458338e+00]], dtype=float32)
 
  
-The **gradient** of the defined descriptor can be obtained for an atom using the `grad` method.
+.. The **gradient** of the defined descriptor can be obtained for an atom using the `grad` method.
 
-.. code-block:: bash
+.. .. code-block:: bash
 
-        >> descriptor.grad(structure, atom_index=0)
-        Array([[-0.04337483,  0.22992024, -0.04233539],
-               [-0.07089673,  0.03088031, -0.16785064]], dtype=float32)
+..         >> descriptor.grad(structure, atom_index=0)
+..         Array([[-0.04337483,  0.22992024, -0.04233539],
+..                [-0.07089673,  0.03088031, -0.16785064]], dtype=float32)
 
 
 -------------------------------------
@@ -132,32 +140,39 @@ The trained potential can then be used to evaluate the energy and force componen
         # Instantiate potential from input settings file
         nnp = NeuralNetworkPotential.create_from("input.nn")
 
-        # Fit descriptor scaler
+        # Fit descriptor scaler and model weights
         nnp.fit_scaler(structures)
-
-        # Fit model weights
         nnp.fit_model(structures)
+        nnp.save()
 
+        # Or loading from files
+        #nnp.load()
 
-Outputs:
+        # Total energy
+        nnp(structure)
 
-.. code-block:: bash
+        # Force components
+        nnp.compute_force(structure)
 
-        >> nnp
-        NeuralNetworkPotential(atomic_potential={'C': AtomicPotential(
-                descriptor=ACSF(element='C', num_symmetry_functions=30, r_cutoff=12.0),
-                scaler=DescriptorScaler(scale_type='center', scale_min=0.0, scale_max=1.0),
-                model=NeuralNetworkModel(hidden_layers=((15, 'tanh'), (15, 'tanh')), output_layer=(1, 'identity')), 
-        )})
+.. Outputs:
 
-        >> nnp(structure)
-        Array(-8.16754983, dtype=float64)  # total energy
+.. .. code-block:: bash
 
-        >> nnp.compute_force(structure)
-        {'C': Array([[-4.1423317e-02, -1.7819289e-02,  6.5731630e-03],
-                     [-5.2372105e-03,  1.3765628e-03, -1.5538651e-05],
-                     [-5.7118265e-03,  6.4179506e-03,  3.0147154e-02],
-                     ...], dtype=float32)}
+..         >> nnp
+..         NeuralNetworkPotential(atomic_potential={'C': AtomicPotential(
+..                 descriptor=ACSF(element='C', num_symmetry_functions=30, r_cutoff=12.0),
+..                 scaler=DescriptorScaler(scale_type='center', scale_min=0.0, scale_max=1.0),
+..                 model=NeuralNetworkModel(hidden_layers=((15, 'tanh'), (15, 'tanh')), output_layer=(1, 'identity')), 
+..         )})
+
+..         >> nnp(structure)
+..         Array(-8.16754983, dtype=float64)  # total energy
+
+..         >> nnp.compute_force(structure)
+..         {'C': Array([[-4.1423317e-02, -1.7819289e-02,  6.5731630e-03],
+..                      [-5.2372105e-03,  1.3765628e-03, -1.5538651e-05],
+..                      [-5.7118265e-03,  6.4179506e-03,  3.0147154e-02],
+..                      ...], dtype=float32)}
 
 
 License
