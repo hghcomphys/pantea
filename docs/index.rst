@@ -9,7 +9,7 @@ Welcome to JAXIP's documentation!
    readme
    installation
    usage
-   notebooks/quick_start.ipynb
+   examples
    modules
    contributing
    authors
