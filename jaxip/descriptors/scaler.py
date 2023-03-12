@@ -175,6 +175,7 @@ class DescriptorScaler:
 
     def save(self, filename: Path) -> None:
         """Save scaler parameters into file."""
+        logger.debug(f"Saving scaler parameters into '{str(filename)}'")
         with open(str(filename), "w") as file:
             file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
             for i in range(self.dimension):
@@ -184,6 +185,7 @@ class DescriptorScaler:
 
     def load(self, filename: Path) -> None:
         """Load scaler parameters from file."""
+        logger.debug(f"Loading scaler parameters from '{str(filename)}'")
         data = np.loadtxt(str(filename)).T
         self.nsamples = 1
         self.dimension = data.shape[1]
