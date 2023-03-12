@@ -8,7 +8,7 @@ Welcome to JAXIP's documentation!
 
    readme
    installation
-   usage
+   .. usage
    examples
    modules
    contributing

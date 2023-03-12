@@ -1,3 +1,3 @@
 .. toctree::
 
-   notebooks/tutorial.ipynb
+   notebooks/tutorials.ipynb
