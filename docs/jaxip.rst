@@ -33,14 +33,6 @@ jaxip.config module
    :undoc-members:
    :show-inheritance:
 
-jaxip.jaxip module
-------------------
-
-.. automodule:: jaxip.jaxip
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 jaxip.logger module
 -------------------
 

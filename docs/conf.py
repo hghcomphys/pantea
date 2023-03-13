@@ -209,6 +209,7 @@ os.makedirs(notebooks_dir, exist_ok=True)
 
 for filename in (
     "tutorials.ipynb",
+    "train_potential.ipynb"
 ):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),
