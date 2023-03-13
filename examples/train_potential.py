@@ -9,15 +9,18 @@ import logging
 from pathlib import Path
 
 import jax.numpy as jnp
-#import pandas as pd
 
+import jaxip
 from jaxip.datasets import RunnerStructureDataset
 from jaxip.logger import set_logging_level
 from jaxip.potentials import NeuralNetworkPotential
 from jaxip.types import dtype as default_dtype
+#import pandas as pd
 
-# default_dtype.FLOATX = jnp.float64
-# set_logging_level(logging.INFO)
+print(jaxip.__doc__)
+print(f"(version {jaxip.__version__})\n")
+set_logging_level(logging.INFO)
+default_dtype.FLOATX = jnp.float64
 
 potdir = Path("./LJ")
 
