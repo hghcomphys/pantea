@@ -200,7 +200,7 @@ class Structure(_BaseJaxPytreeDataClass):
                     array = jnp.asarray(data[atom_attr], dtype=dtype)
                 arrays[atom_attr] = array
                 logger.debug(
-                    f"{atom_attr:12} -> Array(shape='{array.shape}', dtype='{array.dtype}')"
+                    f"{atom_attr:12} -> Array(shape={array.shape}, dtype='{array.dtype}')"
                 )
             except KeyError:
                 logger.error(

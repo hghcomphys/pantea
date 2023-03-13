@@ -4,6 +4,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
+import jaxip
+
 
 class Logger:
     """
@@ -24,8 +26,9 @@ class Logger:
         logging.basicConfig(level=logging.DEBUG, handlers=self.handlers)
 
         # Avoiding matplotlib debug messages
-        logging.getLogger("matplotlib").setLevel(logging.WARNING)
+        logging.getLogger("matplotlib").setLevel(logging.ERROR)
         logging.getLogger("matplotlib.font_manager").disabled = True
+        logging.getLogger('jax').setLevel(logging.WARNING)
 
     def set_level(self, level) -> None:
         """

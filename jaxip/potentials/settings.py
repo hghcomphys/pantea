@@ -158,7 +158,7 @@ class PotentialSettings(_CFG):
                 keyword, tokens = tokenize(line, comment="#")  # type: ignore
                 if keyword is not None:
                     if keyword not in cls.__annotations__:
-                        logger.debug(f"Unknown keyword:'{keyword}'")
+                        logger.debug(f"Unknown keyword (line {n_line}):'{keyword}'")
                     else:
                         logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
                         dict_[f"line{n_line:04d}_{keyword}"] = tokens
@@ -173,11 +173,8 @@ class PotentialSettings(_CFG):
         (see `here <https://compphysvienna.github.io/n2p2/topics/keywords.html>`_).
         """
         # TODO: DRY, read keyword with map lambda function
-        logger.debug("[Reading potential settings]")
-        logger.debug(f"Potential file:'{str(filename)}'")
-
+        logger.info(f"Reading potential settings: {str(filename)}")
         dict_ = cls._read_from(filename)
-
         kwargs: Dict[str, Any] = dict()
         kwargs["atom_energy"] = dict()
         kwargs["symfunction_short"] = list()

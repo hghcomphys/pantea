@@ -71,7 +71,8 @@ class NeuralNetworkPotential:
 
     @classmethod
     def create_from(cls, potential_file: Path):
-        """Create an instance of the potential from the input file (RuNNer format)."""
+        """Create an instance of the potential from input file (RuNNer format)."""
+        logger.info("Creating potential from input file (RuNNer format)")
         potential_file = Path(potential_file)
         settings = PotentialSettings.create_from(potential_file)
         return NeuralNetworkPotential(
@@ -84,6 +85,12 @@ class NeuralNetworkPotential:
         Initialize potential components such as atomic potential, model params,
         and updater from the potential settings.
         """
+        logger.info(f"Initializing {self.__class__.__name__}")
+        # Elements
+        logger.info(f"Number of elements: {self.settings.number_of_elements}")
+        for element in self.settings.elements:
+            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
+
         if not self.atomic_potential:
             self._init_atomic_potential()
         if not self.model_params:
@@ -92,8 +99,8 @@ class NeuralNetworkPotential:
             self._init_updater()
            
     def _init_updater(self) -> None:
-        """Initialize selected updater from the settings."""
-        logger.debug("[Setting updater]")
+        """Initialize selected updater from the potential settings."""
+        logger.info("Initializing updater")
         updater_type: str = self.settings.updater_type
         if updater_type == "kalman_filter":
             self.updater = KalmanFilterUpdater(potential=self)
@@ -104,14 +111,14 @@ class NeuralNetworkPotential:
                 f"Unknown updater type: {updater_type}", 
                 exception=TypeError,
             )
-        logger.info(f"Updater type: '{updater_type}'")
+        logger.info(f"Updater type: {updater_type}")
 
     def _init_atomic_potential(self) -> None:
         """
         Initialize atomic potential for each element.
-
         This method can be override in case that different atomic potential is used.
         """
+        logger.info("Initializing atomic potentials")
         descriptor: Dict[Element, ACSF] = self._init_descriptor()
         scaler: Dict[Element, DescriptorScaler] = self._init_scaler()
         model: Dict[Element, NeuralNetworkModel] = self._init_model()
@@ -129,6 +136,7 @@ class NeuralNetworkPotential:
 
         This method be used to initialize model params of the potential with a different random seed.
         """
+        logger.info("Initializing model params")
         random_keys = random.split(
             random.PRNGKey(self.settings.random_seed),
             self.settings.number_of_elements,
@@ -143,12 +151,9 @@ class NeuralNetworkPotential:
 
     def _init_descriptor(self) -> Dict[Element, ACSF]:
         """Initialize descriptor for each element."""
+        logger.info("Initializing descriptors")
         descriptor: Dict[Element, ACSF] = dict()
         settings = self.settings
-        # Elements
-        logger.info(f"Number of elements: {settings.number_of_elements}")
-        for element in settings.elements:
-            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
         # Instantiate ACSF for each element
         for element in settings.elements:
             descriptor[element] = ACSF(element)
@@ -212,6 +217,7 @@ class NeuralNetworkPotential:
 
     def _init_scaler(self) -> Dict[Element, DescriptorScaler]:
         """Initialize descriptor scaler for each element."""
+        logger.info("Initializing descriptor scalers")
         scaler: Dict[Element, DescriptorScaler] = dict()
         settings = self.settings
         # Prepare scaler input argument if exist in settings
@@ -232,6 +238,7 @@ class NeuralNetworkPotential:
 
     def _init_model(self) -> Dict[Element, NeuralNetworkModel]:
         """Initialize neural network model for each element."""
+        logger.info("Initializing neural network models")
         model: Dict[Element, NeuralNetworkModel] = dict()
         settings = self.settings
         for element in settings.elements:
