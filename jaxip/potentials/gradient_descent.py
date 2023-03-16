@@ -10,7 +10,7 @@ import numpy as np
 import optax
 from flax.training.train_state import TrainState
 from frozendict import frozendict
-from jax import jit, value_and_grad
+from jax import value_and_grad
 from optax import GradientTransformation
 from tqdm import tqdm
 
@@ -53,14 +53,14 @@ class GradientDescentUpdater(Updater):
         )
         self._init_parameters()
         self._init_optimizer()
-       
+
     def _init_parameters(self) -> None:
         """Set required parameters from the potential settings."""
         settings: PotentialSettings = self.potential.settings
         self.gradient_type: str = settings.gradient_type
         self.beta: float = settings.force_weight
         self.force_fraction: float = settings.short_force_fraction
-   
+
     def _init_optimizer(self) -> None:
         """Create optimizer using the potential settings."""
         settings: PotentialSettings = self.potential.settings
@@ -76,12 +76,13 @@ class GradientDescentUpdater(Updater):
             logger.error(
                 f"Gradient type {settings.gradient_type} is not implemented yet",
                 exception=TypeError,
-            )  
+            )
         # TODO: either as a single but global optimizer or multiple optimizers:
         # return {element: optimizer for element in self.elements}
 
     def _init_train_state(self) -> Dict[Element, TrainState]:
         """Initialize train state for each element."""
+
         def generate_train_state():
             for element in self.potential.elements:
                 yield element, TrainState.create(
@@ -110,7 +111,7 @@ class GradientDescentUpdater(Updater):
         for epoch in range(epochs):
 
             print(f"[Epoch {epoch+1} of {epochs}]")
-            
+
             loss_per_epoch: Array = jnp.array(0.0)
             loss_energy_per_epoch: Array = jnp.array(0.0)
             loss_force_per_epoch: Array = jnp.array(0.0)
@@ -128,7 +129,7 @@ class GradientDescentUpdater(Updater):
 
                 batch = xbatch, ybatch
                 states, metrics = self.train_step(states, batch)
-                
+
                 loss_per_epoch += metrics["loss"]
                 loss_energy_per_epoch += metrics["loss_energy"]
                 loss_force_per_epoch += metrics["loss_force"]
@@ -137,7 +138,7 @@ class GradientDescentUpdater(Updater):
             loss_per_epoch /= num_updates_per_epoch
             loss_energy_per_epoch /= num_updates_per_epoch
             loss_force_per_epoch /= num_updates_per_epoch
-            
+
             self._update_model_params(states)
 
             print(
@@ -163,17 +164,17 @@ class GradientDescentUpdater(Updater):
             # TODO: define force loss weights for each element
             xbatch, ybatch = batch
             batch_size = len(xbatch)
-            
+
             loss_energy_per_batch: Array = jnp.array(0.0)
             loss_force_per_batch: Array = jnp.array(0.0)
-            
+
             for inputs, (true_energy, true_forces) in zip(xbatch, ybatch):
 
                 positions = {
                     element: input.atom_position for element, input in inputs.items()
                 }
                 natoms: int = sum(array.shape[0] for array in positions.values())
-                
+
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
                     forces = _compute_force(
@@ -191,7 +192,7 @@ class GradientDescentUpdater(Updater):
                         )
                     loss_force /= len(forces)
                     loss_force_per_batch += self.beta * self.beta * loss_force
-    
+
                 else:
                     # ------ energy ------
                     energy = _energy_fn(
@@ -200,13 +201,15 @@ class GradientDescentUpdater(Updater):
                         params,
                         inputs,
                     )
-                    loss_energy = self.criterion(logits=energy, targets=true_energy) / natoms
+                    loss_energy = (
+                        self.criterion(logits=energy, targets=true_energy) / natoms
+                    )
                     loss_energy_per_batch += loss_energy
-                   
+
             loss_energy_per_batch /= batch_size
             loss_force_per_batch /= batch_size
             loss_per_batch = loss_energy_per_batch + loss_force_per_batch
-            
+
             return loss_per_batch, (loss_energy_per_batch, loss_force_per_batch)
 
         value_and_grad_fn = value_and_grad(loss_fn, has_aux=True)

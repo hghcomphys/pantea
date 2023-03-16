@@ -144,7 +144,7 @@ class KalmanFilterUpdater(Updater):
 
             print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
-            
+
             loss_energy_per_epoch: Array = jnp.asarray(0.0)
             loss_force_per_epoch: Array = jnp.asarray(0.0)
             num_energy_updates_per_epoch: int = 0
@@ -231,8 +231,10 @@ class KalmanFilterUpdater(Updater):
             loss_energy_per_epoch /= num_energy_updates_per_epoch
             loss_force_per_epoch /= num_force_updates_per_epoch
             loss_per_epoch = loss_energy_per_epoch + loss_force_per_epoch
-            num_updates_per_epoch = num_energy_updates_per_epoch + num_force_updates_per_epoch
-            
+            num_updates_per_epoch = (
+                num_energy_updates_per_epoch + num_force_updates_per_epoch
+            )
+
             print(
                 f"training loss:{float(loss_per_epoch): 0.7f}"
                 f", loss_energy:{float(loss_energy_per_epoch): 0.7f}"
@@ -240,7 +242,7 @@ class KalmanFilterUpdater(Updater):
             )
             history["epoch"].append(epoch + 1)
             history["loss"].append(loss_per_epoch)
-            
+
             logger.info(
                 f"energy_update_ratio: {num_energy_updates_per_epoch/num_updates_per_epoch:.3f}"
                 f", force_update_ratio: {num_force_updates_per_epoch/num_updates_per_epoch:.3f}"

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -67,10 +69,10 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    updater: Optional[Updater] = field(default=None, repr=False, init=False) # FIXME
+    updater: Optional[Updater] = field(default=None, repr=False, init=False)  # FIXME
 
     @classmethod
-    def create_from(cls, potential_file: Path):
+    def create_from(cls, potential_file: Path) -> NeuralNetworkPotential:
         """Create an instance of the potential from input file (RuNNer format)."""
         logger.info("Creating potential from input file (RuNNer format)")
         potential_file = Path(potential_file)
@@ -86,9 +88,14 @@ class NeuralNetworkPotential:
         and updater from the potential settings.
         """
         logger.info(f"Initializing {self.__class__.__name__}")
-        # Elements
-        logger.info(f"Number of elements: {self.settings.number_of_elements}")
-        for element in self.settings.elements:
+
+        self.elements: Tuple[Element, ...] = tuple(
+            element for element in self.settings.elements
+        )
+        self.num_elements: int = self.settings.number_of_elements
+
+        logger.info(f"Number of elements: {self.num_elements}")
+        for element in self.elements:
             logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
 
         if not self.atomic_potential:
@@ -97,7 +104,7 @@ class NeuralNetworkPotential:
             self._init_model_params()
         if self.updater is None:
             self._init_updater()
-           
+
     def _init_updater(self) -> None:
         """Initialize selected updater from the potential settings."""
         logger.info("Initializing updater")
@@ -108,7 +115,7 @@ class NeuralNetworkPotential:
             self.updater = GradientDescentUpdater(potential=self)
         else:
             logger.error(
-                f"Unknown updater type: {updater_type}", 
+                f"Unknown updater type: {updater_type}",
                 exception=TypeError,
             )
         logger.info(f"Updater type: {updater_type}")
@@ -322,7 +329,7 @@ class NeuralNetworkPotential:
         # TODO: avoid reading and calculating descriptor multiple times
         # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
         # TODO: add validation output (MSE separate for force and energy)
-        
+
         # kwargs["validation_split"] = kwargs.get(
         #     "validation_split", self.settings.test_fraction
         # )
@@ -344,9 +351,9 @@ class NeuralNetworkPotential:
         This method provides a user-friendly interface to fit both descriptor and model in one step.
         """
         ...
-        
+
     # ------------------------------------------------------------------------
-    
+
     def save_scaler(self) -> None:
         """
         This method saves scaler parameters for each element into separate files.
@@ -376,8 +383,10 @@ class NeuralNetworkPotential:
             logger.info(
                 f"Saving model weights for element ({element}): {model_file.name}"
             )
-            self.atomic_potential[element].model.save(model_file, self.model_params[element])
-            
+            self.atomic_potential[element].model.save(
+                model_file, self.model_params[element]
+            )
+
     def save(self) -> None:
         """Save scaler and model into corresponding files for each element."""
         self.save_scaler()
@@ -413,8 +422,10 @@ class NeuralNetworkPotential:
             logger.info(
                 f"Loading model weights for element ({element}): {model_file.name}"
             )
-            self.model_params[element] = self.atomic_potential[element].model.load(model_file)
-            
+            self.model_params[element] = self.atomic_potential[element].model.load(
+                model_file
+            )
+
     def load(self) -> None:
         """Load element scaler and model from their corresponding files."""
         self.load_scaler()
@@ -440,16 +451,6 @@ class NeuralNetworkPotential:
             element: pot.scaler.number_of_warnings
             for element, pot in self.atomic_potential.items()
         }
-
-    @property
-    def elements(self) -> Tuple[Element, ...]:
-        """Return elements."""
-        return tuple(element for element in self.settings.elements)
-
-    @property
-    def num_elements(self) -> int:
-        """Return number of elements."""
-        return self.settings.number_of_elements
 
     @property
     def r_cutoff(self) -> float:

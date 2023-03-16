@@ -1,4 +1,3 @@
-from ast import keyword
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
@@ -308,6 +307,3 @@ class PotentialSettings(_CFG):
     def test_fraction_range(cls, v) -> Any:
         assert 0.0 <= v <= 1.0, "must be between [0, 1]"
         return v
-
-    # def __repr__(self) -> str:
-    #     return f"{self.__class__.__name__}()"
