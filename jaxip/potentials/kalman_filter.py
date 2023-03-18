@@ -120,7 +120,7 @@ class KalmanFilterUpdater(Updater):
             return (F_ref - F_pot)[..., 0]
 
         grad_energy_error: Callable = jax.grad(compute_energy_error)
-        jacob_force_error: Callable = jax.jacfwd(compute_force_error)
+        jacob_force_error: Callable = jax.jacrev(compute_force_error)
 
         def compute_energy_error_gradient(
             model_params: Dict[Element, frozendict], structure: Structure
