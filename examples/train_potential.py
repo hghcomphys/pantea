@@ -4,6 +4,7 @@ import os
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false" 
 
 import logging
 from pathlib import Path
@@ -19,6 +20,7 @@ from jaxip.types import dtype as default_dtype
 
 print(jaxip.__doc__)
 print(f"(version {jaxip.__version__})\n")
+
 set_logging_level(logging.INFO)
 default_dtype.FLOATX = jnp.float64
 
