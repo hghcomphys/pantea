@@ -42,7 +42,7 @@ class TestNeuralNetworkPotential:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
         assert nnp.settings == PotentialSettings.from_json(potential_file)
-        
+
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
         [
@@ -51,28 +51,22 @@ class TestNeuralNetworkPotential:
                 dataset,
                 (
                     jnp.asarray(-0.00721363),
-                    {
-                        "H": jnp.asarray(
-                            [
-                                [-0.11087801, -0.04327172, 0.1029761],
-                                [-0.01472103, 0.04495581, 0.04925349],
-                                [0.06494806, -0.02886785, -0.01245032],
-                                [-0.0420067, -0.00515675, -0.07121348],
-                                [0.09775142, 0.06042631, -0.10140688],
-                                [-0.02604893, 0.04006793, -0.13405928],
-                                [0.05837363, 0.07088665, -0.09498966],
-                                [0.04761543, -0.03721521, -0.02089789],
-                            ]
-                        ),
-                        "O": jnp.asarray(
-                            [
-                                [-0.00343414, 0.00153665, -0.02037759],
-                                [-0.02519827, 0.00152728, -0.01613272],
-                                [0.0306726, 0.01101293, -0.04297253],
-                                [0.01066793, -0.00437668, 0.03239094],
-                            ]
-                        ),
-                    },
+                    jnp.asarray(
+                        [
+                            [-0.00343415, 0.00153666, -0.0203776],
+                            [-0.11087799, -0.04327171, 0.10297609],
+                            [-0.01472104, 0.0449558, 0.04925348],
+                            [-0.02519826, 0.00152729, -0.01613272],
+                            [0.06494806, -0.02886784, -0.01245033],
+                            [-0.04200673, -0.00515676, -0.07121348],
+                            [0.03067259, 0.01101292, -0.04297253],
+                            [0.09775139, 0.06042628, -0.10140687],
+                            [-0.02604892, 0.04006792, -0.13405925],
+                            [0.01066793, -0.00437668, 0.03239093],
+                            [0.05837363, 0.07088667, -0.09498966],
+                            [0.04761543, -0.03721519, -0.02089787],
+                        ]
+                    ),
                 ),
             ),
         ],
@@ -87,11 +81,7 @@ class TestNeuralNetworkPotential:
 
         # total energy
         assert jnp.allclose(nnp(dataset[0]), expected[0])
-
-        # force components for each element
-        force = nnp.compute_force(dataset[0])
-        for element in nnp.elements:
-            assert jnp.allclose(force[element], expected[1][element])
+        assert jnp.allclose(nnp.compute_force(dataset[0]), expected[1])
 
     @pytest.mark.parametrize(
         "nnp, dataset",
@@ -107,17 +97,17 @@ class TestNeuralNetworkPotential:
         nnp: NeuralNetworkPotential,
         dataset: RunnerStructureDataset,
     ) -> None:
-    
+
         structure = dataset[0]
         nnp.output_dir = potential_file.parent
         nnp.save()
-        
+
         settings_new = nnp.settings.copy()
         settings_new.random_seed = 4321
         nnp_new = NeuralNetworkPotential(settings_new)
         nnp_new.fit_scaler(dataset)
         nnp_new.output_dir = potential_file.parent
-        
+
         assert not nnp.settings == nnp_new.settings
         assert not jnp.allclose(nnp(structure), nnp_new(structure))
         nnp_new.load()

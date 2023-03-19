@@ -281,6 +281,7 @@ class NeuralNetworkPotential:
         :param structure: Structure
         :return: total energy
         """
+
         return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
@@ -288,20 +289,25 @@ class NeuralNetworkPotential:
             structure.get_inputs(),
         )
 
-    def compute_force(self, structure: Structure) -> Dict[Element, Array]:
+    def compute_force(self, structure: Structure) -> Array:
         """
         Compute force components.
 
         :param structure: input structure
-        :return: per-atom force components
+        :return: predicted force components for all atoms
         """
-        forces: Dict[Element, Array] = _compute_force(
+        force_dict: Dict[Element, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions(),
             self.model_params,
             structure.get_inputs(),
         )
-        return forces
+        force: Array = jnp.empty_like(structure.force)
+        for element in structure.elements:
+            atom_index: Array = structure.select(element)
+            force = force.at[atom_index].set(force_dict[element])
+
+        return force
 
     # ------------------------------------------------------------------------
 
