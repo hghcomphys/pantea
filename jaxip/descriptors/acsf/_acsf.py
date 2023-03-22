@@ -120,7 +120,7 @@ def _inner_loop_over_angular_acsf_terms(
         jnp.inner(Rij, diff_i) / true_op,
         1.0,
     )
-    cost = jnp.where(is_zero, 0.0, cost)  # FIXME: gradient value!
+    cost = jnp.where(is_zero, 0.0, cost)
 
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,

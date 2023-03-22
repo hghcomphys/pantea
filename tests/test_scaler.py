@@ -49,7 +49,6 @@ class TestStructure:
         scaler.fit(data)
         assert scaler.dimension == expected[0]
         assert scaler.nsamples == expected[1]
-        # assert scaler.dtype == expected[2] # FIXME
 
     def fit_scaler(
         self, scaler: DescriptorScaler, data: Array, batch_size: int

@@ -122,8 +122,6 @@ class ElementMap:
     the arrays of integer (i.e. atom types) instead of strings.
     """
 
-    # FIXME: issue with hashing of static values (jit compilation)
-
     def __init__(self, elements: List[Element]) -> None:
         """Initialize element map."""
         self.unique_elements: Set[Element] = set(elements)

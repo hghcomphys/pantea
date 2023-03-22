@@ -136,7 +136,6 @@ class KalmanFilterUpdater(Updater):
 
         # ----------------------
 
-        # FIXME: dataloader
         indices: list[int] = [i for i in range(len(dataset))]
 
         history = defaultdict(list)

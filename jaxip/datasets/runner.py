@@ -91,7 +91,6 @@ class RunnerStructureDataset(StructureDataset):
                 return None
             # Read keyword and values
             keyword, tokens = tokenize(line)
-            # FIXME: check begin keyword
             if keyword == "atom":
                 dict_data["position"].append([float(t) for t in tokens[:3]])
                 dict_data["element"].append(tokens[3])
@@ -124,7 +123,6 @@ class RunnerStructureDataset(StructureDataset):
             if not line:
                 return False
             keyword, tokens = tokenize(line)
-            # FIXME: check begin keyword
             if keyword == "end":
                 break
         return True

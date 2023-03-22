@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+
 from jaxip.types import Array
 
 
@@ -13,7 +14,7 @@ def _calculate_cutoff_mask_per_atom(
     It excludes zero-distance atoms.
     """
     # mask atoms only inside the cutoff radius and excluding self-counting
-    return (rij <= r_cutoff) & (rij != 0.0)  # FIXME: use jnp.isclose
+    return (rij <= r_cutoff) & (rij != 0.0)
 
 
 _vmap_calculate_neighbor_mask = jax.vmap(

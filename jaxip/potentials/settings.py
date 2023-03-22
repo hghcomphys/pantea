@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
@@ -164,7 +166,7 @@ class PotentialSettings(_CFG):
         return dict_
 
     @classmethod
-    def create_from(cls, filename: Path):  # FIXME
+    def create_from(cls, filename: Path) -> PotentialSettings:
         """
         Read all potential settings from the input file.
 

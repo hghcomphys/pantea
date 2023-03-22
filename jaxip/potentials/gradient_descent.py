@@ -151,7 +151,7 @@ class GradientDescentUpdater(Updater):
 
         return history
 
-    # @partial(jit, static_argnums=(0,))  # FIXME
+    # @partial(jit, static_argnums=(0,))
     def train_step(
         self,
         states: Dict[Element, TrainState],

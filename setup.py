@@ -24,10 +24,10 @@ test_requirements = [
     "pytest>=3",
 ]
 
-_dct = {}
+_dict = {}
 with open("jaxip/_version.py") as f:
-    exec(f.read(), _dct)  # FIXME: avoid using exec
-__version__ = _dct["__version__"]
+    exec(f.read(), _dict)
+__version__ = _dict["__version__"]
 
 setup(
     author="Hossein Ghorbanfekr",

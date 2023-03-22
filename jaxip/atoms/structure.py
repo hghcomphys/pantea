@@ -21,7 +21,6 @@ from jaxip.types import dtype as _dtype
 from jaxip.units import units
 
 
-# FIXME: move to the trainer module
 class Inputs(NamedTuple):
     """
     Represents array data types of Structure.
@@ -162,7 +161,6 @@ class Structure(_BaseJaxPytreeDataClass):
             if attr in data:
                 data[f"total_{attr}"] = sum(data[attr])
 
-        # Use extracted info to initialize structure # FIXME: avoid DRY
         data_: DefaultDict[str, List] = defaultdict(list, data)
         try:
             element_map: ElementMap = ElementMap(data_["element"])
@@ -290,7 +288,6 @@ class Structure(_BaseJaxPytreeDataClass):
 
     @property
     def elements(self) -> tuple[Element, ...]:
-        # FIXME: optimize
         return tuple(sorted({str(self.element_map(int(at))) for at in self.atom_type}))
 
     def __repr__(self) -> str:

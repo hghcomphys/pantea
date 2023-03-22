@@ -21,7 +21,7 @@ class AtomicPotentialInterface(Protocol):
     model: NeuralNetworkModel
 
 
-@partial(jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))
 def _compute_atomic_energy(
     atomic_potential: AtomicPotentialInterface,
     positions: Array,
@@ -42,7 +42,7 @@ def _compute_atomic_energy(
     return atomic_energy  # type: ignore
 
 
-@partial(jit, static_argnums=(0,))  # FIXME
+@partial(jit, static_argnums=(0,))
 def _energy_fn(
     atomic_potential: Dict[Element, AtomicPotentialInterface],
     positions: Dict[Element, Array],

@@ -13,7 +13,7 @@ _grad_energy_fn = jit(
 )
 
 
-# @partial(jit, static_argnums=(0,))  # FIXME
+# @partial(jit, static_argnums=(0,))
 def _compute_force(
     atomic_potential: Dict[Element, AtomicPotentialInterface],
     positions: Dict[Element, Array],

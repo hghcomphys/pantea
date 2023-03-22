@@ -69,7 +69,7 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    updater: Optional[Updater] = field(default=None, repr=False, init=False)  # FIXME
+    updater: Optional[Updater] = field(default=None, repr=False, init=False)
 
     @classmethod
     def create_from(cls, potential_file: Path) -> NeuralNetworkPotential:

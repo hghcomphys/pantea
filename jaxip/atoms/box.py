@@ -37,7 +37,7 @@ class Box(_BaseJaxPytreeDataClass):
                     self.lattice,
                     dtype=self.dtype,
                 ).reshape(3, 3)
-            except RuntimeError:
+            except ValueError:
                 logger.error(
                     "Unexpected lattice matrix type or dimension",
                     exception=ValueError,  # type:ignore
