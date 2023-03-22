@@ -31,7 +31,6 @@ class DescriptorScaler:
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-        dtype: Optional[Dtype] = None,
     ) -> None:
         """Initialize scaler including scaler type and min/max values."""
         assert scale_min < scale_max
@@ -40,7 +39,6 @@ class DescriptorScaler:
         self.scale_type: str = scale_type
         self.scale_min: float = scale_min
         self.scale_max: float = scale_max
-        self.dtype: Dtype = dtype if dtype is not None else _dtype.FLOATX
 
         # Statistical parameters
         self.nsamples: int = 0  # number of samples
@@ -183,20 +181,23 @@ class DescriptorScaler:
                     f"{self.min[i]:<23.15E} {self.max[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n"
                 )
 
-    def load(self, filename: Path) -> None:
+    def load(self, filename: Path, dtype: Optional[Dtype] = None) -> None:
         """Load scaler parameters from file."""
         logger.debug(f"Loading scaler parameters from '{str(filename)}'")
         data = np.loadtxt(str(filename)).T
+        dtype = dtype if dtype is not None else _dtype.FLOATX
         self.nsamples = 1
         self.dimension = data.shape[1]
-
-        self.min = jnp.asarray(data[0], dtype=self.dtype)
-        self.max = jnp.asarray(data[1], dtype=self.dtype)
-        self.mean = jnp.asarray(data[2], dtype=self.dtype)
-        self.sigma = jnp.asarray(data[3], dtype=self.dtype)
+        self.min = jnp.asarray(data[0], dtype=dtype)
+        self.max = jnp.asarray(data[1], dtype=dtype)
+        self.mean = jnp.asarray(data[2], dtype=dtype)
+        self.sigma = jnp.asarray(data[3], dtype=dtype)
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(scale_type='{self.scale_type}', "
             f"scale_min={self.scale_min}, scale_max={self.scale_max})"
         )
+
+    def __bool__(self) -> bool:
+        return False if len(self.mean) == 0 else True
