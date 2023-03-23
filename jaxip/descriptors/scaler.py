@@ -132,7 +132,6 @@ class DescriptorScaler:
         if self.max_number_of_warnings is None:
             return
 
-        # TODO: optimize it
         gt: Array
         lt: Array
         if array.ndim == 2:

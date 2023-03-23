@@ -133,8 +133,6 @@ class Structure(_BaseJaxPytreeDataClass):
         :param dtype: data type of arrays, defaults to None
         :return: an initialized instance
         """
-        # TODO: add test
-
         if dtype is None:
             dtype = _dtype.FLOATX
 
@@ -293,7 +291,6 @@ class Structure(_BaseJaxPytreeDataClass):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
 
-    # TODO: jit
     def select(self, element: Element) -> Array:
         """
         Return all atom indices of the element.
@@ -381,7 +378,6 @@ class Structure(_BaseJaxPytreeDataClass):
         """Return a array of energy offset."""
 
         energy_offset: Array = jnp.empty_like(self.energy)
-        # TODO: optimize item assignment
         for element in self.elements:
             energy_offset = energy_offset.at[self.select(element)].set(
                 atom_energy[element]

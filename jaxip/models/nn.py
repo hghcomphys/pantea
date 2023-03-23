@@ -40,7 +40,7 @@ class NeuralNetworkModel(nn.Module):
 
     def create_network(self) -> List:
         """Create a neural network as stack of dense layers and activation functions."""
-        # TODO: add logging
+
         layers: List = list()
         # Hidden layers
         for out_size, af_type in self.hidden_layers:
@@ -66,17 +66,17 @@ class NeuralNetworkModel(nn.Module):
             ")"  # type: ignore
         )
 
-    def save(self, filename: Path, params: frozendict) -> None:     
+    def save(self, filename: Path, params: frozendict) -> None:
         """Save model weights."""
         file = str(Path(filename))
         logger.debug(f"Saving model weights into '{file}'")
-        with open(file, 'wb') as handle:
+        with open(file, "wb") as handle:
             pickle.dump(params, handle)
 
     def load(self, filename: Path) -> frozendict:
         """Load model weights."""
         file = str(Path(filename))
         logger.debug(f"Loading model weights from '{file}'")
-        with open(file, 'rb') as handle:
+        with open(file, "rb") as handle:
             params: frozendict = pickle.load(handle)
         return params

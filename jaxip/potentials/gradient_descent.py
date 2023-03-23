@@ -77,7 +77,7 @@ class GradientDescentUpdater(Updater):
                 f"Gradient type {settings.gradient_type} is not implemented yet",
                 exception=TypeError,
             )
-        # TODO: either as a single but global optimizer or multiple optimizers:
+        # Single global optimizer or multiple optimizers:
         # return {element: optimizer for element in self.elements}
 
     def _init_train_state(self) -> Dict[Element, TrainState]:
@@ -97,9 +97,6 @@ class GradientDescentUpdater(Updater):
 
     def fit(self, dataset: StructureDataset, **kwargs):
         """Train potential."""
-        # TODO: add writer and tensorboard
-        # TODO: add data loader: batch_size, shuffle, train/val split, etc.
-
         batch_size: int = kwargs.get("batch_size", 1)
         steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))
         epochs: int = kwargs.get("epochs", 10)
@@ -161,7 +158,6 @@ class GradientDescentUpdater(Updater):
 
         def loss_fn(params: Dict[Element, frozendict]) -> Tuple[Array, Any]:
             """Loss function."""
-            # TODO: define force loss weights for each element
             xbatch, ybatch = batch
             batch_size = len(xbatch)
 
@@ -222,7 +218,6 @@ class GradientDescentUpdater(Updater):
             for element in states.keys()
         }
 
-        # TODO: add more metrics for force
         metrics = {
             "loss": loss,
             "loss_energy": loss_energy,

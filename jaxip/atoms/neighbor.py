@@ -60,7 +60,6 @@ class Neighbor(_BaseJaxPytreeDataClass):
             Further adjustments can be added regarding the neighbor list updating methods.
             But for time being the mask-based approach works well on `JAX`.
         """
-        # TODO: optimize updating the neighbor list, for example using the cell mesh, bin atoms (miniMD), etc.
         if self.r_cutoff is None:
             logger.debug("Skipped updating the neighbor list (no cutoff radius)")
             return

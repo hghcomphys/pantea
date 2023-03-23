@@ -29,7 +29,6 @@ class RunnerStructureDataset(StructureDataset):
         filename: Path,
         persist: bool = False,
         transform: Optional[Transformer] = None,
-        # TODO: download: bool = False,
     ) -> None:
         """
         Initialize the `RuNNer`_ structure dataset.
@@ -65,7 +64,6 @@ class RunnerStructureDataset(StructureDataset):
         This is a lazy call which means that only required section
         of data is loaded from the file into the memory.
         """
-        # TODO: Multiple-indexing
         # if isinstance(index, list):
         #     return [self._read_cache(idx) for idx in index]
         return self._read_from_cache(index)

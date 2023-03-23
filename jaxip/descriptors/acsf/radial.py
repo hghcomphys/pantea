@@ -13,10 +13,6 @@ from jaxip.types import Array
 class RadialSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
     """A base class for `two body` (radial) symmetry functions."""
 
-    # TODO: define generic **params input arguments in the base class?
-    # TODO: define a internal cutoff radius
-    # TODO: add other variant of radial symmetry functions.
-    # TODO: add logging when initializing each symmetry function.
     @abstractmethod
     def __call__(self, rij: Array) -> Array:
         ...

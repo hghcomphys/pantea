@@ -53,7 +53,6 @@ def _energy_fn(
     A helper function that allows to calculate gradient of the NNP total energy
     respect to the atom positions (for each element).
     """
-    # TODO: using jax.lax.scan?
     elements: list[Element] = list(inputs.keys())
     total_energy: Array = jnp.array(0.0)
     for element in elements:

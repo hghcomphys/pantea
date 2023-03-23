@@ -287,7 +287,6 @@ class RuNNerAdaptorForLAMMPS(RunnerAdaptor):
                 line = next(in_file)
                 number_of_atoms = int(line.split()[0])
                 # read cell sizes
-                # TODO: read non-orthogonal cell in lammps
                 cell = []
                 line = next(in_file)
                 for n in range(9):

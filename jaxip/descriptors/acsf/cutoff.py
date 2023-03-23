@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
+
 from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
 from jaxip.types import Array
@@ -20,9 +21,6 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
     .. _`cutoff function`: https://compphysvienna.github.io/n2p2/api/cutoff_functions.html?highlight=cutoff#
     .. _`cutoff type`: https://compphysvienna.github.io/n2p2/topics/keywords.html?highlight=cutoff_type
     """
-
-    # TODO: add logger
-    # TODO: add poly 3 & 4 functions
 
     r_cutoff: float
     cutoff_type: str = "tanh"

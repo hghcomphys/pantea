@@ -18,7 +18,6 @@ potential_file = Path("tests", "h2o.json")
 
 class TestNeuralNetworkPotential:
 
-    # TODO: add more tests
     dataset = RunnerStructureDataset(dataset_file)
     nnp = NeuralNetworkPotential(PotentialSettings.from_json(potential_file))  # type: ignore
 

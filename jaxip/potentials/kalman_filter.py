@@ -62,7 +62,6 @@ class KalmanFilterUpdater(Updater):
     def _init_matrices(self) -> None:
         """Initialize required matrices."""
         model_params: Dict[str, frozendict] = self.potential.model_params
-        # TODO: add dtype
 
         # Initialize state vector
         W, tree_unflatten = flatten_util.ravel_pytree(model_params)  # type: ignore

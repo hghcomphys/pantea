@@ -165,9 +165,7 @@ class NeuralNetworkPotential:
         for element in settings.elements:
             descriptor[element] = ACSF(element)
         # Add symmetry functions
-        logger.debug(
-            "Registering symmetry functions (radial and angular)"
-        )  # TODO: move logging inside .add() method
+        logger.debug("Registering symmetry functions (radial and angular)")
 
         for args in settings.symfunction_short:
             if args.acsf_type == 1:
@@ -248,9 +246,10 @@ class NeuralNetworkPotential:
         logger.info("Initializing neural network models")
         model: Dict[Element, NeuralNetworkModel] = dict()
         settings = self.settings
+
         for element in settings.elements:
             logger.debug(f"Element: {element}")
-            # TODO: what if we have a different model architecture for each element
+
             hidden_layers = zip(
                 settings.global_nodes_short,
                 settings.global_activation_short[:-1],
@@ -332,10 +331,6 @@ class NeuralNetworkPotential:
         """
         Fit energy model for all elements using the input structure loader.
         """
-        # TODO: avoid reading and calculating descriptor multiple times
-        # TODO: define a dataloader specific to energy and force data (shuffle, train & test split)
-        # TODO: add validation output (MSE separate for force and energy)
-
         # kwargs["validation_split"] = kwargs.get(
         #     "validation_split", self.settings.test_fraction
         # )

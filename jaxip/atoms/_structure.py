@@ -16,7 +16,6 @@ def _calculate_distance_per_atom(
     lattice: Optional[Array] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Calculate an array of distances between a single atom and neighboring atoms."""
-    # TODO: input pbc flag, using default pbc from global configuration
     dx = atom_position - neighbor_position
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)

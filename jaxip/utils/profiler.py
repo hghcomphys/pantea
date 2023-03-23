@@ -22,9 +22,6 @@ class Profiler:
         2) use context manager to collect stats from the region of interest
     """
 
-    # TODO: testing multi-thread applications
-    # TODO: no support for multi-process
-
     def __init__(self, name: str = "Profiler", sort_by: str = "cumtime") -> None:
         logger.debug(
             f"An instance of {self.__class__.__name__} object has been initialized"

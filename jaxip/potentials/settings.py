@@ -15,8 +15,6 @@ from jaxip.utils.tokenize import tokenize
 class RadialSymFuncArgs(NamedTuple):
     """Symmetry function arguments."""
 
-    # TODO: add description for each attribute
-    # it can be added as docstring after each attribute
     central_element: str
     acsf_type: int
     neighbor_element_j: str
@@ -28,7 +26,6 @@ class RadialSymFuncArgs(NamedTuple):
 class AngularSymFuncArgs(NamedTuple):
     """Symmetry function arguments."""
 
-    # TODO: add description for attributes
     central_element: str
     acsf_type: int
     neighbor_element_j: str
@@ -51,7 +48,6 @@ cutoff_function_map: Mapping[str, str] = {
     "4": "exp",
     "5": "poly1",
     "6": "poly2",
-    # TODO: poly 3 & 4
 }
 
 scaler_type_map: Mapping[str, str] = {
@@ -91,7 +87,6 @@ class PotentialSettings(_CFG):
     It contains a collections of all potential setting keywords and their default values.
     """
 
-    # TODO: add docstring for each attribute
     # sphinx-pydantic can be useful to better document pydantic classes
     # https://pypi.org/project/autodoc-pydantic/0.1.1/
 
@@ -173,7 +168,7 @@ class PotentialSettings(_CFG):
         Parameters such as `elements`, `cutoff type`, `symmetry functions`, `neural network`, `training parameters`, etc
         (see `here <https://compphysvienna.github.io/n2p2/topics/keywords.html>`_).
         """
-        # TODO: DRY, read keyword with map lambda function
+
         logger.info(f"Reading potential settings: {str(filename)}")
         dict_ = cls._read_from(filename)
         kwargs: Dict[str, Any] = dict()

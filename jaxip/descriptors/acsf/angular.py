@@ -13,8 +13,6 @@ from jaxip.types import Array
 class AngularSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
     """A base class for `three body` (angular) symmetry functions."""
 
-    # TODO: add other variant of angular symmetry functions (see N2P2 documentation).
-
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()

@@ -67,7 +67,6 @@ class ACSF(Descriptor):
 
     element: str
     # Here we use hashable tuple instead of list due to JIT compilation
-    # FIXME: set radial and angular attribute as dynamic JIT arguments
     radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
     angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
 
@@ -170,7 +169,6 @@ class ACSF(Descriptor):
                 ValueError,
             )
 
-        # TODO: extend it to multiple atom indices
         return _calculate_grad_descriptor_per_atom(
             self,
             structure.position[

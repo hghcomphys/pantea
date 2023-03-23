@@ -22,7 +22,6 @@ def compare(
     :param return_difference: whether return energy and force array differences or not, defaults to False
     :return: a dictionary of error metrics.
     """
-    # TODO: add charge, total_charge
     assert all(
         structure1.atom_type == structure2.atom_type
     ), "Expected similar structures with the same atom types."
@@ -34,7 +33,6 @@ def compare(
     print(f"Comparing two structures, error metrics: {', '.join(errors)}")
     errors = [x.lower() for x in errors]
 
-    # TODO: use metric classes
     if "rmse" in errors:
         result["force_RMSE"] = jnp.sqrt(jnp.mean(frc_diff**2))
         result["energy_RMSE"] = jnp.sqrt(jnp.mean(eng_diff**2))
