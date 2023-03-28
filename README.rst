@@ -92,6 +92,9 @@ than traditional interatomic potential models.
 
 Training a potential
 --------------------
+
+.. image:: images/flowchart.drawio.png
+
 Here's steps involved in using ab initio reference data to train a ML potential:
 
 1. Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
