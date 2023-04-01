@@ -22,19 +22,17 @@ JAXIP
 
 Description
 -----------
-JAXIP is an optimized Python library on basis of `JAX`_ that helps 
-in the development of emerging machine learning interatomic potentials 
-for use in computational physics, chemistry, material science. These potentials are necessary for conducting 
-large-scale molecular dynamics simulations of complex materials at the atomic level with ab initio accuracy.
-
-JAXIP is designed to *develop* potentials for use in molecular dynamics simulations, 
-rather than a package for *performing* the simulations themselves.
-
+JAXIP is an optimized Python library on basis of `JAX`_ that enables 
+development of emerging machine learning interatomic potentials 
+for use in computational physics, chemistry, material science. 
+These potentials are necessary for conducting large-scale molecular 
+dynamics simulations of complex materials with ab initio accuracy.
 
 .. _JAX: https://github.com/google/jax
 
 
 Documentation: https://jaxip.readthedocs.io.
+
 
 Main features
 -------------
@@ -43,39 +41,55 @@ Main features
 * JAXIP is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
-.. note::
+.. warning::
         This package is under heavy development and the current focus is on the implementation of high-dimensional 
         neural network potential (HDNNP) proposed by Behler et al. 
         (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
 
 
-Machine learning interatomic potential
---------------------------------------
-Ab initio methods (e.g., density functional theory) provide accurate predictions of 
-the electronic structure and energy of molecules, 
+Installation
+------------
+To install JAXIP, run this command in your terminal:
+
+.. code-block:: console
+
+    $ pip install jaxip
+
+For machines with an NVIDIA **GPU** please follow 
+`instructions <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
+given on the documentation. 
+
+
+Basics of ML potentials
+-----------------------
+
+.. image:: images/flowchart.drawio.png
+
+Ab initio methods provide accurate predictions of the electronic structure and energy of molecules, 
 but they are computationally expensive and limited to small systems. 
-On the other hand, molecular dynamics simulations require an accurate interatomic potential to describe 
+On the other hand, molecular dynamics (MD) simulations require an accurate interatomic potential to describe 
 the interactions between atoms and enable simulation of larger systems over longer timescales. 
-To overcome this limitation, data-intensive approach using Machine learning methods is 
+To overcome this limitation, data-intensive approach using Machine learning (ML) methods is 
 beginning to emerge as a different paradigm. 
-Machine learning-based interatomic potentials can provide an accurate and efficient alternative 
-to ab initio calculations for molecular dynamics simulations.
-To construct an ML-based interatomic potential, 
-one can collect a dataset of atomic positions and corresponding energies or forces from ab initio calculations. 
-This dataset can then be used to train an ML model, such as a neural network, to predict the energy or 
+
+Machine learning-based potentials are shown to provide an accurate and efficient alternative 
+to ab initio calculations for MD simulations.
+To construct such potentials, 
+one can collect a dataset of atomic positions and corresponding energies or forces 
+from ab initio calculations (e.g., density functional theory). 
+This dataset can then be used to train an ML model, for example a neural network, to predict the energy or 
 forces for a given set of atomic positions. The accuracy of the ML model can be validated by comparing its 
 predictions to the ab initio reference data.
-
-After the ML potential has been trained and validated, 
+After an ML potential has been trained and validated, 
 it becomes possible to use it in molecular dynamics simulations of larger systems 
 far beyond what is possible with direct ab initio molecular dynamics. 
-Training ML-based interatomic potentials with ab initio reference data offers an 
-accurate and computationally efficient technique for performing large-scale simulations.
+Training ML potentials with ab initio reference data offers an 
+**accurate** and computationally **efficient** technique for performing large-scale simulations.
 
 
-Atomic environment descriptor
------------------------------
-Direct atomic positions are not suitable for machine learning-based interatomic potentials 
+What is atomic descriptor?
+==========================
+Direct atomic positions are not suitable for machine learning potentials 
 because they are not invariant under translation, rotation, and permutation. 
 Translation refers to moving the entire system in space, rotation refers to rotating the system around an axis, 
 and permutation refers to exchanging the positions of two or more atoms in the system.
@@ -90,12 +104,10 @@ properties and their interactions in a more efficient and accurate way
 than traditional interatomic potential models.
 
 
-Training a potential
---------------------
-
-.. image:: images/flowchart.drawio.png
-
-Here's steps involved in using ab initio reference data to train a ML potential:
+Training
+========
+Proper training can ensure that a potential accurately captures the material's properties.
+Below lists illustrates example involved steps in using ab initio reference data to train an ML potential:
 
 1. Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
 
@@ -119,7 +131,7 @@ Examples
 Defining an atomic descriptor
 -----------------------------
 The following example shows how to create an array of `atomic-centered symmetry functions`
-(`ACSF`_) for a specific element. 
+(`ACSF`_) for an element. 
 This descriptor can be applied to a given structure to produce the 
 descriptor values that are required to build machine learning potentials.
 
