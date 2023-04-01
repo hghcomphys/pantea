@@ -6,7 +6,6 @@
 JAXIP
 =====
 
-
 **JAX-based Interatomic Potential**
 
 .. image:: https://img.shields.io/pypi/v/jaxip.svg
@@ -55,9 +54,9 @@ To install JAXIP, run this command in your terminal:
 
     $ pip install jaxip
 
-For machines with an NVIDIA **GPU** please follow 
+For machines with an NVIDIA **GPU** please follow installation
 `instructions <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
-given on the documentation. 
+on the documentation. 
 
 
 Basics of ML potentials
@@ -166,7 +165,6 @@ descriptor values that are required to build machine learning potentials.
 -------------------------------------
 Training a machine learning potential
 -------------------------------------
-
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
 The trained potential can then be used to evaluate the energy and force components for new structures.
@@ -204,24 +202,5 @@ The trained potential can then be used to evaluate the energy and force componen
 License
 -------
 
-.. _license-file: LICENSE
-
 This project is licensed under the GNU General Public License (GPL) version 3 - 
 see the LICENSE file for details.
-
-.. The GPL v3 is a free software license that allows users to share and modify the software, 
-.. as long as the original copyright notice and license are included and the modified versions 
-.. are marked as such. The GPL v3 also requires that users receive the source code or have the 
-.. ability to obtain it, and that they are made aware of their rights under the license.
-
-.. For more information about the GPL v3 license, please see the full text of the license in the "LICENSE" file.
-
-
-
-.. Credits
-.. -------
-
-.. This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. .. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
