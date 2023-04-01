@@ -86,8 +86,9 @@ Training ML potentials with ab initio reference data offers an
 **accurate** and computationally **efficient** technique for performing large-scale simulations.
 
 
+--------------------------
 What is atomic descriptor?
-==========================
+--------------------------
 Direct atomic positions are not suitable for machine learning potentials 
 because they are not invariant under translation, rotation, and permutation. 
 Translation refers to moving the entire system in space, rotation refers to rotating the system around an axis, 
@@ -102,9 +103,9 @@ This enables ML model to learn the complex relationships between atomic
 properties and their interactions in a more efficient and accurate way 
 than traditional interatomic potential models.
 
-
+--------
 Training
-========
+--------
 Proper training can ensure that a potential accurately captures the material's properties.
 Below lists illustrates example involved steps in using ab initio reference data to train an ML potential:
 
@@ -129,6 +130,7 @@ Examples
 -----------------------------
 Defining an atomic descriptor
 -----------------------------
+
 The following example shows how to create an array of `atomic-centered symmetry functions`
 (`ACSF`_) for an element. 
 This descriptor can be applied to a given structure to produce the 
