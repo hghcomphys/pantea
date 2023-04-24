@@ -1,14 +1,13 @@
+from jaxip.types import dtype as _dtype
+from jaxip.atoms.structure import Structure
+import pytest
+import jax.numpy as jnp
 import os
 from typing import Any, Dict, Tuple
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
-import jax.numpy as jnp
-import pytest
-
-from jaxip.atoms.structure import Structure
-from jaxip.types import dtype as _dtype
 
 LJ_DATA: Dict[str, Any] = {
     "position": [[0.0, 0.0, 0.0], [0.583123772, 0.583123772, 0.583123772]],
@@ -96,8 +95,9 @@ H2O_DATA: Dict[str, Any] = {
 
 
 class TestStructure:
-
-    lj: Structure = Structure.create_from_dict(LJ_DATA, dtype=jnp.float32)  # type: ignore
+    lj: Structure = Structure.create_from_dict(
+        LJ_DATA, dtype=jnp.float32
+    )  # type: ignore
     h2o: Structure = Structure.create_from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
         ["position", "force", "energy", "total_energy", "charge", "total_charge"]

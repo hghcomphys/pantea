@@ -32,6 +32,10 @@ def _calculate_distance_per_atom(
 
 _vmap_calculate_distance = jax.vmap(
     _calculate_distance_per_atom,
+
+
+
+
     in_axes=(0, None, None),
 )
 
