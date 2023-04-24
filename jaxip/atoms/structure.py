@@ -113,7 +113,7 @@ class Structure(_BaseJaxPytreeDataClass):
 
         except KeyError:
             logger.error(
-                f"Cannot find at least one of the expected keyword in the input data.",
+                "Cannot find at least one of the expected keyword in the input data.",
                 exception=KeyError,
             )
         return cls(**kwargs)
