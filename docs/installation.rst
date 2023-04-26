@@ -11,7 +11,7 @@ Requirements
 .. * `JAX`_: An `Autograd` and `XLA` framework for high-performance numerical computing
 
 `JAX`_ is the core of this package and its installation is necessary to use it.
-The CPU version of JAX is included, as dependency, in the default installation of JAXIP.
+The CPU version of JAX is included, as dependency, in the default installation of Jaxip.
 
 For machines with an NVIDIA **GPU**, it is recommended to install JAX separately 
 via `Conda` using the following command (only Linux users):
@@ -30,13 +30,13 @@ Please refer to the `JAX Install Guide`_ for full installation instructions.
 Stable release
 --------------
 
-To install JAXIP, run this command in your terminal:
+To install Jaxip, run this command in your terminal:
 
 .. code-block:: console
 
     $ pip install jaxip
 
-This is the preferred method to install JAXIP, as it will always install the most recent stable release.
+This is the preferred method to install Jaxip, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
@@ -48,7 +48,7 @@ you through the process.
 From sources
 ------------
 
-The sources for JAXIP can be downloaded from the `Github repo`_.
+The sources for Jaxip can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 

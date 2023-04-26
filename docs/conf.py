@@ -79,7 +79,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "JAXIP"
+project = "Jaxip"
 copyright = "2022, Hossein Ghorbanfekr"
 author = "Hossein Ghorbanfekr"
 
@@ -161,7 +161,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "jaxip.tex", "JAXIP Documentation", "Hossein Ghorbanfekr", "manual"),
+    (master_doc, "jaxip.tex", "Jaxip Documentation", "Hossein Ghorbanfekr", "manual"),
 ]
 
 
@@ -169,7 +169,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "jaxip", "JAXIP Documentation", [author], 1)]
+man_pages = [(master_doc, "jaxip", "Jaxip Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------
@@ -181,7 +181,7 @@ texinfo_documents = [
     (
         master_doc,
         "jaxip",
-        "JAXIP Documentation",
+        "Jaxip Documentation",
         author,
         "jaxip",
         "One line description of project.",
@@ -207,10 +207,7 @@ if os.path.exists(notebooks_dir):
     shutil.rmtree(notebooks_dir)
 os.makedirs(notebooks_dir, exist_ok=True)
 
-for filename in (
-    "tutorials.ipynb",
-    "train_potential.ipynb"
-):
+for filename in ("tutorials.ipynb", "train_potential.ipynb"):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),
         os.path.join(curdir, "notebooks", filename),

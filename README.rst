@@ -3,7 +3,7 @@
 ..         :alt: logo
         
 =====
-JAXIP
+Jaxip
 =====
 
 **JAX-based Interatomic Potential**
@@ -21,7 +21,7 @@ JAXIP
 
 Description
 -----------
-JAXIP is an optimized Python library on basis of `JAX`_ that enables 
+Jaxip is an optimized Python library on basis of `JAX`_ that enables 
 development of emerging machine learning interatomic potentials 
 for use in computational physics, chemistry, material science. 
 These potentials are necessary for conducting large-scale molecular 
@@ -35,9 +35,9 @@ Documentation: https://jaxip.readthedocs.io.
 
 Main features
 -------------
-* The design of JAXIP is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
+* The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
 * It uses `autograd` to make defining new descriptors straightforward
-* JAXIP is written purely in Python and optimized with `just-in-time` (JIT) compilation.
+* Jaxip is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
 .. warning::
@@ -48,7 +48,7 @@ Main features
 
 Installation
 ------------
-To install JAXIP, run this command in your terminal:
+To install Jaxip, run this command in your terminal:
 
 .. code-block:: console
 

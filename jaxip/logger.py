@@ -13,7 +13,7 @@ class Logger:
     """
 
     def __init__(self, level=logging.WARNING, filename=None) -> None:
-        self.logger: Logger = logging.getLogger("JAXIP")  # type: ignore
+        self.logger: Logger = logging.getLogger("Jaxip")  # type: ignore
         self.level: int = level
         self.handlers = list()
 
@@ -28,7 +28,7 @@ class Logger:
         # Avoiding matplotlib debug messages
         logging.getLogger("matplotlib").setLevel(logging.ERROR)
         logging.getLogger("matplotlib.font_manager").disabled = True
-        logging.getLogger('jax').setLevel(logging.WARNING)
+        logging.getLogger("jax").setLevel(logging.WARNING)
 
     def set_level(self, level) -> None:
         """

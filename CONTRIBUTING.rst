@@ -38,8 +38,8 @@ and "help wanted" is open to whoever wants to implement it.
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-JAXIP could always use more documentation, whether as part of the
-official JAXIP docs, in docstrings, or even on the web in blog posts,
+Jaxip could always use more documentation, whether as part of the
+official Jaxip docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 Submit Feedback

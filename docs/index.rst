@@ -1,4 +1,4 @@
-Welcome to JAXIP's documentation!
+Welcome to Jaxip's documentation!
 ======================================
 
 
