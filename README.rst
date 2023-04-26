@@ -62,7 +62,10 @@ on the documentation.
 Basics of ML potentials
 -----------------------
 
-.. image:: images/flowchart.drawio.png
+.. image:: https://github.com/hghcomphys/jaxip/raw/main/docs/images/flowchart.drawio.png
+    :alt: workflow
+    :class: with-shadow
+    :name: An illustration of ML-potential workflow for the training and prediction.
 
 Ab initio methods provide accurate predictions of the electronic structure and energy of molecules, 
 but they are computationally expensive and limited to small systems. 
