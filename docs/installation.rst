@@ -18,7 +18,7 @@ via `Conda` using the following command (only Linux users):
 
 .. code-block:: bash
 
-    $ conda install jax cuda-nvcc -c conda-forge -c nvidia
+    $ conda install jaxlib=*=*cuda* jax cuda-nvcc -c conda-forge -c nvidia
 
 Please refer to the `JAX Install Guide`_ for full installation instructions.
 
