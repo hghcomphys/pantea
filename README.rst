@@ -3,7 +3,7 @@
 ..         :alt: logo
         
 =====
-Jaxip
+JAXIP
 =====
 
 **JAX-based Interatomic Potential**
@@ -65,7 +65,7 @@ Basics of ML potentials
 .. image:: https://github.com/hghcomphys/jaxip/raw/main/docs/images/flowchart.drawio.png
     :alt: workflow
     :class: with-shadow
-    :name: An illustration of ML-potential workflow for the training and prediction.
+    :name: An illustration of ML-potential workflow in training and prediction modes.
 
 Ab initio methods provide accurate predictions of the electronic structure and energy of molecules, 
 but they are computationally expensive and limited to small systems. 
@@ -75,10 +75,11 @@ To overcome this limitation, data-intensive approach using Machine learning (ML)
 beginning to emerge as a different paradigm. 
 
 Machine learning-based potentials are shown to provide an accurate and efficient alternative 
-to ab initio calculations for MD simulations.
+to ab initio calculations for MD simulations
+Behler et al. (`2021 <https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868>`_).
 To construct such potentials, 
 one can collect a dataset of atomic positions and corresponding energies or forces 
-from ab initio calculations (e.g., density functional theory). 
+from ab initio calculations. 
 This dataset can then be used to train an ML model, for example a neural network, to predict the energy or 
 forces for a given set of atomic positions. The accuracy of the ML model can be validated by comparing its 
 predictions to the ab initio reference data.
@@ -112,19 +113,19 @@ Training
 Proper training can ensure that a potential accurately captures the material's properties.
 Below lists illustrates example involved steps in using ab initio reference data to train an ML potential:
 
-1. Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
+    1. Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
 
-2. Select and calculate descriptor values for all atoms in the dataset.
+    2. Select and calculate descriptor values for all atoms in the dataset.
 
-3. Split the dataset into training, validation, and testing sets.
+    3. Split the dataset into training, validation, and testing sets.
 
-4. Define the architecture of the potential and relevant parameters.
+    4. Define the architecture of the potential and relevant parameters.
 
-5. Train the neural network potential on the training set using the input descriptors and the target energy and force values.
+    5. Train the neural network potential on the training set using the input descriptors and the target energy and force values.
 
-6. Validate the accuracy of the ML potential on the validation set by comparing its predictions to the DFT reference data.
+    6. Validate the accuracy of the ML potential on the validation set by comparing its predictions to the DFT reference data.
 
-7. Use the trained potential to perform molecular dynamics simulations of larger systems.
+    7. Use the trained potential to perform molecular dynamics simulations of larger systems.
 
 
 Examples
