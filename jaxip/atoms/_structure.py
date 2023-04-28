@@ -14,7 +14,7 @@ def _calculate_distance_per_atom(
     atom_position: Array,
     neighbor_position: Array,
     lattice: Optional[Array] = None,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+) -> Tuple[Array, Array]:
     """Calculate an array of distances between a single atom and neighboring atoms."""
     dx = atom_position - neighbor_position
     if lattice is not None:
@@ -32,10 +32,6 @@ def _calculate_distance_per_atom(
 
 _vmap_calculate_distance = jax.vmap(
     _calculate_distance_per_atom,
-
-
-
-
     in_axes=(0, None, None),
 )
 

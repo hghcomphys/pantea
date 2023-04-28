@@ -7,4 +7,4 @@ def _version_as_tuple(version_str):
 
 __version__ = "0.5.4"
 
-__version_info__ = _version_as_tuple(__version__)
+__version_info__: tuple[int, ...] = _version_as_tuple(__version__)

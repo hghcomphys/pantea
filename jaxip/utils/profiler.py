@@ -82,10 +82,10 @@ class Profiler:
 
         return wrapper
 
-    def get_dataframe(self):  # -> pd.DataFrame:
+    def get_dataframe(self) -> pd.DataFrame:
         """Return a dataframe representation of profiler statistics."""
         if len(self.stats) == 0:
-            return None
+            pd.DataFrame({})
 
         df = defaultdict(list)
         for func, stats in self.stats.items():
@@ -95,10 +95,9 @@ class Profiler:
         return pd.DataFrame(df).sort_values(self.sort_by, ascending=False)
 
     def __repr__(self) -> str:
-        df_ = self.get_dataframe()
+        df_: pd.DataFrame = self.get_dataframe()
         if df_ is not None:
             return f"Profiler statistics:\n{df_.to_string()}"
-        return ""
 
 
 class Timer:

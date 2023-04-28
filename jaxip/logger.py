@@ -4,8 +4,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
-import jaxip
-
 
 class Logger:
     """
@@ -105,7 +103,7 @@ class LoggingContextManager:
     (e.g. INFO or DEBUG) for a particular section of the scripts.
     """
 
-    def __init__(self, level):
+    def __init__(self, level) -> None:
         self.level = level
         self.current_level = None
 

@@ -4,7 +4,10 @@ from typing import Generator
 from jaxip.types import Array
 
 
-def create_batch(array: Array, batch_size: int) -> Generator[Array, None, None]:
+def create_batch(
+    array: Array,
+    batch_size: int,
+) -> Generator[Array, None, None]:
     """
     Create baches of the input array.
 
@@ -15,6 +18,6 @@ def create_batch(array: Array, batch_size: int) -> Generator[Array, None, None]:
     :yield: a batch of input array
     :rtype: Generator[Array, None, None]
     """
-    n_batches = int(math.ceil(len(array) / batch_size))
+    n_batches = int(math.ceil(len(array) / batch_size))  # type: ignore
     for i in range(n_batches):
         yield array[i * batch_size : (i + 1) * batch_size, ...]  # type: ignore
