@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -16,7 +16,7 @@ def _calculate_distance_per_atom(
     lattice: Optional[Array] = None,
 ) -> Tuple[Array, Array]:
     """Calculate an array of distances between a single atom and neighboring atoms."""
-    dx = atom_position - neighbor_position
+    dx: Array = atom_position - neighbor_position
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
 
@@ -27,10 +27,10 @@ def _calculate_distance_per_atom(
     dist = jnp.linalg.norm(dx_, ord=2, axis=1)
     dist = jnp.where(jnp.squeeze(is_zero), 0.0, dist)
 
-    return dist, dx
+    return dist, dx  # type: ignore
 
 
-_vmap_calculate_distance = jax.vmap(
+_vmap_calculate_distance: Callable = jax.vmap(
     _calculate_distance_per_atom,
     in_axes=(0, None, None),
 )

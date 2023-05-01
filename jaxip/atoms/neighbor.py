@@ -12,7 +12,7 @@ from jaxip.types import Array
 @dataclass
 class Neighbor(_BaseJaxPytreeDataClass):
     """
-    Neighbor creates a neighbor list of atoms for an input structure
+    Create a neighbor list of atoms for an input structure
     and it is by design independent of `Structure`.
 
     .. note::

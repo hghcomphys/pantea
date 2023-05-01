@@ -9,11 +9,7 @@ def _calculate_cutoff_mask_per_atom(
     rij: Array,
     r_cutoff: Array,
 ) -> Array:
-    """
-    Calculate a mask (boolean array) of neighboring atoms for a single atom.
-    It excludes zero-distance atoms.
-    """
-    # mask atoms only inside the cutoff radius and excluding self-counting
+    """Create mask (boolean array) of atoms inside the cutoff radius and excluding self-counting."""
     return (rij <= r_cutoff) & (rij != 0.0)
 
 
