@@ -1,4 +1,4 @@
 .. toctree::
 
    notebooks/tutorials.ipynb
-   notebooks/potential_trainingmake.ipynb
+   notebooks/potential_training.ipynb
