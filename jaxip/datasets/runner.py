@@ -11,12 +11,12 @@ from jaxip.logger import logger
 from jaxip.utils.tokenize import tokenize
 
 
-class RunnerStructureDataset(StructureDataset):
+class RunnerDataset(StructureDataset):
     """
     Structure dataset for `RuNNer`_ data file format.
 
     The input structure file contains atom info and simulation box.
-    Each snapshot includes per-atom and collective properties as follows:
+    Each snapshot contains two per-atom and collective properties as follows:
 
     * `per-atom` properties include the element name, positions, energy, charge, force components, etc.
     * `collective` properties such as lattice, total energy, and total charge.
@@ -43,17 +43,15 @@ class RunnerStructureDataset(StructureDataset):
         """
         self.filename: Path = Path(filename)
         self.persist: bool = persist
-        self.transform: Transformer = (
-            transform if transform is not None else ToStructure()
-        )
+        self.transform: Transformer = ToStructure() if transform is None else transform
         self._cached_structures: Dict[int, Structure] = dict()
-        self._current_index: int = 0  # used only for direct iteration
+        self._current_index: int = 0
 
     def __len__(self) -> int:
         """Return number of structures."""
         num_structures: int = 0
         with open(str(self.filename), "r") as file:
-            while self._ignore(file):
+            while self._ignore_next_structure(file):
                 num_structures += 1
         return num_structures
 
@@ -64,16 +62,17 @@ class RunnerStructureDataset(StructureDataset):
         This is a lazy call which means that only required section
         of data is loaded from the file into the memory.
         """
-        # if isinstance(index, list):
-        #     return [self._read_cache(idx) for idx in index]
         return self._read_from_cache(index)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(filename='{str(self.filename)}', transform={self.transform})"
+        return (
+            f"{self.__class__.__name__}"
+            f"(filename='{str(self.filename)}', transform={self.transform})"
+        )
 
     # ----------------------------------------------
 
-    def _read_raw(self, file: TextIO) -> Optional[Dict[str, List]]:
+    def _read_next_structure(self, file: TextIO) -> Dict[str, List]:
         """
         Read the next structure from the input file.
 
@@ -82,32 +81,31 @@ class RunnerStructureDataset(StructureDataset):
         :return: a sample of thr dataset
         :rtype: Dict
         """
-        dict_data: DefaultDict = defaultdict(list)
+        data: DefaultDict = defaultdict(list)
         while True:
-            line = file.readline()
+            line: str = file.readline()
             if not line:
-                return None
-            # Read keyword and values
+                break
             keyword, tokens = tokenize(line)
             if keyword == "atom":
-                dict_data["position"].append([float(t) for t in tokens[:3]])
-                dict_data["element"].append(tokens[3])
-                dict_data["charge"].append(float(tokens[4]))
-                dict_data["energy"].append(float(tokens[5]))
-                dict_data["force"].append([float(t) for t in tokens[6:9]])
+                data["position"].append([float(t) for t in tokens[:3]])
+                data["element"].append(tokens[3])
+                data["charge"].append(float(tokens[4]))
+                data["energy"].append(float(tokens[5]))
+                data["force"].append([float(t) for t in tokens[6:9]])
             elif keyword == "lattice":
-                dict_data["lattice"].append([float(t) for t in tokens[:3]])
+                data["lattice"].append([float(t) for t in tokens[:3]])
             elif keyword == "energy":
-                dict_data["total_energy"].append(float(tokens[0]))
+                data["total_energy"].append(float(tokens[0]))
             elif keyword == "charge":
-                dict_data["total_charge"].append(float(tokens[0]))
+                data["total_charge"].append(float(tokens[0]))
             elif keyword == "comment":
-                dict_data["comment"].append(" ".join(line.split()[1:]))
+                data["comment"].append(" ".join(line.split()[1:]))
             elif keyword == "end":
                 break
-        return dict_data
+        return data
 
-    def _ignore(self, file: TextIO) -> bool:
+    def _ignore_next_structure(self, file: TextIO) -> bool:
         """
         Ignore the next structure.
 
@@ -125,7 +123,7 @@ class RunnerStructureDataset(StructureDataset):
                 break
         return True
 
-    def _read(self, index: int) -> Structure:
+    def _read_structure(self, index: int) -> Structure:
         """
         Read the i-th structure from the input file.
 
@@ -137,8 +135,8 @@ class RunnerStructureDataset(StructureDataset):
         logger.debug(f"Reading structure[{index}]")
         with open(str(self.filename), "r") as file:
             for _ in range(index):
-                self._ignore(file)
-            sample = self._read_raw(file)
+                self._ignore_next_structure(file)
+            sample = self._read_next_structure(file)
         return self.transform(sample)
 
     def _read_from_cache(self, index: int) -> Structure:
@@ -151,14 +149,13 @@ class RunnerStructureDataset(StructureDataset):
         :rtype: Any
         """
         if not self.persist:
-            return self._read(index)
+            return self._read_structure(index)
 
         sample: Structure
         if index not in self._cached_structures:
-            sample = self._read(index)
+            sample = self._read_structure(index)
             self._cached_structures[index] = sample
         else:
-            # logger.debug(f"Using cached structure {index}")
             sample = self._cached_structures[index]
 
         return sample
@@ -185,5 +182,5 @@ class RunnerStructureDataset(StructureDataset):
         self._current_index = 0
         raise StopIteration
 
-    def __iter__(self) -> RunnerStructureDataset:
+    def __iter__(self) -> RunnerDataset:
         return self

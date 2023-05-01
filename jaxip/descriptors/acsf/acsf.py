@@ -66,7 +66,6 @@ class ACSF(Descriptor):
     """
 
     element: str
-    # Here we use hashable tuple instead of list due to JIT compilation
     radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
     angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
 
@@ -214,7 +213,7 @@ class ACSF(Descriptor):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
-            f", num_symmetry_functions={self.num_symmetry_functions}"
+            f", symmetry_functions={self.num_symmetry_functions}"
             f", r_cutoff={self.r_cutoff}"
             ")"
         )

@@ -10,7 +10,7 @@ from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
 
-class DescriptorScaler:
+class Scaler:
     """
     Scale descriptor values.
 

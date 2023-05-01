@@ -4,10 +4,10 @@ from frozendict import frozendict
 
 from jaxip.atoms.structure import Structure
 from jaxip.descriptors.base import Descriptor
-from jaxip.descriptors.scaler import DescriptorScaler
+from jaxip.descriptors.scaler import Scaler
 from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_atomic_energy
-from jaxip.types import Array
+from jaxip.types import Array, Element
 
 
 @dataclass(frozen=True)
@@ -20,10 +20,14 @@ class AtomicPotential:
     """
 
     descriptor: Descriptor
-    scaler: DescriptorScaler
+    scaler: Scaler
     model: NeuralNetworkModel
 
-    def apply(self, params: frozendict, structure: Structure) -> Array:
+    def apply(
+        self,
+        params: frozendict,
+        structure: Structure,
+    ) -> Array:
         """
         Calculate model output energy.
         It must be noted model output for each element has no physical meaning.
@@ -34,8 +38,8 @@ class AtomicPotential:
         :param structure: input structure
         :return: model energy output
         """
-        element = self.descriptor.element  # type: ignore
-        aid = structure.select(element)
+        element: Element = self.descriptor.element  # type: ignore
+        aid: Array = structure.select(element)
 
         return _compute_atomic_energy(
             self,

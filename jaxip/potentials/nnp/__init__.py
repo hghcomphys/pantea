@@ -1,7 +1,7 @@
-from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.potential import NeuralNetworkPotential
+from jaxip.potentials.nnp.settings import PotentialSettings
 
 __all__ = [
     "NeuralNetworkPotential",
-    "AtomicPotential",
+    "PotentialSettings",
 ]

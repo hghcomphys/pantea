@@ -20,7 +20,6 @@ class Neighbor(_BaseJaxPytreeDataClass):
         This is usually implemented together with defining a skin radius.
     """
 
-    # Array type attributes must be define first (with type hint)
     mask: Optional[Array] = None
     r_cutoff: Optional[float] = None
     r_cutoff_updated: bool = field(init=False, default=False)

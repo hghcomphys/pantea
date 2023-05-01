@@ -21,7 +21,7 @@ class ErrorMetric(metaclass=ABCMeta):
         self._mse_metric: Callable[..., Array] = mse
 
     @classmethod
-    def create_from(cls, metric_type: str) -> ErrorMetric:
+    def create(cls, metric_type: str) -> ErrorMetric:
         """
         Create the given type of error metric.
 

@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 
 from jaxip.atoms.structure import Structure
-from jaxip.datasets.runner import RunnerStructureDataset
+from jaxip.datasets.runner import RunnerDataset
 
 h2o_filename = Path("tests", "h2o.data")
 H2O_DATA = {
@@ -68,15 +68,12 @@ H2O_DATA = {
 }
 
 
-class TestRunnerStructureDataset:
-
-    h2o: RunnerStructureDataset = RunnerStructureDataset(filename=h2o_filename)
-    h2o_raw: RunnerStructureDataset = RunnerStructureDataset(
+class TestRunnerDataset:
+    h2o: RunnerDataset = RunnerDataset(filename=h2o_filename)
+    h2o_raw: RunnerDataset = RunnerDataset(
         filename=h2o_filename, transform=lambda x: x  # type: ignore
     )
-    h2o_persist: RunnerStructureDataset = RunnerStructureDataset(
-        filename=h2o_filename, persist=True
-    )
+    h2o_persist: RunnerDataset = RunnerDataset(filename=h2o_filename, persist=True)
 
     @pytest.mark.parametrize(
         "dataset",
@@ -86,7 +83,7 @@ class TestRunnerStructureDataset:
     )
     def test_mandatory_methods(
         self,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
     ) -> None:
         getattr(dataset, "__len__")
         getattr(dataset, "__getitem__")
@@ -106,7 +103,7 @@ class TestRunnerStructureDataset:
     )
     def test_general(
         self,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
         assert len(dataset) == expected[0]
@@ -128,7 +125,7 @@ class TestRunnerStructureDataset:
     )
     def test_caching(
         self,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
         assert len(dataset._cached_structures) == expected[0]
@@ -153,7 +150,7 @@ class TestRunnerStructureDataset:
     )
     def test_loading_structure(
         self,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
         structure: Structure = dataset[1]

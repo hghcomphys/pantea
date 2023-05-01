@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
@@ -66,7 +66,6 @@ class Structure(_BaseJaxPytreeDataClass):
     .. _miniMD: https://github.com/Mantevo/miniMD
     """
 
-    # Array type attributes must be define first (with type hint)
     position: Array
     force: Array
     energy: Array
@@ -77,7 +76,7 @@ class Structure(_BaseJaxPytreeDataClass):
     box: Box
     element_map: ElementMap
     neighbor: Neighbor
-    requires_neighbor_update: bool = True
+    requires_neighbor_update: bool = field(default=True)
 
     # --------------------------------------------------------------------------------------
 
@@ -183,7 +182,6 @@ class Structure(_BaseJaxPytreeDataClass):
         """Initialize a dictionary of arrays of atomic attributes from the input data."""
         logger.debug("Allocating arrays for the structure:")
         arrays: Dict[str, Array] = dict()
-
         for atom_attr in Structure._get_atom_attributes():
             try:
                 array: Array
@@ -237,7 +235,7 @@ class Structure(_BaseJaxPytreeDataClass):
         Set cutoff radius of neighbor atoms in the structure.
         This method is useful when having a potential with different cutoff radius.
 
-        Updating of the neighbor list for a new cutoff radius is skipped if it is the same the existing one.
+        Updating of the neighbor list for a new cutoff radius is skipped if it is the same the previous one.
         It's important to note that the Neighbor object in Structure is considered as a buffer and not
         part of the atomic structure data, and it is used for calculating descriptors, potential, etc.
         It is the task of calling classes to prepare the buffer neighbor before using it.

@@ -32,10 +32,10 @@ class Profiler:
         self._walltimer: float = 0.0
         self.stats: Mapping[str, Any] = defaultdict(
             lambda: {
-                "ncalls": 0,  # number of calls
-                "cumtime": 0.0,  # cumulative time
-                "startwt": None,  # start wall time
-                "endwt": 0.0,  # end wall time
+                "number_of_calls": 0,
+                "cumulative_time": 0.0,
+                "star_walltime": None,
+                "end_walltime": 0.0,
             }
         )
 
@@ -67,13 +67,15 @@ class Profiler:
                 retval = func(self, *args, **kwargs)
                 end_time: float = time.perf_counter()
                 func_info: str = f"{self.__class__.__name__}.{func.__name__}"
-                _default_profiler.stats[func_info]["ncalls"] += 1
-                _default_profiler.stats[func_info]["cumtime"] += end_time - start_time
-                if _default_profiler.stats[func_info]["startwt"] is None:
-                    _default_profiler.stats[func_info]["startwt"] = (
+                _default_profiler.stats[func_info]["number_of_calls"] += 1
+                _default_profiler.stats[func_info]["cumulative_time"] += (
+                    end_time - start_time
+                )
+                if _default_profiler.stats[func_info]["start_walltime"] is None:
+                    _default_profiler.stats[func_info]["start_walltime"] = (
                         time.perf_counter() - _default_profiler._walltimer
                     )
-                _default_profiler.stats[func_info]["endwt"] = (
+                _default_profiler.stats[func_info]["end_walltime"] = (
                     time.perf_counter() - _default_profiler._walltimer
                 )
             else:
@@ -120,7 +122,7 @@ class Timer:
         return f"{self.name} (elapsed time {self.elapsed_time:.8f} seconds)"
 
 
-def timer(func):
+def timer(func: Callable):
     """A decorator to measure elapsed time when calling a function."""
     print(func.__name__)
 

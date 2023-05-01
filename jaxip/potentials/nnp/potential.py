@@ -12,12 +12,12 @@ from tqdm import tqdm
 
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.structure import Structure
-from jaxip.datasets.runner import RunnerStructureDataset
+from jaxip.datasets.runner import RunnerDataset
 from jaxip.descriptors.acsf.acsf import ACSF
 from jaxip.descriptors.acsf.angular import G3, G9
 from jaxip.descriptors.acsf.cutoff import CutoffFunction
 from jaxip.descriptors.acsf.radial import G1, G2
-from jaxip.descriptors.scaler import DescriptorScaler
+from jaxip.descriptors.scaler import Scaler
 from jaxip.logger import logger
 from jaxip.models.initializer import UniformInitializer
 from jaxip.models.nn import NeuralNetworkModel
@@ -25,9 +25,9 @@ from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.base import Updater
-from jaxip.potentials.gradient_descent import GradientDescentUpdater
-from jaxip.potentials.kalman_filter import KalmanFilterUpdater
-from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.nnp.gradient_descent import GradientDescentUpdater
+from jaxip.potentials.nnp.kalman_filter import KalmanFilterUpdater
+from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
 
 
@@ -50,14 +50,13 @@ class NeuralNetworkPotential:
         from jaxip.potentials import PotentialSettings
 
         # Method #1 (potential file)
-        nnp1 = NeuralNetworkPotential.create_from("input.nn")
+        nnp1 = NeuralNetworkPotential.create_from_file("input.nn")
 
-        # Method #2 (dictionary of parameters)
+        # Method #2 (json file)
+        nnp3 = NeuralNetworkPotential.create_from_file('h2o.json')
+
+        # Method #3 (dictionary of parameters)
         settings = PotentialSettings(**params_dict)
-        nnp2 = NeuralNetworkPotential(settings)
-
-        # Method #3 (json file)
-        settings = PotentialSettings.from_json('h2o.json')
         nnp3 = NeuralNetworkPotential(settings)
     """
 
@@ -72,14 +71,27 @@ class NeuralNetworkPotential:
     updater: Optional[Updater] = field(default=None, repr=False, init=False)
 
     @classmethod
-    def create_from(cls, potential_file: Path) -> NeuralNetworkPotential:
+    def create_from_file(cls, filename: Path) -> NeuralNetworkPotential:
         """Create an instance of the potential from input file (RuNNer format)."""
         logger.info("Creating potential from input file (RuNNer format)")
-        potential_file = Path(potential_file)
-        settings = PotentialSettings.create_from(potential_file)
+        potfile = Path(filename)
+        suffix: str = potfile.suffix.lower()
+        if ".json" == suffix:
+            logger.info(f"Initializing from json file: {potfile.name}")
+            settings = PotentialSettings.create_from_json(potfile)
+        elif ".nn" == suffix:
+            logger.info(
+                f"Initializing from original RuNNer file format: {potfile.name}"
+            )
+            settings = PotentialSettings.create_from_file(potfile)
+        else:
+            logger.error(
+                f"Unknown potential setting file format: {potfile.name}",
+                exception=TypeError,
+            )
         return NeuralNetworkPotential(
-            settings=settings,
-            output_dir=potential_file.parent,
+            settings=settings,  # type: ignore
+            output_dir=potfile.parent,
         )
 
     def __post_init__(self) -> None:
@@ -127,7 +139,7 @@ class NeuralNetworkPotential:
         """
         logger.info("Initializing atomic potentials")
         descriptor: Dict[Element, ACSF] = self._init_descriptor()
-        scaler: Dict[Element, DescriptorScaler] = self._init_scaler()
+        scaler: Dict[Element, Scaler] = self._init_scaler()
         model: Dict[Element, NeuralNetworkModel] = self._init_model()
         for element in self.settings.elements:
             self.atomic_potential[element] = AtomicPotential(
@@ -220,10 +232,10 @@ class NeuralNetworkPotential:
                 )
         return descriptor
 
-    def _init_scaler(self) -> Dict[Element, DescriptorScaler]:
+    def _init_scaler(self) -> Dict[Element, Scaler]:
         """Initialize descriptor scaler for each element."""
         logger.info("Initializing descriptor scalers")
-        scaler: Dict[Element, DescriptorScaler] = dict()
+        scaler: Dict[Element, Scaler] = dict()
         settings = self.settings
         # Prepare scaler input argument if exist in settings
         scaler_kwargs = {
@@ -238,7 +250,7 @@ class NeuralNetworkPotential:
         logger.debug(f"Scaler kwargs={scaler_kwargs}")
         # Assign an ACSF scaler to each element
         for element in settings.elements:
-            scaler[element] = DescriptorScaler(**scaler_kwargs)
+            scaler[element] = Scaler(**scaler_kwargs)
         return scaler
 
     def _init_model(self) -> Dict[Element, NeuralNetworkModel]:
@@ -310,7 +322,7 @@ class NeuralNetworkPotential:
 
     # ------------------------------------------------------------------------
 
-    def fit_scaler(self, dataset: RunnerStructureDataset) -> None:
+    def fit_scaler(self, dataset: RunnerDataset) -> None:
         """
         Fit scaler parameters for each element using the input structure data.
         No gradient history is required here.
@@ -327,7 +339,7 @@ class NeuralNetworkPotential:
         else:
             print("Done.")
 
-    def fit_model(self, dataset: RunnerStructureDataset) -> Dict:
+    def fit_model(self, dataset: RunnerDataset) -> Dict:
         """
         Fit energy model for all elements using the input structure loader.
         """

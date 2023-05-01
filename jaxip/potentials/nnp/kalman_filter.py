@@ -16,7 +16,7 @@ from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.base import Potential, Updater
-from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
 from jaxip.types import dtype as default_dtype
 

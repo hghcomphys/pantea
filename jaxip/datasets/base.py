@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Protocol
 
 from jaxip.atoms.structure import Structure
 
 
-class StructureDataset(metaclass=ABCMeta):
+class StructureDataset(Protocol):
     """
     A data container for atom data structure.
 
@@ -16,18 +15,14 @@ class StructureDataset(metaclass=ABCMeta):
     * it should be able to cache data via a `persist` input flag.
     """
 
-    @abstractmethod
     def __len__(self) -> int:
         ...
 
-    @abstractmethod
-    def __getitem__(self, index) -> Any:
+    def __getitem__(self, index: int) -> Structure:
         ...
-    
-    @abstractmethod
+
     def __next__(self) -> Structure:
         ...
 
-    @abstractmethod
     def __iter__(self) -> StructureDataset:
         ...

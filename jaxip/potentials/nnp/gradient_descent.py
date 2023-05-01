@@ -20,8 +20,8 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.base import Potential, Updater
-from jaxip.potentials.metrics import ErrorMetric
-from jaxip.potentials.settings import PotentialSettings
+from jaxip.potentials.nnp.metrics import ErrorMetric
+from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
 
 
@@ -48,7 +48,7 @@ class GradientDescentUpdater(Updater):
         """Initialize potential."""
         self.potential: Potential = potential
         self.criterion: Callable[..., Array] = _mse_loss
-        self.error_metric: ErrorMetric = ErrorMetric.create_from(
+        self.error_metric: ErrorMetric = ErrorMetric.create(
             self.potential.settings.main_error_metric
         )
         self._init_parameters()
@@ -106,7 +106,6 @@ class GradientDescentUpdater(Updater):
 
         # Loop over epochs
         for epoch in range(epochs):
-
             print(f"[Epoch {epoch+1} of {epochs}]")
 
             loss_per_epoch: Array = jnp.array(0.0)
@@ -116,7 +115,6 @@ class GradientDescentUpdater(Updater):
 
             # Loop over batches
             for _ in tqdm(range(steps)):
-
                 structures: List[Structure] = random.choices(dataset, k=batch_size)
                 xbatch = tuple(structure.get_inputs() for structure in structures)
                 ybatch = tuple(
@@ -165,7 +163,6 @@ class GradientDescentUpdater(Updater):
             loss_force_per_batch: Array = jnp.array(0.0)
 
             for inputs, (true_energy, true_forces) in zip(xbatch, ybatch):
-
                 positions = {
                     element: input.atom_position for element, input in inputs.items()
                 }

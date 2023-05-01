@@ -1,13 +1,13 @@
 import pickle
 from dataclasses import field
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict
 
 from jaxip.logger import logger
-from jaxip.models.activation import activation_function
+from jaxip.models.activation import _activation_function_map
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
@@ -15,10 +15,9 @@ from jaxip.types import dtype as _dtype
 class NeuralNetworkModel(nn.Module):
     """Neural network model that outputs energy."""
 
-    # input_size: int
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "identity")
-    param_dtype: Optional[Dtype] = field(default_factory=lambda: _dtype.FLOATX)
+    param_dtype: Dtype = field(default_factory=lambda: _dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
     # bias_initializer: Callable = nn.initializers.zeros
 
@@ -35,7 +34,7 @@ class NeuralNetworkModel(nn.Module):
             features,
             param_dtype=self.param_dtype,
             kernel_init=self.kernel_initializer,
-            bias_init=nn.initializers.zeros,  # self.bias_initializer,
+            bias_init=nn.initializers.zeros,
         )
 
     def create_network(self) -> List:
@@ -45,10 +44,10 @@ class NeuralNetworkModel(nn.Module):
         # Hidden layers
         for out_size, af_type in self.hidden_layers:
             layers.append(self.create_layer(out_size))
-            layers.append(activation_function[af_type])
+            layers.append(_activation_function_map[af_type])
         # Output layer
         layers.append(self.create_layer(self.output_layer[0]))
-        layers.append(activation_function[self.output_layer[1]])
+        layers.append(_activation_function_map[self.output_layer[1]])
         return layers
 
     def __call__(self, inputs: Array) -> Array:
@@ -61,9 +60,9 @@ class NeuralNetworkModel(nn.Module):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
-            f", output_layer={self.output_layer}"
-            # f", param_dtype={self.param_dtype.dtype}"
-            ")"  # type: ignore
+            # f", output_layer={self.output_layer}"
+            f", param_dtype={self.param_dtype.dtype}"  # type: ignore
+            ")"
         )
 
     def save(self, filename: Path, params: frozendict) -> None:

@@ -2,9 +2,9 @@ from typing import Dict, Protocol, Tuple
 
 from frozendict import frozendict
 
+from jaxip.config import _CFG as PotentialSettings
 from jaxip.datasets.base import StructureDataset
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.settings import PotentialSettings
 from jaxip.types import Element
 
 

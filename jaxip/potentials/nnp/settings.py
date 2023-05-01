@@ -140,28 +140,7 @@ class PotentialSettings(_CFG):
     symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
 
     @classmethod
-    def _read_from(cls, filename) -> Dict:
-        """Read all keywords from the input setting file."""
-        dict_ = dict()
-        n_line: int = 0
-        with open(str(filename), "r") as file:
-            while True:
-                line = file.readline()
-                n_line += 1
-                if not line:
-                    break
-                # Read keyword and values
-                keyword, tokens = tokenize(line, comment="#")  # type: ignore
-                if keyword is not None:
-                    if keyword not in cls.__annotations__:
-                        logger.debug(f"Unknown keyword (line {n_line}):'{keyword}'")
-                    else:
-                        logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
-                        dict_[f"line{n_line:04d}_{keyword}"] = tokens
-        return dict_
-
-    @classmethod
-    def create_from(cls, filename: Path) -> PotentialSettings:
+    def create_from_file(cls, filename: Path) -> PotentialSettings:
         """
         Read all potential settings from the input file.
 
@@ -170,7 +149,7 @@ class PotentialSettings(_CFG):
         """
 
         logger.info(f"Reading potential settings: {str(filename)}")
-        dict_ = cls._read_from(filename)
+        dict_: Dict = cls._read_from_file(filename)
         kwargs: Dict[str, Any] = dict()
         kwargs["atom_energy"] = dict()
         kwargs["symfunction_short"] = list()
@@ -293,6 +272,27 @@ class PotentialSettings(_CFG):
         except ValidationError as e:
             logger.error(str(e), exception=ValueError)
         return settings  # type: ignore
+
+    @classmethod
+    def _read_from_file(cls, filename) -> Dict:
+        """Read all keywords from the input setting file."""
+        dict_ = dict()
+        n_line: int = 0
+        with open(str(filename), "r") as file:
+            while True:
+                line = file.readline()
+                n_line += 1
+                if not line:
+                    break
+                # Read keyword and values
+                keyword, tokens = tokenize(line, comment="#")  # type: ignore
+                if keyword is not None:
+                    if keyword not in cls.__annotations__:
+                        logger.debug(f"Unknown keyword (line {n_line}):'{keyword}'")
+                    else:
+                        logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
+                        dict_[f"line{n_line:04d}_{keyword}"] = tokens
+        return dict_
 
     @validator("elements")
     def number_of_elements_match(cls, v, values) -> Any:

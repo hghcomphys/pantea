@@ -1,5 +1,7 @@
-from jaxip.datasets.runner import RunnerStructureDataset
+from jaxip.datasets.runner import RunnerDataset
+from jaxip.datasets.transformer import ToStructure
 
 __all__ = [
-    "RunnerStructureDataset",
+    "RunnerDataset",
+    "ToStructure",
 ]

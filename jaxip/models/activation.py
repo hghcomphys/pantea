@@ -46,7 +46,7 @@ def harmonic(x: Array) -> Array:
 
 
 # see here https://compphysvienna.github.io/n2p2/api/neural_network.html?highlight=activation%20function
-activation_function: frozendict = frozendict(
+_activation_function_map: frozendict = frozendict(
     {
         "identity": identity,
         "tanh": nn.tanh,

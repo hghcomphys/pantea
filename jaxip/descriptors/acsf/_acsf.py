@@ -28,14 +28,11 @@ def _calculate_radial_acsf_per_atom(
     dist_i: Array,
     emap: Dict[Element, Array],
 ) -> Array:
-
     elements: EnvironmentElements = [k for k in radial.keys()][0]
 
-    # cutoff-radius mask
     mask_cutoff_i = _calculate_cutoff_mask_per_atom(
         dist_i, jnp.asarray(radial[elements].r_cutoff)
     )
-    # get the corresponding neighboring atom types
     mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[elements.neighbor_j])
 
     return jnp.sum(
@@ -54,7 +51,6 @@ def _calculate_angular_acsf_per_atom(
     lattice: Array,
     emap: Dict[Element, Array],
 ) -> Array:
-
     elements: EnvironmentElements = [k for k in angular.keys()][0]
 
     # cutoff-radius mask
@@ -100,7 +96,6 @@ def _inner_loop_over_angular_acsf_terms(
     lattice: Array,
     kernel: Callable,
 ) -> Tuple[Array, Array]:
-
     # Scan occurs along the leading axis
     Rij, rij, mask_ij = inputs
 
@@ -132,7 +127,7 @@ def _inner_loop_over_angular_acsf_terms(
         mask_ij,
         jnp.sum(
             kernel(rij, dist_i, rjk, cost),
-            where=mask_ik & (rjk > 0.0),  # exclude k=j
+            where=mask_ik & (rjk > 0.0),  # exclude k=j # type:ignore
             axis=0,
         ),
         0.0,
@@ -143,7 +138,7 @@ def _inner_loop_over_angular_acsf_terms(
 @jit
 def _calculate_descriptor_per_atom(
     acsf: AcsfInterface,
-    atom_position: Array,  # must be a single atom position shape=(1, 3)
+    single_atom_position: Array,
     neighbor_positions: Array,
     atype: Array,
     lattice: Array,
@@ -152,11 +147,11 @@ def _calculate_descriptor_per_atom(
     """
     Compute descriptor values per atom in the structure (via atom id).
     """
-    dtype = atom_position.dtype
-    result = jnp.empty(acsf.num_symmetry_functions, dtype=dtype)
+    dtype = single_atom_position.dtype
+    result: Array = jnp.empty(acsf.num_symmetry_functions, dtype=dtype)
 
     dist_i, diff_i = _calculate_distance_per_atom(
-        atom_position, neighbor_positions, lattice
+        single_atom_position, neighbor_positions, lattice
     )
 
     # Loop over the radial terms

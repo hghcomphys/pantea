@@ -25,7 +25,6 @@ from sphinx.ext.apidoc import main
 
 sys.path.insert(0, os.path.abspath(".."))
 
-
 import jaxip
 
 # -- General configuration ---------------------------------------------
@@ -161,7 +160,13 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "jaxip.tex", "Jaxip Documentation", "Hossein Ghorbanfekr", "manual"),
+    (
+        master_doc,
+        "jaxip.tex",
+        "Jaxip Documentation",
+        "Hossein Ghorbanfekr",
+        "manual",
+    ),
 ]
 
 
@@ -169,7 +174,15 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "jaxip", "Jaxip Documentation", [author], 1)]
+man_pages = [
+    (
+        master_doc,
+        "jaxip",
+        "Jaxip Documentation",
+        [author],
+        1,
+    )
+]
 
 
 # -- Options for Texinfo output ----------------------------------------
@@ -207,7 +220,7 @@ if os.path.exists(notebooks_dir):
     shutil.rmtree(notebooks_dir)
 os.makedirs(notebooks_dir, exist_ok=True)
 
-for filename in ("tutorials.ipynb", "train_potential.ipynb"):
+for filename in ("tutorials.ipynb", "potential_training.ipynb"):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),
         os.path.join(curdir, "notebooks", filename),

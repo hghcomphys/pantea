@@ -1,7 +1,7 @@
 from jaxip.descriptors.acsf.acsf import ACSF
-from jaxip.descriptors.scaler import DescriptorScaler
+from jaxip.descriptors.scaler import Scaler
 
 __all__ = [
-    "DescriptorScaler",
+    "Scaler",
     "ACSF",
 ]

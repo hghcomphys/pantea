@@ -20,4 +20,4 @@ def create_batch(
     """
     n_batches = int(math.ceil(len(array) / batch_size))  # type: ignore
     for i in range(n_batches):
-        yield array[i * batch_size : (i + 1) * batch_size, ...]  # type: ignore
+        yield array[i * batch_size : (i + 1) * batch_size, ...]

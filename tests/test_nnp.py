@@ -8,18 +8,19 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
 
-from jaxip.datasets import RunnerStructureDataset
-from jaxip.potentials.nnp import NeuralNetworkPotential
-from jaxip.potentials.settings import PotentialSettings
+from jaxip.datasets import RunnerDataset
+from jaxip.potentials import NeuralNetworkPotential
+from jaxip.potentials.nnp.settings import PotentialSettings
 
 dataset_file = Path("tests", "h2o.data")
 potential_file = Path("tests", "h2o.json")
 
 
 class TestNeuralNetworkPotential:
-
-    dataset = RunnerStructureDataset(dataset_file)
-    nnp = NeuralNetworkPotential(PotentialSettings.from_json(potential_file))  # type: ignore
+    dataset = RunnerDataset(dataset_file)
+    nnp: NeuralNetworkPotential = NeuralNetworkPotential.create_from_file(
+        potential_file
+    )
 
     @pytest.mark.parametrize(
         "nnp, expected",
@@ -40,7 +41,7 @@ class TestNeuralNetworkPotential:
     ) -> None:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
-        assert nnp.settings == PotentialSettings.from_json(potential_file)
+        assert nnp.settings == PotentialSettings.create_from_json(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
@@ -73,7 +74,7 @@ class TestNeuralNetworkPotential:
     def test_outputs(
         self,
         nnp: NeuralNetworkPotential,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
         nnp.fit_scaler(dataset)
@@ -94,9 +95,8 @@ class TestNeuralNetworkPotential:
     def test_save_and_load(
         self,
         nnp: NeuralNetworkPotential,
-        dataset: RunnerStructureDataset,
+        dataset: RunnerDataset,
     ) -> None:
-
         structure = dataset[0]
         nnp.output_dir = potential_file.parent
         nnp.save()

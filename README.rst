@@ -145,12 +145,12 @@ descriptor values that are required to build machine learning potentials.
 
 .. code-block:: python
 
-        from jaxip.datasets import RunnerStructureDataset
+        from jaxip.datasets import RunnerDataset
         from jaxip.descriptors import ACSF
         from jaxip.descriptors.acsf import CutoffFunction, G2, G3
 
         # Read atomic structure dataset (e.g. water molecules)
-        structures = RunnerStructureDataset('input.data')
+        structures = RunnerDataset('input.data')
         structure = structures[0]
 
         # Define ACSF descriptor for hydrogen element
@@ -180,15 +180,15 @@ The trained potential can then be used to evaluate the energy and force componen
 
 .. code-block:: python
 
-        from jaxip.datasets import RunnerStructureDataset
+        from jaxip.datasets import RunnerDataset
         from jaxip.potentials import NeuralNetworkPotential
 
         # Read atomic data
-        structures = RunnerStructureDataset("input.data")
+        structures = RunnerDataset("input.data")
         structure = structures[0]
 
         # Instantiate potential from input settings file
-        nnp = NeuralNetworkPotential.create_from("input.nn")
+        nnp = NeuralNetworkPotential.create_from_file("input.nn")
 
         # Fit descriptor scaler and model weights
         nnp.fit_scaler(structures)

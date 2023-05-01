@@ -22,7 +22,6 @@ class Box(_BaseJaxPytreeDataClass):
         No support for triclinic cells yet.
     """
 
-    # Array type attributes must be define first (with type hint)
     lattice: Optional[Array] = None
     dtype: Optional[Dtype] = None
 
