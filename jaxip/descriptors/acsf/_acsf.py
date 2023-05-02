@@ -115,7 +115,7 @@ def _inner_loop_over_angular_acsf_terms(
         jnp.inner(Rij, diff_i) / true_op,
         1.0,
     )
-    cost = jnp.where(is_zero, 0.0, cost)
+    cost = jnp.where(is_zero, 0.0, cost) # type: ignore
 
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,

@@ -90,9 +90,9 @@ Training ML potentials with ab initio reference data offers an
 **accurate** and computationally **efficient** technique for performing large-scale simulations.
 
 
---------------------------
-What is atomic descriptor?
---------------------------
+-----------------
+Atomic descriptor
+-----------------
 Direct atomic positions are not suitable for machine learning potentials 
 because they are not invariant under translation, rotation, and permutation. 
 Translation refers to moving the entire system in space, rotation refers to rotating the system around an axis, 
@@ -107,25 +107,19 @@ This enables ML model to learn the complex relationships between atomic
 properties and their interactions in a more efficient and accurate way 
 than traditional interatomic potential models.
 
---------
-Training
---------
+----------------------------
+Potential training procedure
+----------------------------
 Proper training can ensure that a potential accurately captures the material's properties.
 Below lists illustrates example involved steps in using ab initio reference data to train an ML potential:
 
-    1. Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
-
-    2. Select and calculate descriptor values for all atoms in the dataset.
-
-    3. Split the dataset into training, validation, and testing sets.
-
-    4. Define the architecture of the potential and relevant parameters.
-
-    5. Train the neural network potential on the training set using the input descriptors and the target energy and force values.
-
-    6. Validate the accuracy of the ML potential on the validation set by comparing its predictions to the DFT reference data.
-
-    7. Use the trained potential to perform molecular dynamics simulations of larger systems.
+    - Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
+    - Select and calculate descriptor values for all atoms in the dataset.
+    - Split the dataset into training, validation, and testing sets.
+    - Define the architecture of the potential and the training parameters.
+    - Train the neural network potential on the training set using the input descriptors and the target energy and forces.
+    - Validate the accuracy of the ML potential on the validation set by comparing its predictions to the DFT reference data.
+    - Use trained potential to perform molecular dynamics simulations of larger systems.
 
 
 Examples

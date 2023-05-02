@@ -12,7 +12,7 @@ from pathlib import Path
 import jax.numpy as jnp
 
 import jaxip
-from jaxip.datasets import RunnerStructureDataset
+from jaxip.datasets import RunnerDataset
 from jaxip.logger import set_logging_level
 from jaxip.potentials import NeuralNetworkPotential
 from jaxip.types import dtype as default_dtype
@@ -27,11 +27,11 @@ default_dtype.FLOATX = jnp.float64
 potdir = Path("./LJ")
 
 # Dataset
-structures = RunnerStructureDataset(Path(potdir, "input.data"), persist=True)
+structures = RunnerDataset(Path(potdir, "input.data"), persist=True)
 structures = [structures[i] for i in range(len(structures))]
 
 # Potential
-nnp = NeuralNetworkPotential.create_from(Path(potdir, "input.nn"))
+nnp = NeuralNetworkPotential.create_from_file(Path(potdir, "input.nn"))
 
 # nnp.load_scaler()
 nnp.fit_scaler(structures)

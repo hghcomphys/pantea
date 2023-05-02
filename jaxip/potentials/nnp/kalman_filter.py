@@ -27,7 +27,7 @@ def _tree_flatten(pytree: Dict) -> Array:
 
 class KalmanFilterUpdater(Updater):
     """
-    A potential traienr which uses Kalman filter to update model weights (see this_).
+    A potential trainer which uses Kalman filter to update model weights (see this_).
 
     .. _this: https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
     """
