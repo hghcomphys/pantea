@@ -13,7 +13,7 @@ from jaxip.utils.tokenize import tokenize
 
 class RunnerDataset(StructureDataset):
     """
-    Structure dataset for `RuNNer`_ data file format.
+    Dataset for `RuNNer`_ data file format.
 
     The input structure file contains atom info and simulation box.
     Each snapshot contains two per-atom and collective properties as follows:
@@ -137,6 +137,8 @@ class RunnerDataset(StructureDataset):
             for _ in range(index):
                 self._ignore_next_structure(file)
             sample = self._read_next_structure(file)
+            if not sample:
+                raise IndexError(f"index {index} is out of bound with size {len(self)}")
         return self.transform(sample)
 
     def _read_from_cache(self, index: int) -> Structure:
@@ -174,13 +176,13 @@ class RunnerDataset(StructureDataset):
         :return: Return next structure
         :rtype: Transformed structure
         """
-        if self._current_index < len(self):
+        try:
             sample: Structure = self.__getitem__(self._current_index)
             self._current_index += 1
             return sample
-
-        self._current_index = 0
-        raise StopIteration
+        except IndexError:
+            self._current_index = 0
+            raise StopIteration
 
     def __iter__(self) -> RunnerDataset:
         return self

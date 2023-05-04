@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
+from ase import data
 from frozendict import frozendict
 from jax import random
 from tqdm import tqdm
@@ -330,7 +331,9 @@ class NeuralNetworkPotential:
         # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
         print("Fitting descriptor scaler...")
         try:
-            for structure in tqdm(dataset):
+            dataset_size: int = len(dataset)
+            for index in tqdm(range(dataset_size)):
+                structure: Structure = dataset[index]
                 for element in structure.elements:
                     x: Array = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)

@@ -20,9 +20,3 @@ class StructureDataset(Protocol):
 
     def __getitem__(self, index: int) -> Structure:
         ...
-
-    def __next__(self) -> Structure:
-        ...
-
-    def __iter__(self) -> StructureDataset:
-        ...
