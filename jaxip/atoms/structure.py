@@ -170,7 +170,7 @@ class Structure(_BaseJaxPytreeDataClass):
 
         except KeyError:
             logger.error(
-                f"Cannot find at least one of the expected keyword in the input data.",
+                "Cannot find at least one of the expected keyword in the input data.",
                 exception=KeyError,
             )
         return cls(**kwargs)
@@ -180,7 +180,7 @@ class Structure(_BaseJaxPytreeDataClass):
         data: Dict, element_map: ElementMap, dtype: Dtype
     ) -> Dict[str, Array]:
         """Initialize a dictionary of arrays of atomic attributes from the input data."""
-        logger.debug("Allocating arrays for the structure:")
+        logger.debug("Allocating arrays for a structure as follows:")
         arrays: Dict[str, Array] = dict()
         for atom_attr in Structure._get_atom_attributes():
             try:

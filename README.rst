@@ -21,7 +21,7 @@ JAXIP
 
 Description
 -----------
-Jaxip is an optimized Python library on basis of `JAX`_ that enables 
+Jaxip is an optimized Python library on basis of Google `JAX`_ that enables 
 development of emerging machine learning interatomic potentials 
 for use in computational physics, chemistry, material science. 
 These potentials are necessary for conducting large-scale molecular 
