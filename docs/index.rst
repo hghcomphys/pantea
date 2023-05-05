@@ -7,6 +7,7 @@ Welcome to Jaxip's documentation!
    :caption: Contents:
 
    readme
+   theory
    installation
    usage
    examples
