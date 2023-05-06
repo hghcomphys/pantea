@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
@@ -284,10 +285,14 @@ class Structure(_BaseJaxPytreeDataClass):
 
     @property
     def elements(self) -> tuple[Element, ...]:
-        return tuple(sorted({str(self.element_map(int(at))) for at in self.atom_type}))
+        atom_type_host = jax.device_get(self.atom_type)
+        return tuple(sorted({str(self.element_map(int(at))) for at in atom_type_host}))
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+        return (
+            f"{self.__class__.__name__}"
+            f"(natoms={self.natoms}, elements={self.elements}, dtype={self.dtype})"
+        )
 
     def select(self, element: Element) -> Array:
         """
@@ -388,7 +393,7 @@ class Structure(_BaseJaxPytreeDataClass):
 
         :param atom_energy: atom reference energy
         """
-        energy_offset = self._get_energy_offset(atom_energy)
+        energy_offset: Array = self._get_energy_offset(atom_energy)
         self.energy -= energy_offset
         self.total_energy -= energy_offset.sum()
 

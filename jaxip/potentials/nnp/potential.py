@@ -334,7 +334,8 @@ class NeuralNetworkPotential:
             dataset_size: int = len(dataset)
             for index in tqdm(range(dataset_size)):
                 structure: Structure = dataset[index]
-                for element in structure.elements:
+                elements: Tuple[Element, ...] = structure.elements
+                for element in elements:
                     x: Array = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)
         except KeyboardInterrupt:
