@@ -13,14 +13,6 @@ from jaxip.descriptors.acsf.symmetry import EnvironmentElements
 from jaxip.types import Array, Element
 
 
-class AcsfInterface(Protocol):
-    num_symmetry_functions: int
-    num_radial_symmetry_functions: int
-    num_angular_symmetry_functions: int
-    radial_symmetry_functions: Tuple
-    angular_symmetry_functions: Tuple
-
-
 @jit
 def _calculate_radial_acsf_per_atom(
     radial: Dict[EnvironmentElements, RadialSymmetryFunction],
@@ -73,9 +65,10 @@ def _calculate_angular_acsf_per_atom(
             lattice=lattice,
             kernel=angular[elements],
         ),
-        jnp.asarray(0.0),
+        jnp.array(0.0),
         (diff_i, dist_i, mask_cutoff_and_atype_ij),
     )
+
     # correct double-counting
     total = lax.cond(
         at_j == at_k,
@@ -115,7 +108,7 @@ def _inner_loop_over_angular_acsf_terms(
         jnp.inner(Rij, diff_i) / true_op,
         1.0,
     )
-    cost = jnp.where(is_zero, 0.0, cost) # type: ignore
+    cost = jnp.where(is_zero, 0.0, cost)  # type: ignore
 
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,
@@ -132,7 +125,16 @@ def _inner_loop_over_angular_acsf_terms(
         ),
         0.0,
     )
+
     return total + value, value
+
+
+class AcsfInterface(Protocol):
+    num_symmetry_functions: int
+    num_radial_symmetry_functions: int
+    num_angular_symmetry_functions: int
+    radial_symmetry_functions: Tuple
+    angular_symmetry_functions: Tuple
 
 
 @jit

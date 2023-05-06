@@ -30,13 +30,15 @@ dynamics simulations of complex materials with ab initio accuracy.
 .. _JAX: https://github.com/google/jax
 
 
-Documentation: https://jaxip.readthedocs.io.
+See `documentation`_ for more information.
+
+.. _documentation: https://jaxip.readthedocs.io/en/latest/readme.html
 
 
 Main features
 -------------
-* The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials 
-* It uses `autograd` to make defining new descriptors straightforward
+* The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
+* It uses `autograd` to make defining new descriptors straightforward.
 * Jaxip is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
@@ -54,8 +56,8 @@ To install Jaxip, run this command in your terminal:
 
     $ pip install jaxip
 
-For machines with an NVIDIA **GPU** please follow installation
-`instructions <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
+For machines with an NVIDIA **GPU** please follow the installation
+`instruction <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
 on the documentation. 
 
 
@@ -65,11 +67,9 @@ Examples
 -----------------------------
 Defining an atomic descriptor
 -----------------------------
-
-The following example shows how to create an array of `atomic-centered symmetry functions`
-(`ACSF`_) for an element. 
-This descriptor can be applied to a given structure to produce the 
-descriptor values that are required to build machine learning potentials.
+This script demonstrates the process of evaluating an array of atomic-centered symmetry functions (`ACSF`_) 
+for a specific element, which can be utilized to evaluate the descriptor values for any structure. 
+The resulting values can then be used to construct a machine learning potential.
 
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
