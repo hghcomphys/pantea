@@ -1,3 +1,4 @@
+import functools
 import math
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -24,7 +25,7 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
 
     r_cutoff: float
     cutoff_type: str = "tanh"
-    cutoff_function: Optional[Callable] = None  # lambda r: r
+    cutoff_function: Optional[Callable] = None
 
     def __post_init__(self) -> None:
         self.cutoff_type = self.cutoff_type.lower()
@@ -36,6 +37,16 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
                     f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'",
                     exception=NotImplementedError,
                 )
+        self._check_jit_attributes()
+
+    @classmethod
+    def _check_jit_attributes(cls) -> None:
+        """An optional check to ensure jit static and dynamics attributes are correctly identified."""
+        assert cls._get_jit_dynamic_attributes() == tuple()
+        assert (
+            cls._get_jit_static_attributes() == \
+            ('r_cutoff', 'cutoff_type', 'cutoff_function')
+        )
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
