@@ -2,16 +2,31 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import DefaultDict, Dict, List, Optional, TextIO
+from typing import DefaultDict, Dict, List, Optional, Protocol, TextIO
 
 from jaxip.atoms.structure import Structure
-from jaxip.datasets.base import StructureDataset
 from jaxip.datasets.transformer import ToStructure, Transformer
 from jaxip.logger import logger
 from jaxip.utils.tokenize import tokenize
 
 
-class RunnerDataset(StructureDataset):
+class Dataset(Protocol):
+    """
+    A data container for atom data structure.
+
+    Features:
+
+    * it must access data item in a lazy mode.
+    * it should be able to cache data via a `persist` input flag.
+    """
+
+    def __len__(self) -> int:
+        ...
+
+    def __getitem__(self, index: int) -> Structure:
+        ...
+
+class RunnerDataset(Dataset):
     """
     Dataset for `RuNNer`_ data file format.
 

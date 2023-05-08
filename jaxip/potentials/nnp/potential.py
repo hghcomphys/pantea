@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Protocol, Tuple
 
 import jax.numpy as jnp
 from ase import data
@@ -25,11 +25,26 @@ from jaxip.models.nn import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.base import Updater
 from jaxip.potentials.nnp.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.nnp.kalman_filter import KalmanFilterUpdater
 from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
+
+
+class StructureDataset(Protocol):
+    """A data container for atom data structure."""
+
+    def __len__(self) -> int:
+        ...
+
+    def __getitem__(self, index: int) -> Structure:
+        ...
+
+class Updater(Protocol):
+    """Interface for potential weight updaters."""
+
+    def fit(self, dataset: StructureDataset) -> Dict:
+        ...
 
 
 @dataclass

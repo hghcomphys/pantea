@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import Callable, Dict
+from typing import Callable, Dict, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -10,12 +10,10 @@ from jax import flatten_util
 from tqdm import tqdm
 
 from jaxip.atoms.structure import Structure
-from jaxip.datasets.base import StructureDataset
 from jaxip.logger import logger
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.base import Potential, Updater
 from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
 from jaxip.types import dtype as default_dtype
@@ -23,6 +21,31 @@ from jaxip.types import dtype as default_dtype
 
 def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
+
+
+class StructureDataset(Protocol):
+    """A data container for atom data structure."""
+
+    def __len__(self) -> int:
+        ...
+
+    def __getitem__(self, index: int) -> Structure:
+        ...
+
+class Updater(Protocol):
+    """Interface for potential weight updaters."""
+
+    def fit(self, dataset: StructureDataset) -> Dict:
+        ...
+
+
+class Potential(Protocol):
+    """Interface for Potential."""
+
+    settings: PotentialSettings
+    elements: Tuple[Element, ...]
+    atomic_potential: Dict[Element, AtomicPotential]
+    model_params: Dict[Element, frozendict]
 
 
 class KalmanFilterUpdater(Updater):

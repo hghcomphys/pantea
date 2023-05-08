@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Protocol, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,11 +15,10 @@ from optax import GradientTransformation
 from tqdm import tqdm
 
 from jaxip.atoms.structure import Structure
-from jaxip.datasets.base import StructureDataset
 from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
-from jaxip.potentials.base import Potential, Updater
+from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.metrics import ErrorMetric
 from jaxip.potentials.nnp.settings import PotentialSettings
 from jaxip.types import Array, Element
@@ -28,6 +27,29 @@ from jaxip.types import Array, Element
 def _mse_loss(*, logits: Array, targets: Array) -> Array:
     return ((targets - logits) ** 2).mean()
 
+class StructureDataset(Protocol):
+    """A data container for atom data structure."""
+
+    def __len__(self) -> int:
+        ...
+
+    def __getitem__(self, index: int) -> Structure:
+        ...
+
+class Updater(Protocol):
+    """Interface for potential weight updaters."""
+
+    def fit(self, dataset: StructureDataset) -> Dict:
+        ...
+
+
+class Potential(Protocol):
+    """Interface for Potential."""
+
+    settings: PotentialSettings
+    elements: Tuple[Element, ...]
+    atomic_potential: Dict[Element, AtomicPotential]
+    model_params: Dict[Element, frozendict]
 
 # @dataclass
 class GradientDescentUpdater(Updater):

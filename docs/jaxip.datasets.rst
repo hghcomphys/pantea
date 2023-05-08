@@ -4,14 +4,6 @@ jaxip.datasets package
 Submodules
 ----------
 
-jaxip.datasets.base module
---------------------------
-
-.. automodule:: jaxip.datasets.base
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 jaxip.datasets.runner module
 ----------------------------
 
