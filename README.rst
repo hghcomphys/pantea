@@ -140,4 +140,4 @@ License
 -------
 
 This project is licensed under the GNU General Public License (GPL) version 3 - 
-see the LICENSE file for details.
+see the `LICENSE <https://github.com/hghcomphys/jaxip/blob/main/LICENSE>`_ file for details.

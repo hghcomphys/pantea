@@ -1,32 +1,13 @@
 jaxip.models package
 ====================
 
-Submodules
-----------
+Subpackages
+-----------
 
-jaxip.models.activation module
-------------------------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: jaxip.models.activation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-jaxip.models.initializer module
--------------------------------
-
-.. automodule:: jaxip.models.initializer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-jaxip.models.nn module
-----------------------
-
-.. automodule:: jaxip.models.nn
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   jaxip.models.nn
 
 Module contents
 ---------------
