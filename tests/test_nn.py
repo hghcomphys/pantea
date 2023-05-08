@@ -9,8 +9,8 @@ import jax.numpy as jnp
 import pytest
 from frozendict import frozendict
 
-from jaxip.models.initializer import UniformInitializer
-from jaxip.models.nn import NeuralNetworkModel
+from jaxip.models.nn.initializer import UniformInitializer
+from jaxip.models.nn.network import NeuralNetworkModel
 from jaxip.types import dtype as _dtype
 
 

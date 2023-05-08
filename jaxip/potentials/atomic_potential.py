@@ -5,7 +5,7 @@ from frozendict import frozendict
 from jaxip.atoms.structure import Structure
 from jaxip.descriptors.base import Descriptor
 from jaxip.descriptors.scaler import Scaler
-from jaxip.models.nn import NeuralNetworkModel
+from jaxip.models.nn.network import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_atomic_energy
 from jaxip.types import Array, Element
 

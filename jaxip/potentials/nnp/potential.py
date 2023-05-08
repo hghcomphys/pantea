@@ -20,8 +20,8 @@ from jaxip.descriptors.acsf.cutoff import CutoffFunction
 from jaxip.descriptors.acsf.radial import G1, G2
 from jaxip.descriptors.scaler import Scaler
 from jaxip.logger import logger
-from jaxip.models.initializer import UniformInitializer
-from jaxip.models.nn import NeuralNetworkModel
+from jaxip.models.nn.initializer import UniformInitializer
+from jaxip.models.nn.network import NeuralNetworkModel
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
