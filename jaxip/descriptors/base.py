@@ -1,10 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
-from jaxip.base import _BaseJaxPytreeDataClass
+from jaxip.pytree import BaseJaxPytreeDataClass
 from jaxip.types import Array
 
 
-class Descriptor(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
+class Descriptor(BaseJaxPytreeDataClass, metaclass=ABCMeta):
     """A base class for atomic environment descriptors."""
 
     @abstractmethod

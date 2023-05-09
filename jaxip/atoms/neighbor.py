@@ -4,13 +4,13 @@ from typing import Optional
 import jax.numpy as jnp
 
 from jaxip.atoms._neighbor import _calculate_cutoff_mask
-from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
+from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
 
 
 @dataclass
-class Neighbor(_BaseJaxPytreeDataClass):
+class Neighbor(BaseJaxPytreeDataClass):
     """
     Create a neighbor list of atoms for an input structure
     and it is by design independent of `Structure`.
@@ -27,6 +27,8 @@ class Neighbor(_BaseJaxPytreeDataClass):
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
         logger.debug(f"Initializing {self}")
+        self._assert_jit_dynamic_attributes(expected=("mask",))
+        self._assert_jit_static_attributes(expected=('r_cutoff', 'r_cutoff_updated'))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

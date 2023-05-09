@@ -6,15 +6,15 @@ from typing import Callable, Optional
 import jax
 import jax.numpy as jnp
 
-from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
+from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
 
 _TANH_PRE: float = ((math.e + 1 / math.e) / (math.e - 1 / math.e)) ** 3
 
 
 @dataclass
-class CutoffFunction(_BaseJaxPytreeDataClass):
+class CutoffFunction(BaseJaxPytreeDataClass):
     """Cutoff function for ACSF descriptor.
 
     See `cutoff function`_ and `cutoff type`_ for more details.
@@ -37,15 +37,9 @@ class CutoffFunction(_BaseJaxPytreeDataClass):
                     f"'{self.__class__.__name__}' has no cutoff function '{self.cutoff_type}'",
                     exception=NotImplementedError,
                 )
-        self._check_jit_attributes()
-
-    @classmethod
-    def _check_jit_attributes(cls) -> None:
-        """An optional check to ensure jit static and dynamics attributes are correctly identified."""
-        assert cls._get_jit_dynamic_attributes() == tuple()
-        assert (
-            cls._get_jit_static_attributes() == \
-            ('r_cutoff', 'cutoff_type', 'cutoff_function')
+        self._assert_jit_dynamic_attributes()
+        self._assert_jit_static_attributes(
+            expected=('r_cutoff', 'cutoff_type', 'cutoff_function')
         )
 
     def __hash__(self) -> int:

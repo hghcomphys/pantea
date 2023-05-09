@@ -5,14 +5,14 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.atoms._box import _apply_pbc
-from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
+from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
 
 @dataclass
-class Box(_BaseJaxPytreeDataClass):
+class Box(BaseJaxPytreeDataClass):
     """
     Simulation box which is responsible for applying PBCs
     when there are available lattice info.
@@ -43,6 +43,8 @@ class Box(_BaseJaxPytreeDataClass):
                 )
 
         logger.debug(f"Initializing {self}")
+        self._assert_jit_dynamic_attributes(expected=("lattice",))
+        self._assert_jit_static_attributes(expected=("dtype",))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

@@ -17,14 +17,6 @@ Subpackages
 Submodules
 ----------
 
-jaxip.base module
------------------
-
-.. automodule:: jaxip.base
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 jaxip.config module
 -------------------
 
@@ -37,6 +29,14 @@ jaxip.logger module
 -------------------
 
 .. automodule:: jaxip.logger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+jaxip.pytree module
+-------------------
+
+.. automodule:: jaxip.pytree
    :members:
    :undoc-members:
    :show-inheritance:
