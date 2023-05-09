@@ -5,7 +5,6 @@ from typing import Optional, Tuple
 import jax.numpy as jnp
 
 from jaxip.atoms.structure import Structure
-from jaxip.base import register_jax_pytree_node
 from jaxip.descriptors.acsf._acsf import (
     _calculate_descriptor,
     _calculate_grad_descriptor_per_atom,
@@ -15,6 +14,7 @@ from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunction
 from jaxip.descriptors.base import Descriptor
 from jaxip.logger import logger
+from jaxip.pytree import register_jax_pytree_node
 from jaxip.types import Array, Element
 
 

@@ -1,13 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from typing import NamedTuple, Optional
 
-from jaxip.base import _BaseJaxPytreeDataClass
 from jaxip.descriptors.acsf.cutoff import CutoffFunction
 from jaxip.logger import logger
+from jaxip.pytree import BaseJaxPytreeDataClass
 from jaxip.types import Array, Element
 
 
-class SymmetryFunction(_BaseJaxPytreeDataClass, metaclass=ABCMeta):
+class SymmetryFunction(BaseJaxPytreeDataClass, metaclass=ABCMeta):
     """
     A base class for symmetry functions.
     All symmetry functions (i.e. radial and angular) must derive from this base class.

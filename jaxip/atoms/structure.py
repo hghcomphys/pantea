@@ -15,8 +15,8 @@ from jaxip.atoms._structure import _calculate_distance
 from jaxip.atoms.box import Box
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
-from jaxip.base import _BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.logger import logger
+from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array, Dtype, Element
 from jaxip.types import dtype as _dtype
 from jaxip.units import units
@@ -35,7 +35,7 @@ class Inputs(NamedTuple):
 
 
 @dataclass
-class Structure(_BaseJaxPytreeDataClass):
+class Structure(BaseJaxPytreeDataClass):
     """
     A structure contains arrays of atomic attributes
     for a collection of atoms in the simulation box.
@@ -224,6 +224,25 @@ class Structure(_BaseJaxPytreeDataClass):
         """Post initializations."""
         self.position = self.box.shift_inside_box(self.position)
         logger.debug(f"Initializing {self.__class__.__name__}()")
+        self._assert_jit_dynamic_attributes(
+            expected=(
+                "position", 
+                "force", 
+                "energy", 
+                "total_energy", 
+                "charge", 
+                "total_charge",
+                "atom_type"
+            )
+        )
+        self._assert_jit_static_attributes(
+            expected=(
+                'box', 
+                'element_map',
+                'neighbor',
+                'requires_neighbor_update',
+            )
+        )
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
