@@ -1,4 +1,3 @@
-import functools
 import math
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -39,7 +38,7 @@ class CutoffFunction(BaseJaxPytreeDataClass):
                 )
         self._assert_jit_dynamic_attributes()
         self._assert_jit_static_attributes(
-            expected=('r_cutoff', 'cutoff_type', 'cutoff_function')
+            expected=("r_cutoff", "cutoff_type", "cutoff_function")
         )
 
     def __hash__(self) -> int:

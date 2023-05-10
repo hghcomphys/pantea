@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import Callable, Dict, Protocol, Tuple
+from typing import Callable, Dict
 
 import jax
 import jax.numpy as jnp
@@ -10,11 +10,17 @@ from jax import flatten_util
 from tqdm import tqdm
 
 from jaxip.atoms.structure import Structure
+from jaxip.datasets.dataset import DatasetInterface
 from jaxip.logger import logger
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.nnp.settings import PotentialSettings
+from jaxip.potentials.nnp.nnp import (
+    NeuralNetworkPotentialInterface as PotentialInterface,
+)
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 from jaxip.types import Array, Element
 from jaxip.types import dtype as default_dtype
 
@@ -23,32 +29,7 @@ def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
 
 
-class StructureDataset(Protocol):
-    """A data container for atom data structure."""
-
-    def __len__(self) -> int:
-        ...
-
-    def __getitem__(self, index: int) -> Structure:
-        ...
-
-class Updater(Protocol):
-    """Interface for potential weight updaters."""
-
-    def fit(self, dataset: StructureDataset) -> Dict:
-        ...
-
-
-class Potential(Protocol):
-    """Interface for Potential."""
-
-    settings: PotentialSettings
-    elements: Tuple[Element, ...]
-    atomic_potential: Dict[Element, AtomicPotential]
-    model_params: Dict[Element, frozendict]
-
-
-class KalmanFilterUpdater(Updater):
+class KalmanFilterUpdater:
     """
     A potential trainer which uses Kalman filter to update model weights (see this_).
 
@@ -57,8 +38,8 @@ class KalmanFilterUpdater(Updater):
 
     # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
-    def __init__(self, potential: Potential) -> None:
-        self.potential: Potential = potential
+    def __init__(self, potential: PotentialInterface) -> None:
+        self.potential: PotentialInterface = potential
         self._init_parameters()
         self._init_matrices()
 
@@ -98,7 +79,7 @@ class KalmanFilterUpdater(Updater):
 
     def fit(
         self,
-        dataset: StructureDataset,
+        dataset: DatasetInterface,
     ) -> defaultdict:
         """
         Fit potential weights.
@@ -162,7 +143,6 @@ class KalmanFilterUpdater(Updater):
 
         history = defaultdict(list)
         for epoch in range(settings.epochs):
-
             print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
 
@@ -172,7 +152,6 @@ class KalmanFilterUpdater(Updater):
             num_force_updates_per_epoch: int = 0
 
             for index in tqdm(indices):
-
                 structure: Structure = dataset[index]
 
                 # Error and jacobian matrices

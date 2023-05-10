@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Dict, Optional, Protocol, Tuple
 
 import jax.numpy as jnp
-from ase import data
 from frozendict import frozendict
 from jax import random
 from tqdm import tqdm
 
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.structure import Structure
+from jaxip.datasets.dataset import DatasetInterface
 from jaxip.datasets.runner import RunnerDataset
 from jaxip.descriptors.acsf.acsf import ACSF
 from jaxip.descriptors.acsf.angular import G3, G9
@@ -27,23 +27,16 @@ from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.nnp.kalman_filter import KalmanFilterUpdater
-from jaxip.potentials.nnp.settings import PotentialSettings
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 from jaxip.types import Array, Element
 
 
-class StructureDataset(Protocol):
-    """A data container for atom data structure."""
-
-    def __len__(self) -> int:
-        ...
-
-    def __getitem__(self, index: int) -> Structure:
-        ...
-
-class Updater(Protocol):
+class UpdaterInterface(Protocol):
     """Interface for potential weight updaters."""
 
-    def fit(self, dataset: StructureDataset) -> Dict:
+    def fit(self, dataset: DatasetInterface) -> Dict:
         ...
 
 
@@ -57,13 +50,13 @@ class NeuralNetworkPotential:
 
     Example
     -------
-    Ways to initialize neural network potential.
+    Different methods to initialize neural network potential:
 
     .. code-block:: python
         :linenos:
 
         from jaxip.potentials import NeuralNetworkPotential
-        from jaxip.potentials import PotentialSettings
+        from jaxip.potentials import NeuralNetworkPotentialSettings as Settings
 
         # Method #1 (potential file)
         nnp1 = NeuralNetworkPotential.create_from_file("input.nn")
@@ -72,7 +65,7 @@ class NeuralNetworkPotential:
         nnp3 = NeuralNetworkPotential.create_from_file('h2o.json')
 
         # Method #3 (dictionary of parameters)
-        settings = PotentialSettings(**params_dict)
+        settings = Settings(**params_dict)
         nnp3 = NeuralNetworkPotential(settings)
     """
 
@@ -84,7 +77,7 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    updater: Optional[Updater] = field(default=None, repr=False, init=False)
+    updater: Optional[UpdaterInterface] = field(default=None, repr=False, init=False)
 
     @classmethod
     def create_from_file(cls, filename: Path) -> NeuralNetworkPotential:
@@ -503,3 +496,6 @@ class NeuralNetworkPotential:
     def model(self) -> Dict:
         """Return model for each element."""
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
+
+
+NNP = NeuralNetworkPotential

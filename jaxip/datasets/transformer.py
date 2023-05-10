@@ -5,7 +5,7 @@ from jaxip.types import Dtype
 from jaxip.types import dtype as _dtype
 
 
-class Transformer(Protocol):
+class TransformerInterface(Protocol):
     """
     A base transformer class which applies on the structure dataset.
     """
@@ -17,7 +17,7 @@ class Transformer(Protocol):
         ...
 
 
-class ToStructure(Transformer):
+class ToStructure(TransformerInterface):
     """Transform a dictionary of data into to a Structure."""
 
     def __init__(

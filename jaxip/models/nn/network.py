@@ -7,12 +7,13 @@ from flax import linen as nn
 from frozendict import frozendict
 
 from jaxip.logger import logger
+from jaxip.models.model import ModelInterface
 from jaxip.models.nn.activation import _activation_function_map
 from jaxip.types import Array, Dtype
 from jaxip.types import dtype as _dtype
 
 
-class NeuralNetworkModel(nn.Module):
+class NeuralNetworkModel(nn.Module, ModelInterface):
     """Neural network model that outputs energy."""
 
     hidden_layers: Tuple[Tuple[int, str], ...]

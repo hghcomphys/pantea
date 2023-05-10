@@ -7,7 +7,7 @@ from jaxip.pytree import BaseJaxPytreeDataClass
 from jaxip.types import Array, Element
 
 
-class SymmetryFunction(BaseJaxPytreeDataClass, metaclass=ABCMeta):
+class BaseSymmetryFunction(BaseJaxPytreeDataClass, metaclass=ABCMeta):
     """
     A base class for symmetry functions.
     All symmetry functions (i.e. radial and angular) must derive from this base class.

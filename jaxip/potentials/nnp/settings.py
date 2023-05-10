@@ -80,7 +80,7 @@ gradient_type_map: Mapping[str, str] = {
 }
 
 
-class PotentialSettings(_CFG):
+class NeuralNetworkPotentialSettings(_CFG):
     """
     A configuration class for neural network potential parameters.
 
@@ -140,7 +140,7 @@ class PotentialSettings(_CFG):
     symfunction_short: List[SymFuncArgs] = Field(default_factory=list)
 
     @classmethod
-    def create_from_file(cls, filename: Path) -> PotentialSettings:
+    def create_from_file(cls, filename: Path) -> NeuralNetworkPotentialSettings:
         """
         Read all potential settings from the input file.
 

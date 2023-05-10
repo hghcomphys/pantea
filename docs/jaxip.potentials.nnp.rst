@@ -28,6 +28,14 @@ jaxip.potentials.nnp.metrics module
    :undoc-members:
    :show-inheritance:
 
+jaxip.potentials.nnp.nnp module
+-------------------------------
+
+.. automodule:: jaxip.potentials.nnp.nnp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.potentials.nnp.potential module
 -------------------------------------
 

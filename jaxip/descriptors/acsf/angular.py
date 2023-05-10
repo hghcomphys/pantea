@@ -5,12 +5,12 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.descriptors.acsf.cutoff import CutoffFunction
-from jaxip.descriptors.acsf.symmetry import SymmetryFunction
+from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction
 from jaxip.pytree import register_jax_pytree_node
 from jaxip.types import Array
 
 
-class AngularSymmetryFunction(SymmetryFunction, metaclass=ABCMeta):
+class AngularSymmetryFunction(BaseSymmetryFunction, metaclass=ABCMeta):
     """A base class for `three body` (angular) symmetry functions."""
 
     def __hash__(self) -> int:

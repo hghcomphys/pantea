@@ -11,15 +11,15 @@ from jaxip.descriptors.acsf._acsf import (
 )
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
-from jaxip.descriptors.acsf.symmetry import EnvironmentElements, SymmetryFunction
-from jaxip.descriptors.base import Descriptor
+from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
+from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.logger import logger
-from jaxip.pytree import register_jax_pytree_node
+from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array, Element
 
 
 @dataclass
-class ACSF(Descriptor):
+class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor.
 
@@ -75,7 +75,7 @@ class ACSF(Descriptor):
 
     def add(
         self,
-        symmetry_function: SymmetryFunction,
+        symmetry_function: BaseSymmetryFunction,
         neighbor_element_j: Element,
         neighbor_element_k: Optional[Element] = None,
     ) -> None:
@@ -112,7 +112,8 @@ class ACSF(Descriptor):
 
         :param structure: input structure instance
         :type structure: Structure
-        :param atom_index: index for atom(s), defaults select all atom indices of type the central element of the descriptor.
+        :param atom_index: index for atom(s), defaults select all atom indices
+        of type the central element of the descriptor.
         :type atom_index: Optional[Array], optional
         :return: descriptor values
         :rtype: Array
@@ -128,7 +129,7 @@ class ACSF(Descriptor):
         if atom_index is None:
             atom_index = structure.select(self.element)
         else:
-            atom_index = jnp.atleast_1d(atom_index)
+            atom_index = jnp.atleast_1d(atom_index)  # type: ignore
             # Check aid atom type match the central element
             if not jnp.all(
                 structure.element_map.element_to_atype[self.element]
