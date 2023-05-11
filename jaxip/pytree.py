@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from jax import tree_util
 
@@ -41,7 +41,7 @@ class BaseJaxPytreeDataClass:
         cls, aux_data: Dict[str, Any], children: Tuple[Any, ...]
     ) -> BaseJaxPytreeDataClass:
         return cls(*children, **aux_data)  # type: ignore
-    
+
     def __hash__(self) -> int:
         """
         Define hash method based on the `JAX JIT compilation` static attributes.
@@ -66,28 +66,35 @@ class BaseJaxPytreeDataClass:
             for attr in cls.__annotations__.keys()
             if attr not in dynamic_attributes
         )
-    
+
     @classmethod
     def _assert_jit_attributes(
-        cls, 
-        available: Tuple[str, ...], 
-        expected: Tuple[str, ...], 
+        cls,
+        available: Tuple[str, ...],
+        expected: Tuple[str, ...],
         tag: str = "",
     ) -> None:
         """Assert to ensure jit (static or dynamics) attributes are correctly identified."""
-        if sorted(available) != sorted(expected): # type: ignore
+        if sorted(available) != sorted(expected):  # type: ignore
             logger.error(
                 f"Expecting JIT {tag} attributes: {expected} but got {available}",
-                exception=AssertionError
-        )
-            
-    @classmethod
-    def _assert_jit_static_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None: 
-        cls._assert_jit_attributes(cls._get_jit_static_attributes(), expected, tag="static")
+                exception=AssertionError,
+            )
 
     @classmethod
-    def _assert_jit_dynamic_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None: 
-        cls._assert_jit_attributes(cls._get_jit_dynamic_attributes(), expected, tag="dynamic")
+    def _assert_jit_static_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None:
+        cls._assert_jit_attributes(
+            cls._get_jit_static_attributes(), expected, tag="static"
+        )
+
+    @classmethod
+    def _assert_jit_dynamic_attributes(
+        cls, expected: Tuple[str, ...] = tuple()
+    ) -> None:
+        cls._assert_jit_attributes(
+            cls._get_jit_dynamic_attributes(), expected, tag="dynamic"
+        )
+
 
 def register_jax_pytree_node(cls) -> None:
     """Register the input class as internal JAX pytree node."""

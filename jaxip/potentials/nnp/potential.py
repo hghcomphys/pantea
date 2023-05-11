@@ -50,13 +50,13 @@ class NeuralNetworkPotential:
 
     Example
     -------
-    Different methods to initialize neural network potential:
+    Different methods to initialize neural network potential (NNP):
 
     .. code-block:: python
         :linenos:
 
         from jaxip.potentials import NeuralNetworkPotential
-        from jaxip.potentials import NeuralNetworkPotentialSettings as Settings
+        from jaxip.potentials.nnp import NeuralNetworkPotentialSettings as Settings
 
         # Method #1 (potential file)
         nnp1 = NeuralNetworkPotential.create_from_file("input.nn")
@@ -336,7 +336,6 @@ class NeuralNetworkPotential:
         Fit scaler parameters for each element using the input structure data.
         No gradient history is required here.
         """
-        # loader = TorchDataLoader(dataset, collate_fn=lambda batch: batch)
         print("Fitting descriptor scaler...")
         try:
             dataset_size: int = len(dataset)

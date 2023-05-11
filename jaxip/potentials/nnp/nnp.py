@@ -10,7 +10,7 @@ from jaxip.types import Element
 
 
 class NeuralNetworkPotentialInterface(Protocol):
-    """Interface for Potential."""
+    """Interface for neural network potential (NNP)."""
 
     settings: PotentialSettings
     elements: Tuple[Element, ...]

@@ -35,8 +35,8 @@ See `documentation`_ for more information.
 .. _documentation: https://jaxip.readthedocs.io/en/latest/readme.html
 
 
-Main features
--------------
+Features
+--------
 * The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
 * It uses `autograd` to make defining new descriptors straightforward.
 * Jaxip is written purely in Python and optimized with `just-in-time` (JIT) compilation.
