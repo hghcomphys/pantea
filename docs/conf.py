@@ -124,7 +124,7 @@ html_theme = "sphinx_rtd_theme"  # "pydata_sphinx_theme"
 #
 html_theme_options = {
     # "search_bar_position": "sidebar",
-    # "github_url": "https://github.com/hghcomphys/jaxip",
+    "github_url": "https://github.com/hghcomphys/jaxip",
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -220,7 +220,7 @@ if os.path.exists(notebooks_dir):
     shutil.rmtree(notebooks_dir)
 os.makedirs(notebooks_dir, exist_ok=True)
 
-for filename in ("tutorials.ipynb", "potential_training.ipynb"):
+for filename in ("tutorials.ipynb", "training.ipynb"):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),
         os.path.join(curdir, "notebooks", filename),
