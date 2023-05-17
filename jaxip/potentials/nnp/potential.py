@@ -88,16 +88,12 @@ class NeuralNetworkPotential:
         if ".json" == suffix:
             logger.info(f"Initializing from json file: {potfile.name}")
             settings = PotentialSettings.create_from_json(potfile)
-        elif ".nn" == suffix:
+        else:
             logger.info(
                 f"Initializing from original RuNNer file format: {potfile.name}"
             )
             settings = PotentialSettings.create_from_file(potfile)
-        else:
-            logger.error(
-                f"Unknown potential setting file format: {potfile.name}",
-                exception=TypeError,
-            )
+
         return NeuralNetworkPotential(
             settings=settings,  # type: ignore
             output_dir=potfile.parent,

@@ -215,7 +215,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         return (
             f"{self.__class__.__name__}(element='{self.element}'"
             f", symmetry_functions={self.num_symmetry_functions}"
-            f", r_cutoff={self.r_cutoff}"
+            # f", r_cutoff={self.r_cutoff}"
             ")"
         )
 
