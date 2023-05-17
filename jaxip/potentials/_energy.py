@@ -8,7 +8,7 @@ from jax import jit
 from jaxip.atoms.structure import Inputs
 from jaxip.descriptors import Scaler
 from jaxip.descriptors.acsf._acsf import _calculate_descriptor
-from jaxip.descriptors.base import Descriptor
+from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.models import NeuralNetworkModel
 from jaxip.types import Array, Element
 
@@ -16,7 +16,7 @@ from jaxip.types import Array, Element
 class AtomicPotentialInterface(Protocol):
     """An interface for AtomicPotential."""
 
-    descriptor: Descriptor
+    descriptor: DescriptorInterface
     scaler: Scaler
     model: NeuralNetworkModel
 

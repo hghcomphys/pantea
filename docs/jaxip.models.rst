@@ -9,6 +9,17 @@ Subpackages
 
    jaxip.models.nn
 
+Submodules
+----------
+
+jaxip.models.model module
+-------------------------
+
+.. automodule:: jaxip.models.model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

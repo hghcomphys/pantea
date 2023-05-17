@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -15,44 +15,26 @@ from optax import GradientTransformation
 from tqdm import tqdm
 
 from jaxip.atoms.structure import Structure
+from jaxip.datasets.dataset import DatasetInterface
 from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
-from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.metrics import ErrorMetric
-from jaxip.potentials.nnp.settings import PotentialSettings
+from jaxip.potentials.nnp.nnp import (
+    NeuralNetworkPotentialInterface as PotentialInterface,
+)
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 from jaxip.types import Array, Element
 
 
 def _mse_loss(*, logits: Array, targets: Array) -> Array:
     return ((targets - logits) ** 2).mean()
 
-class StructureDataset(Protocol):
-    """A data container for atom data structure."""
-
-    def __len__(self) -> int:
-        ...
-
-    def __getitem__(self, index: int) -> Structure:
-        ...
-
-class Updater(Protocol):
-    """Interface for potential weight updaters."""
-
-    def fit(self, dataset: StructureDataset) -> Dict:
-        ...
-
-
-class Potential(Protocol):
-    """Interface for Potential."""
-
-    settings: PotentialSettings
-    elements: Tuple[Element, ...]
-    atomic_potential: Dict[Element, AtomicPotential]
-    model_params: Dict[Element, frozendict]
 
 # @dataclass
-class GradientDescentUpdater(Updater):
+class GradientDescentUpdater:
     """
     A trainer class to fit a generic NNP potential weights using target values of the total
     energy and force components.
@@ -66,9 +48,9 @@ class GradientDescentUpdater(Updater):
     # error_metric: ErrorMetric
     # optimizer: Dict[Element, Any]
 
-    def __init__(self, potential: Potential) -> None:
+    def __init__(self, potential: PotentialInterface) -> None:
         """Initialize potential."""
-        self.potential: Potential = potential
+        self.potential: PotentialInterface = potential
         self.criterion: Callable[..., Array] = _mse_loss
         self.error_metric: ErrorMetric = ErrorMetric.create(
             self.potential.settings.main_error_metric
@@ -117,7 +99,7 @@ class GradientDescentUpdater(Updater):
 
     # ------------------------------------------------------------------------
 
-    def fit(self, dataset: StructureDataset, **kwargs):
+    def fit(self, dataset: DatasetInterface, **kwargs):
         """Train potential."""
         batch_size: int = kwargs.get("batch_size", 1)
         steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))

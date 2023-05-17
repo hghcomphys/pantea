@@ -10,7 +10,9 @@ import pytest
 
 from jaxip.datasets import RunnerDataset
 from jaxip.potentials import NeuralNetworkPotential
-from jaxip.potentials.nnp.settings import PotentialSettings
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 
 dataset_file = Path("tests", "h2o.data")
 potential_file = Path("tests", "h2o.json")
@@ -103,7 +105,7 @@ class TestNeuralNetworkPotential:
 
         settings_new = nnp.settings.copy()
         settings_new.random_seed = 4321
-        nnp_new = NeuralNetworkPotential(settings_new)
+        nnp_new = NeuralNetworkPotential(settings=settings_new)
         nnp_new.fit_scaler(dataset)
         nnp_new.output_dir = potential_file.parent
 

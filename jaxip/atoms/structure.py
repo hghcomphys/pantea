@@ -226,21 +226,21 @@ class Structure(BaseJaxPytreeDataClass):
         logger.debug(f"Initializing {self.__class__.__name__}()")
         self._assert_jit_dynamic_attributes(
             expected=(
-                "position", 
-                "force", 
-                "energy", 
-                "total_energy", 
-                "charge", 
+                "position",
+                "force",
+                "energy",
+                "total_energy",
+                "charge",
                 "total_charge",
-                "atom_type"
+                "atom_type",
             )
         )
         self._assert_jit_static_attributes(
             expected=(
-                'box', 
-                'element_map',
-                'neighbor',
-                'requires_neighbor_update',
+                "box",
+                "element_map",
+                "neighbor",
+                "requires_neighbor_update",
             )
         )
 

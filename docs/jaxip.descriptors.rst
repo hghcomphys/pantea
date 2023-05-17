@@ -12,10 +12,10 @@ Subpackages
 Submodules
 ----------
 
-jaxip.descriptors.base module
------------------------------
+jaxip.descriptors.descriptor module
+-----------------------------------
 
-.. automodule:: jaxip.descriptors.base
+.. automodule:: jaxip.descriptors.descriptor
    :members:
    :undoc-members:
    :show-inheritance:
