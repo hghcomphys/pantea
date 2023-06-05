@@ -1,4 +1,5 @@
 from typing import Optional, Protocol, Tuple
+from dataclasses import replace
 
 import jax
 import jax.numpy as jnp
@@ -7,13 +8,29 @@ from jaxip.atoms.element import ElementMap
 from jaxip.types import Array, Element
 
 
+@jax.jit
+def _compute_com_velocity(velocity: Array, mass: Array) -> Array:
+    return jnp.sum(mass * velocity, axis=0) / jnp.sum(mass)
+
+
+@jax.jit
+def _compute_kinetic_energy(velocity: Array, mass: Array) -> Array:
+    return 0.5 * jnp.sum(mass * velocity**2)
+
+
+@jax.jit
+def _compute_temprature(velocity: Array, mass: Array) -> Array:
+    kinetic_energy = _compute_kinetic_energy(velocity, mass)
+    natoms = velocity.shape[0]
+    return 2 * kinetic_energy / (3 * natoms)
+
+
 class PotentialInterface(Protocol):
     def __call__(self, structure: Structure) -> Array:
         ...
 
     def compute_force(self, structure: Structure) -> Array:
         ...
-
 
 
 class MDSimulator:
@@ -57,25 +74,26 @@ class MDSimulator:
             ), "At least one of temperature or initial velocity must be given"
             self.velocity = self._generate_random_velocity(temperature, random_seed)
 
-    def run_simulation(self, steps: int = 1) -> None:
-        for step in range(steps):
-            print(f"{step=}, total_energy={self.potential(self.structure)}")
+    def run_simulation(self, num_steps: int = 1) -> None:
+        for step in range(num_steps):
+            print(f"{step=}, T={_compute_temprature(self.velocity, self.mass)}")
             if self.temperature is not None:
-                self.use_thermostat()
+                self.apply_thermostat()
             self.verlet_integration()
 
     def verlet_integration(self) -> None:
-        self.structure.position += (
-            self.velocity * self.time_step + 0.5 * self.force * self.time_step**2
+        new_position = (
+            self.position
+            + self.velocity * self.time_step
+            + 0.5 * self.force * self.time_step**2
         )
+        self.structure = replace(self.structure, position=new_position)
         new_force = self._compute_force(self.structure)
         self.velocity += 0.5 * (self.force + new_force) * self.time_step
         self.force = new_force
-        print(self.position)
 
-    def use_thermostat(self) -> None:
-        kinetic_energy = 0.5 * jnp.sum(self.velocity**2)
-        current_temperature = 2 * kinetic_energy / (3 * self.natoms)
+    def apply_thermostat(self) -> None:
+        current_temperature = _compute_temprature(self.velocity, self.mass)
         scaling_factor = jnp.sqrt(self.temperature / current_temperature)
         self.velocity *= scaling_factor
 
@@ -84,8 +102,7 @@ class MDSimulator:
         # KB = 1.38064852e-23  # Boltzmann constant in J/K
         # std_dev = np.sqrt(KB * temperature / self.mass)
         velocity = jax.random.normal(key, shape=(self.structure.natoms, 3))
-        center_of_mass_velocity = jnp.sum(self.mass * velocity, axis=0) / jnp.sum(self.mass)
-        velocity -= center_of_mass_velocity
+        velocity -= _compute_com_velocity(velocity, self.mass)
         return velocity
 
     def _compute_force(self, structure: Structure) -> Array:
