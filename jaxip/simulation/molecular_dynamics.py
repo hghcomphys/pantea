@@ -1,11 +1,20 @@
-from typing import Optional, Protocol, Tuple
 from dataclasses import replace
+from typing import Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from jaxip.atoms import Structure
 from jaxip.atoms.element import ElementMap
 from jaxip.types import Array, Element
+
+
+class PotentialInterface(Protocol):
+    def __call__(self, structure: Structure) -> Array:
+        ...
+
+    def compute_force(self, structure: Structure) -> Array:
+        ...
 
 
 @jax.jit
@@ -25,12 +34,11 @@ def _compute_temprature(velocity: Array, mass: Array) -> Array:
     return 2 * kinetic_energy / (3 * natoms)
 
 
-class PotentialInterface(Protocol):
-    def __call__(self, structure: Structure) -> Array:
-        ...
-
-    def compute_force(self, structure: Structure) -> Array:
-        ...
+def _compute_force(
+    potential: PotentialInterface,
+    structure: Structure,
+) -> Array:
+    return potential.compute_force(structure)
 
 
 class MDSimulator:
@@ -50,11 +58,9 @@ class MDSimulator:
         self.structure = initial_structure
         self.time_step = time_step
         self.temperature = temperature
-        self.force: Array
+        self.force = _compute_force(self.potential, self.structure)
+
         self.mass: Array
-
-        self.force = self._compute_force(self.structure)
-
         if mass is not None:
             self.mass = mass
         else:
@@ -66,6 +72,7 @@ class MDSimulator:
                 )
             ).reshape(-1, 1)
 
+        self.velocity: Array
         if velocity is not None:
             self.velocity = velocity
         else:
@@ -88,7 +95,7 @@ class MDSimulator:
             + 0.5 * self.force * self.time_step**2
         )
         self.structure = replace(self.structure, position=new_position)
-        new_force = self._compute_force(self.structure)
+        new_force = _compute_force(self.potential, self.structure)
         self.velocity += 0.5 * (self.force + new_force) * self.time_step
         self.force = new_force
 
@@ -104,9 +111,6 @@ class MDSimulator:
         velocity = jax.random.normal(key, shape=(self.structure.natoms, 3))
         velocity -= _compute_com_velocity(velocity, self.mass)
         return velocity
-
-    def _compute_force(self, structure: Structure) -> Array:
-        return self.potential.compute_force(structure)
 
     @property
     def position(self) -> Array:
