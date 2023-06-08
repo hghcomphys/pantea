@@ -163,4 +163,5 @@ class ElementMap:
 
     @classmethod
     def element_to_atomic_mass(cls, element: Element) -> float:
-        return _KNOWN_ELEMENTS_DICT_MASS[element]
+        ATOMIC_MASS_TO_ELECTRON_MASS = 1822.888326382132
+        return _KNOWN_ELEMENTS_DICT_MASS[element] * ATOMIC_MASS_TO_ELECTRON_MASS

@@ -1,5 +1,5 @@
 from dataclasses import replace
-from typing import Optional, Protocol, Tuple
+from typing import Iterator, Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -41,6 +41,13 @@ def _compute_force(
     return potential.compute_force(structure)
 
 
+def _compute_energy(
+    potential: PotentialInterface,
+    structure: Structure,
+) -> Array:
+    return potential(structure)
+
+
 class MDSimulator:
     """A simple molecular dynamics simulator for a given potential function."""
 
@@ -50,7 +57,7 @@ class MDSimulator:
         initial_structure: Structure,
         time_step: float,
         temperature: Optional[float] = None,
-        velocity: Optional[Array] = None,
+        initial_velocity: Optional[Array] = None,
         mass: Optional[Array] = None,
         random_seed: int = 12345,
     ):
@@ -59,6 +66,7 @@ class MDSimulator:
         self.time_step = time_step
         self.temperature = temperature
         self.force = _compute_force(self.potential, self.structure)
+        self.step: int = 0
 
         self.mass: Array
         if mass is not None:
@@ -73,20 +81,35 @@ class MDSimulator:
             ).reshape(-1, 1)
 
         self.velocity: Array
-        if velocity is not None:
-            self.velocity = velocity
+        if initial_velocity is not None:
+            self.velocity = initial_velocity
         else:
             assert (
                 temperature is not None
             ), "At least one of temperature or initial velocity must be given"
             self.velocity = self._generate_random_velocity(temperature, random_seed)
 
-    def run_simulation(self, num_steps: int = 1) -> None:
-        for step in range(num_steps):
-            print(f"{step=}, T={_compute_temprature(self.velocity, self.mass)}")
+    def run_simulation(self, num_steps: int = 1, print_freq: int = 10) -> None:
+        for _ in range(num_steps):
+            if self.step % print_freq == 0:
+                print(next(self._get_physical_params()))
             if self.temperature is not None:
                 self.apply_thermostat()
             self.verlet_integration()
+
+    def _get_physical_params(self) -> Iterator[str]:
+        potential_energy = _compute_energy(self.potential, self.structure)
+        kinitic_energy = _compute_kinetic_energy(self.velocity, self.mass)
+        total_energy = potential_energy + kinitic_energy
+        temperature = _compute_temprature(self.velocity, self.mass)
+        output = (
+            f"{self.step:<10}"
+            f"Time:{self.time_step * self.step:<15.10f} "
+            f"Temp:{temperature:<15.10f} "
+            f"Etot:{total_energy:<15.10f} "
+            # f"Epot={potential_energy:<15.10f} "
+        )
+        yield output
 
     def verlet_integration(self) -> None:
         new_position = (
@@ -98,6 +121,7 @@ class MDSimulator:
         new_force = _compute_force(self.potential, self.structure)
         self.velocity += 0.5 * (self.force + new_force) * self.time_step
         self.force = new_force
+        self.step += 1
 
     def apply_thermostat(self) -> None:
         current_temperature = _compute_temprature(self.velocity, self.mass)
@@ -106,9 +130,9 @@ class MDSimulator:
 
     def _generate_random_velocity(self, temperature: float, seed: int) -> Array:
         key = jax.random.PRNGKey(seed)
-        # KB = 1.38064852e-23  # Boltzmann constant in J/K
-        # std_dev = np.sqrt(KB * temperature / self.mass)
-        velocity = jax.random.normal(key, shape=(self.structure.natoms, 3))
+        KB = 3.166811563e-6  # Boltzmann constant in Hartree/K
+        std_dev = jnp.sqrt(KB * temperature / self.mass)
+        velocity = std_dev * jax.random.normal(key, shape=(self.structure.natoms, 3))
         velocity -= _compute_com_velocity(velocity, self.mass)
         return velocity
 
