@@ -1,5 +1,5 @@
 from dataclasses import replace
-from typing import Iterator, Optional, Protocol, Tuple, cast
+from typing import Optional, Protocol, Tuple, cast
 
 import jax
 import jax.numpy as jnp
@@ -102,11 +102,20 @@ class MDSimulator:
         self.elapsed_time: float = 0.0
         self.temperature: Array = _get_temperature(self.velocity, self.mass)
 
-    def run_simulation(self, num_steps: int = 1, print_freq: int = 10) -> None:
-        for _ in range(num_steps):
-            if self.step % print_freq == 0:
-                print(self._repr_physical_params())
-            self.molecular_dynamics_step()
+    def run_simulation(
+        self,
+        num_steps: int = 1,
+        print_freq: Optional[int] = None,
+    ) -> None:
+        if print_freq is None:
+            print_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
+        try:
+            for _ in range(num_steps):
+                if self.step % print_freq == 0:
+                    print(self._repr_physical_params())
+                self.molecular_dynamics_step()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
 
     def molecular_dynamics_step(self) -> None:
         """Update parameters for the next time step."""
