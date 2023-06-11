@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.atoms import Structure
-from jaxip.atoms.element import ElementMap
+from jaxip.logger import logger
 from jaxip.types import Array, Element
 
 
@@ -60,9 +60,10 @@ class MDSimulator:
         target_temperature: Optional[float] = None,
         initial_velocity: Optional[Array] = None,
         thermostat_time_constant: Optional[float] = None,
-        mass: Optional[Array] = None,
+        atomic_mass: Optional[Array] = None,
         random_seed: int = 12345,
     ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
         self.potential = potential
         self.structure = initial_structure
         self.time_step = time_step
@@ -70,16 +71,11 @@ class MDSimulator:
         self.force = _compute_force(self.potential, self.structure)
 
         self.mass: Array
-        if mass is not None:
-            self.mass = mass
+        if atomic_mass is not None:
+            self.mass = atomic_mass.reshape(-1, 1)
         else:
-            to_element = self.structure.element_map.atom_type_to_element
-            elements = (to_element[int(at)] for at in self.structure.atom_type)
-            self.mass = jnp.array(
-                tuple(
-                    ElementMap.element_to_atomic_mass(element) for element in elements
-                )
-            ).reshape(-1, 1)
+            logger.warning("Extracting atomic masses from input structure")
+            self.mass = self.structure.mass.reshape(-1, 1)
 
         self.velocity: Array
         if initial_velocity is not None:
@@ -88,7 +84,9 @@ class MDSimulator:
             assert (
                 target_temperature is not None
             ), "At least one of temperature or initial velocity must be given"
-            self.velocity = self._generate_random_velocity(
+            logger.warning(
+                f"Generating random velocities ({target_temperature:0.2f} K)")
+            self.velocity = self.generate_random_velocity(
                 target_temperature, random_seed
             )
 
@@ -107,18 +105,19 @@ class MDSimulator:
         num_steps: int = 1,
         print_freq: Optional[int] = None,
     ) -> None:
+        """Run molecular simulation for a given number of steps."""
         if print_freq is None:
             print_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
         try:
             for _ in range(num_steps):
-                if self.step % print_freq == 0:
-                    print(self._repr_physical_params())
+                if (print_freq > 0) and (self.step % print_freq == 0):
+                    print(self._repr_params())
                 self.molecular_dynamics_step()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
 
     def molecular_dynamics_step(self) -> None:
-        """Update parameters for the next time step."""
+        """Update parameters for next time step."""
         self.verlet_integration()
         self.step += 1
         self.elapsed_time += self.time_step
@@ -127,6 +126,7 @@ class MDSimulator:
             self.brendsen_thermostat(self.target_temperature)
 
     def verlet_integration(self) -> None:
+        """Update atom positions and velocities based on Verlet algorithm."""
         new_position = (
             self.position
             + self.velocity * self.time_step
@@ -138,6 +138,7 @@ class MDSimulator:
         self.force = new_force
 
     def brendsen_thermostat(self, target_temperature: float) -> None:
+        """Control simulation temperature using Brendsen algorithm."""
         scaling_factor = jnp.sqrt(
             1.0
             + (self.time_step / self.thermostat_time_constant)
@@ -145,7 +146,8 @@ class MDSimulator:
         )
         self.velocity /= scaling_factor
 
-    def _generate_random_velocity(self, temperature: float, seed: int) -> Array:
+    def generate_random_velocity(self, temperature: float, seed: int) -> Array:
+        """Generate velocities with Maxwell-Boltzmann distribution."""
         key = jax.random.PRNGKey(seed)
         velocity = jax.random.normal(key, shape=(self.structure.natoms, 3))
         temperature = _get_temperature(velocity, self.mass)
@@ -153,10 +155,10 @@ class MDSimulator:
         velocity -= _get_center_of_mass(velocity, self.mass)
         return velocity
 
-    def _repr_physical_params(self) -> str:
+    def _repr_params(self) -> str:
         return (
             f"{self.step:<10} "
-            f"Time:{self.elapsed_time:<15.10f} "
+            f"time:{self.elapsed_time:<15.10f} "
             f"Temp:{self.temperature:<15.10f} "
             f"Etot:{self.get_total_energy():<15.10f} "
             f"Epot={self.get_potential_energy():<15.10f} "
