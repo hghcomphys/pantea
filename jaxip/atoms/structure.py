@@ -307,6 +307,17 @@ class Structure(BaseJaxPytreeDataClass):
         atom_type_host = jax.device_get(self.atom_type)
         return tuple(sorted({str(self.element_map(int(at))) for at in atom_type_host}))
 
+    @property
+    def mass(self) -> Array:
+        """Return an array of atomic masses."""
+        to_element = self.element_map.atom_type_to_element
+        elements = (to_element[int(at)] for at in self.atom_type)
+        return jnp.array(
+            tuple(
+                ElementMap.element_to_atomic_mass(element) for element in elements
+            )
+        )
+
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}"
