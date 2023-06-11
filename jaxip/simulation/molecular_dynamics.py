@@ -24,7 +24,7 @@ def _get_center_of_mass(array: Array, mass: Array) -> Array:
 
 @jax.jit
 def _get_kinetic_energy(velocity: Array, mass: Array) -> Array:
-    return 0.5 * jnp.sum(mass * velocity**2)
+    return 0.5 * jnp.sum(mass * velocity * velocity)
 
 
 @jax.jit
@@ -33,6 +33,16 @@ def _get_temperature(velocity: Array, mass: Array) -> Array:
     kinetic_energy = _get_kinetic_energy(velocity, mass)
     natoms = velocity.shape[0]
     return 2 * kinetic_energy / (3 * natoms * KB)
+
+
+@jax.jit
+def _get_virial_term(
+    velocity: Array,
+    mass: Array,
+    position: Array,
+    force: Array,
+) -> Array:
+    return 2 * _get_kinetic_energy(velocity, mass) + (position * force).sum()
 
 
 def _get_potential_energy(
@@ -74,7 +84,7 @@ class MDSimulator:
         if atomic_mass is not None:
             self.mass = atomic_mass.reshape(-1, 1)
         else:
-            logger.warning("Extracting atomic masses from input structure")
+            logger.info("Extracting atomic masses from input structure")
             self.mass = self.structure.mass.reshape(-1, 1)
 
         self.velocity: Array
@@ -84,8 +94,7 @@ class MDSimulator:
             assert (
                 target_temperature is not None
             ), "At least one of temperature or initial velocity must be given"
-            logger.warning(
-                f"Generating random velocities ({target_temperature:0.2f} K)")
+            logger.info(f"Generating random velocities ({target_temperature:0.2f} K)")
             self.velocity = self.generate_random_velocity(
                 target_temperature, random_seed
             )
@@ -94,6 +103,7 @@ class MDSimulator:
         if thermostat_time_constant is not None:
             self.thermostat_time_constant = thermostat_time_constant
         else:
+            logger.info("Setting default thermostat constant (100x timestep)")
             self.thermostat_time_constant = 100 * self.time_step
 
         self.step: int = 0
@@ -192,3 +202,13 @@ class MDSimulator:
 
     def get_total_energy(self) -> Array:
         return self.get_potential_energy() + self.get_kinetic_energy()
+
+    def get_pressure(self) -> Array:
+        assert self.structure.box, "calulating pressure... input structure must have PBC box"
+        volume = self.structure.box.volume
+        return _get_virial_term(
+            self.velocity,
+            self.mass,
+            self.position,
+            self.force,
+        ) / (3 * volume)  # type: ignore
