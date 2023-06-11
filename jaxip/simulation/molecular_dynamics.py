@@ -60,7 +60,7 @@ def _compute_force(
 
 
 class MDSimulator:
-    """A basic molecular dynamics simulator for a given potential function."""
+    """A molecular dynamics simulator to predict the trajectory of particles over time."""
 
     def __init__(
         self,
@@ -96,7 +96,7 @@ class MDSimulator:
             ), "At least one of temperature or initial velocity must be given"
             logger.info(f"Generating random velocities ({target_temperature:0.2f} K)")
             self.velocity = self.generate_random_velocity(
-                target_temperature, random_seed
+                target_temperature, mass=self.mass, seed=random_seed
             )
 
         self.thermostat_time_constant: float
@@ -113,14 +113,14 @@ class MDSimulator:
     def run_simulation(
         self,
         num_steps: int = 1,
-        print_freq: Optional[int] = None,
+        output_freq: Optional[int] = None,
     ) -> None:
         """Run molecular simulation for a given number of steps."""
-        if print_freq is None:
-            print_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
+        if output_freq is None:
+            output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
         try:
             for _ in range(num_steps):
-                if (print_freq > 0) and (self.step % print_freq == 0):
+                if (output_freq > 0) and (self.step % output_freq == 0):
                     print(self._repr_params())
                 self.molecular_dynamics_step()
         except KeyboardInterrupt:
@@ -156,13 +156,19 @@ class MDSimulator:
         )
         self.velocity /= scaling_factor
 
-    def generate_random_velocity(self, temperature: float, seed: int) -> Array:
-        """Generate velocities with Maxwell-Boltzmann distribution."""
+    @classmethod
+    def generate_random_velocity(
+        cls,
+        temperature: float,
+        mass: Array,
+        seed: int,
+    ) -> Array:
+        """Generate Maxwell-Boltzmann distributed random velocities."""
         key = jax.random.PRNGKey(seed)
-        velocity = jax.random.normal(key, shape=(self.structure.natoms, 3))
-        temperature = _get_temperature(velocity, self.mass)
-        velocity *= jnp.sqrt(cast(Array, self.target_temperature) / temperature)
-        velocity -= _get_center_of_mass(velocity, self.mass)
+        natoms = mass.shape[0]
+        velocity = jax.random.normal(key, shape=(natoms, 3))
+        velocity *= jnp.sqrt(temperature / _get_temperature(velocity, mass))
+        velocity -= _get_center_of_mass(velocity, mass)
         return velocity
 
     def _repr_params(self) -> str:
@@ -204,11 +210,15 @@ class MDSimulator:
         return self.get_potential_energy() + self.get_kinetic_energy()
 
     def get_pressure(self) -> Array:
-        assert self.structure.box, "calulating pressure... input structure must have PBC box"
+        assert (
+            self.structure.box
+        ), "Calulating pressure... input structure must have PBC box"
         volume = self.structure.box.volume
         return _get_virial_term(
             self.velocity,
             self.mass,
             self.position,
             self.force,
-        ) / (3 * volume)  # type: ignore
+        ) / (
+            3 * volume
+        )  # type: ignore
