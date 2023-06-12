@@ -1,5 +1,5 @@
 from dataclasses import replace
-from typing import Optional, Protocol, Tuple, cast
+from typing import Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from jaxip.atoms import Structure
 from jaxip.logger import logger
 from jaxip.types import Array, Element
+from jaxip.units import units
 
 
 class PotentialInterface(Protocol):
@@ -29,10 +30,9 @@ def _get_kinetic_energy(velocity: Array, mass: Array) -> Array:
 
 @jax.jit
 def _get_temperature(velocity: Array, mass: Array) -> Array:
-    KB = 3.166811563e-6  # Boltzmann constant in Hartree/K
     kinetic_energy = _get_kinetic_energy(velocity, mass)
     natoms = velocity.shape[0]
-    return 2 * kinetic_energy / (3 * natoms * KB)
+    return 2 * kinetic_energy / (3 * natoms * units.KB)
 
 
 @jax.jit
@@ -60,7 +60,7 @@ def _compute_force(
 
 
 class MDSimulator:
-    """A molecular dynamics simulator to predict the trajectory of particles over time."""
+    """A molecular dynamics simulator to predict trajectory of particles over time."""
 
     def __init__(
         self,
@@ -174,10 +174,10 @@ class MDSimulator:
     def _repr_params(self) -> str:
         return (
             f"{self.step:<10} "
-            f"time:{self.elapsed_time:<15.10f} "
-            f"Temp:{self.temperature:<15.10f} "
-            f"Etot:{self.get_total_energy():<15.10f} "
-            f"Epot={self.get_potential_energy():<15.10f} "
+            f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<15.10f} "
+            f"Temp[K]:{self.temperature:<15.10f} "
+            f"Etot[Ha]:{self.get_total_energy():<15.10f} "
+            f"Epot[Ha]:{self.get_potential_energy():<15.10f} "
         )
 
     @property
@@ -191,6 +191,14 @@ class MDSimulator:
     @property
     def elements(self) -> Tuple[Element]:
         return self.structure.elements
+
+    def get_pressure(self) -> Array:
+        assert (
+            self.structure.box
+        ), "Calulating pressure... input structure must have PBC box"
+        volume = self.structure.box.volume
+        virial = _get_virial_term(self.velocity, self.mass, self.position, self.force) 
+        return virial / (3.0 * volume)  # type: ignore
 
     def get_com_velocity(self) -> Array:
         """Return center of mass velocity."""
@@ -208,17 +216,3 @@ class MDSimulator:
 
     def get_total_energy(self) -> Array:
         return self.get_potential_energy() + self.get_kinetic_energy()
-
-    def get_pressure(self) -> Array:
-        assert (
-            self.structure.box
-        ), "Calulating pressure... input structure must have PBC box"
-        volume = self.structure.box.volume
-        return _get_virial_term(
-            self.velocity,
-            self.mass,
-            self.position,
-            self.force,
-        ) / (
-            3 * volume
-        )  # type: ignore
