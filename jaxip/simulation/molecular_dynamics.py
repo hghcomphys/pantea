@@ -6,6 +6,7 @@ import jax.numpy as jnp
 
 from jaxip.atoms import Structure
 from jaxip.logger import logger
+from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
 from jaxip.units import units
 
@@ -67,9 +68,9 @@ class MDSimulator:
         potential: PotentialInterface,
         initial_structure: Structure,
         time_step: float,
-        target_temperature: Optional[float] = None,
         initial_velocity: Optional[Array] = None,
-        thermostat_time_constant: Optional[float] = None,
+        initial_temperature: Optional[float] = None,
+        thermostat: Optional[BrendsenThermostat] = None,
         atomic_mass: Optional[Array] = None,
         random_seed: int = 12345,
     ):
@@ -77,14 +78,13 @@ class MDSimulator:
         self.potential = potential
         self.structure = initial_structure
         self.time_step = time_step
-        self.target_temperature = target_temperature
-        self.force = _compute_force(self.potential, self.structure)
+        self.thermostat = thermostat
 
         self.mass: Array
         if atomic_mass is not None:
             self.mass = atomic_mass.reshape(-1, 1)
         else:
-            logger.info("Extracting atomic masses from input structure")
+            logger.info("Extracting atomc masses from input structure")
             self.mass = self.structure.mass.reshape(-1, 1)
 
         self.velocity: Array
@@ -92,23 +92,27 @@ class MDSimulator:
             self.velocity = initial_velocity
         else:
             assert (
-                target_temperature is not None
-            ), "At least one of temperature or initial velocity must be given"
-            logger.info(f"Generating random velocities ({target_temperature:0.2f} K)")
+                initial_temperature is not None
+            ), "At least one of initial temperature or initial velocity must be given"
+            logger.info(f"Generating random velocities ({initial_temperature:0.2f} K)")
             self.velocity = self.generate_random_velocity(
-                target_temperature, mass=self.mass, seed=random_seed
+                initial_temperature, mass=self.mass, seed=random_seed
             )
 
-        self.thermostat_time_constant: float
-        if thermostat_time_constant is not None:
-            self.thermostat_time_constant = thermostat_time_constant
-        else:
-            logger.info("Setting default thermostat constant (100x timestep)")
-            self.thermostat_time_constant = 100 * self.time_step
+        if (self.thermostat is None) and (initial_temperature is not None):
+            logger.info(
+                f"Initializing thermostat ({initial_temperature:0.2f} K)"
+            )
+            logger.info("Setting default thermostat constant to 100x timestep")
+            self.thermostat = BrendsenThermostat(
+                target_temperature=initial_temperature,
+                time_constant=100 * self.time_step,
+            )
 
         self.step: int = 0
         self.elapsed_time: float = 0.0
-        self.temperature: Array = _get_temperature(self.velocity, self.mass)
+        self.force = _compute_force(self.potential, self.structure)
+        self.temperature = _get_temperature(self.velocity, self.mass)
 
     def run_simulation(
         self,
@@ -118,13 +122,17 @@ class MDSimulator:
         """Run molecular simulation for a given number of steps."""
         if output_freq is None:
             output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
+        is_output = output_freq > 0
+        init_step = self.step
         try:
             for _ in range(num_steps):
-                if (output_freq > 0) and (self.step % output_freq == 0):
+                if is_output and ((self.step - init_step) % output_freq == 0):
                     print(self._repr_params())
                 self.molecular_dynamics_step()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
+        if is_output:
+            print(self._repr_params())
 
     def molecular_dynamics_step(self) -> None:
         """Update parameters for next time step."""
@@ -132,8 +140,8 @@ class MDSimulator:
         self.step += 1
         self.elapsed_time += self.time_step
         self.temperature = _get_temperature(self.velocity, self.mass)
-        if self.target_temperature is not None:
-            self.brendsen_thermostat(self.target_temperature)
+        if self.thermostat is not None:
+            self.velocity = self.thermostat.get_rescaled_velocity(self)
 
     def verlet_integration(self) -> None:
         """Update atom positions and velocities based on Verlet algorithm."""
@@ -147,15 +155,6 @@ class MDSimulator:
         self.velocity += 0.5 * (self.force + new_force) * self.time_step
         self.force = new_force
 
-    def brendsen_thermostat(self, target_temperature: float) -> None:
-        """Control simulation temperature using Brendsen algorithm."""
-        scaling_factor = jnp.sqrt(
-            1.0
-            + (self.time_step / self.thermostat_time_constant)
-            * (self.temperature / target_temperature - 1.0)
-        )
-        self.velocity /= scaling_factor
-
     @classmethod
     def generate_random_velocity(
         cls,
@@ -165,6 +164,7 @@ class MDSimulator:
     ) -> Array:
         """Generate Maxwell-Boltzmann distributed random velocities."""
         key = jax.random.PRNGKey(seed)
+        mass = mass.reshape(-1, 1)
         natoms = mass.shape[0]
         velocity = jax.random.normal(key, shape=(natoms, 3))
         velocity *= jnp.sqrt(temperature / _get_temperature(velocity, mass))
@@ -197,7 +197,7 @@ class MDSimulator:
             self.structure.box
         ), "Calulating pressure... input structure must have PBC box"
         volume = self.structure.box.volume
-        virial = _get_virial_term(self.velocity, self.mass, self.position, self.force) 
+        virial = _get_virial_term(self.velocity, self.mass, self.position, self.force)
         return virial / (3.0 * volume)  # type: ignore
 
     def get_com_velocity(self) -> Array:
