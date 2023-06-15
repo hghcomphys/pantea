@@ -11,6 +11,9 @@ from jaxip.types import Array, Element
 from jaxip.units import units
 
 
+KB = units.BOLTZMANN_CONSTANT
+
+
 class PotentialInterface(Protocol):
     def __call__(self, structure: Structure) -> Array:
         ...
@@ -33,7 +36,7 @@ def _get_kinetic_energy(velocity: Array, mass: Array) -> Array:
 def _get_temperature(velocity: Array, mass: Array) -> Array:
     kinetic_energy = _get_kinetic_energy(velocity, mass)
     natoms = velocity.shape[0]
-    return 2 * kinetic_energy / (3 * natoms * units.KB)
+    return 2 * kinetic_energy / (3 * natoms * KB)
 
 
 @jax.jit
@@ -69,7 +72,7 @@ class MDSimulator:
         initial_structure: Structure,
         time_step: float,
         initial_velocity: Optional[Array] = None,
-        initial_temperature: Optional[float] = None,
+        temperature: Optional[float] = None,
         thermostat: Optional[BrendsenThermostat] = None,
         atomic_mass: Optional[Array] = None,
         random_seed: int = 12345,
@@ -92,20 +95,20 @@ class MDSimulator:
             self.velocity = initial_velocity
         else:
             assert (
-                initial_temperature is not None
+                temperature is not None
             ), "At least one of initial temperature or initial velocity must be given"
-            logger.info(f"Generating random velocities ({initial_temperature:0.2f} K)")
+            logger.info(f"Generating random velocities ({temperature:0.2f} K)")
             self.velocity = self.generate_random_velocity(
-                initial_temperature, mass=self.mass, seed=random_seed
+                temperature, mass=self.mass, seed=random_seed
             )
 
-        if (self.thermostat is None) and (initial_temperature is not None):
+        if (self.thermostat is None) and (temperature is not None):
             logger.info(
-                f"Initializing thermostat ({initial_temperature:0.2f} K)"
+                f"Initializing thermostat ({temperature:0.2f} K)"
             )
             logger.info("Setting default thermostat constant to 100x timestep")
             self.thermostat = BrendsenThermostat(
-                target_temperature=initial_temperature,
+                target_temperature=temperature,
                 time_constant=100 * self.time_step,
             )
 
@@ -127,12 +130,12 @@ class MDSimulator:
         try:
             for _ in range(num_steps):
                 if is_output and ((self.step - init_step) % output_freq == 0):
-                    print(self._repr_params())
+                    print(self.repr_physical_params())
                 self.molecular_dynamics_step()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         if is_output:
-            print(self._repr_params())
+            print(self.repr_physical_params())
 
     def molecular_dynamics_step(self) -> None:
         """Update parameters for next time step."""
@@ -171,7 +174,7 @@ class MDSimulator:
         velocity -= _get_center_of_mass(velocity, mass)
         return velocity
 
-    def _repr_params(self) -> str:
+    def repr_physical_params(self) -> str:
         return (
             f"{self.step:<10} "
             f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<15.10f} "

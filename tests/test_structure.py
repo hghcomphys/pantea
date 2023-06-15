@@ -96,7 +96,7 @@ H2O_DATA: Dict[str, Any] = {
 
 class TestStructure:
     lj: Structure = Structure.create_from_dict(
-        LJ_DATA, dtype=jnp.float32
+        LJ_DATA, dtype=jnp.float32  # type: ignore
     )  # type: ignore
     h2o: Structure = Structure.create_from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
