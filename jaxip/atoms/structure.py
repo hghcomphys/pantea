@@ -144,8 +144,8 @@ class Structure(BaseJaxPytreeDataClass):
                 ElementMap.atomic_number_to_element(n)
                 for n in atoms.get_atomic_numbers()
             ],
-            "lattice": np.asarray(atoms.get_cell()),
-            "position": atoms.get_positions(),
+            "lattice": np.asarray(atoms.get_cell() * units.FROM_ANGSTROM),
+            "position": atoms.get_positions() * units.FROM_ANGSTROM,
         }
         for key, attr in zip(
             ("charge", "energy"),
@@ -396,9 +396,9 @@ class Structure(BaseJaxPytreeDataClass):
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atom_type],
             positions=[
-                units.BOHR_TO_ANGSTROM * np.asarray(pos) for pos in self.position
+                units.TO_ANGSTROM * np.asarray(pos) for pos in self.position
             ],
-            cell=units.BOHR_TO_ANGSTROM * np.asarray(self.box.lattice)
+            cell=units.TO_ANGSTROM * np.asarray(self.box.lattice)
             if self.box
             else None,
             pbc=True if self.box else False,
