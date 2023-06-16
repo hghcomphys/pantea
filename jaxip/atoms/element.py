@@ -2,6 +2,7 @@ from typing import Dict, List, Mapping, Set, Tuple, Union
 
 from jaxip.logger import logger
 from jaxip.types import Element
+from jaxip.units import units
 
 # fmt: off
 _KNOWN_ELEMENTS_LIST: Tuple = (
@@ -49,7 +50,7 @@ _KNOWN_ELEMENTS_DICT_MASS = {
     'Nh': 284, 'Fl': 289, 'Mc': 288, 'Lv': 292, 'Ts': 294,
     'Og': 294,
 }
-# fmt: off
+# fmt: on
 
 
 _KNOWN_ELEMENTS_DICT: Mapping[Element, int] = {
@@ -163,5 +164,4 @@ class ElementMap:
 
     @classmethod
     def element_to_atomic_mass(cls, element: Element) -> float:
-        ATOMIC_MASS_TO_ELECTRON_MASS = 1822.888326382132
-        return _KNOWN_ELEMENTS_DICT_MASS[element] * ATOMIC_MASS_TO_ELECTRON_MASS
+        return _KNOWN_ELEMENTS_DICT_MASS[element] * units.FROM_ATOMIC_MASS

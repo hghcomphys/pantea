@@ -1,6 +1,5 @@
-from typing import Any, TYPE_CHECKING
 from dataclasses import dataclass, field
-
+from typing import TYPE_CHECKING, Any
 
 _optional_attr = field(default=None, repr=False)
 if TYPE_CHECKING:
@@ -13,11 +12,13 @@ else:
 class PhysicalUnits:
     """Physical constants for units conversions."""
 
+    BOLTZMANN_CONSTANT: float
     TO_ANGSTROM: float
     TO_PICO_SECOND: float
     TO_BAR: float
     TO_ELECTRON_VOLT: float
-    BOLTZMANN_CONSTANT: float
+    TO_ATOMIC_MASS: float
+
     TO_NANO_METER: Float = _optional_attr
     TO_FEMTO_SECOND: Float = _optional_attr
     TO_NANO_SECOND: Float = _optional_attr
@@ -34,6 +35,7 @@ class PhysicalUnits:
     FROM_KILO_BAR: Float = _optional_attr
     FROM_BAR: Float = _optional_attr
     FROM_ELECTRON_VOLT: Float = _optional_attr
+    FROM_ATOMIC_MASS: Float = _optional_attr
 
     def __post_init__(self) -> None:
         self.TO_NANO_METER = self.TO_ANGSTROM * 0.1
@@ -52,14 +54,16 @@ class PhysicalUnits:
         self.FROM_KILO_BAR = 1 / self.TO_KILO_BAR
         self.FROM_BAR = 1 / self.TO_BAR
         self.FROM_ELECTRON_VOLT = 1 / self.TO_ELECTRON_VOLT
+        self.FROM_ATOMIC_MASS = 1 / self.TO_ATOMIC_MASS
 
 
 hartree_units = PhysicalUnits(
+    BOLTZMANN_CONSTANT=3.166811563e-6,
     TO_ANGSTROM=5.29177249e-01,
-    TO_PICO_SECOND=2.418884326e-03,
+    TO_PICO_SECOND=2.418884326e-05,
     TO_BAR=2.942102648e08,
     TO_ELECTRON_VOLT=2.7211407953e01,
-    BOLTZMANN_CONSTANT=3.166811563e-6,
+    TO_ATOMIC_MASS=5.48579957163e-4,
 )
 
 
