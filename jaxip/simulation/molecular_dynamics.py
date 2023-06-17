@@ -10,7 +10,6 @@ from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
 from jaxip.units import units
 
-
 KB = units.BOLTZMANN_CONSTANT
 
 
@@ -46,7 +45,10 @@ def _get_virial_term(
     position: Array,
     force: Array,
 ) -> Array:
-    return 2 * _get_kinetic_energy(velocity, mass) + (position * force).sum()
+    return (
+        2 * _get_kinetic_energy(velocity, mass)
+        + (position * force).sum()
+    )
 
 
 def _get_potential_energy(
@@ -79,7 +81,6 @@ class MDSimulator:
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         self.potential = potential
-        self.structure = initial_structure
         self.time_step = time_step
         self.thermostat = thermostat
 
@@ -88,7 +89,7 @@ class MDSimulator:
             self.mass = atomic_mass.reshape(-1, 1)
         else:
             logger.info("Extracting atomc masses from input structure")
-            self.mass = self.structure.mass.reshape(-1, 1)
+            self.mass = initial_structure.mass.reshape(-1, 1)
 
         self.velocity: Array
         if initial_velocity is not None:
@@ -103,9 +104,7 @@ class MDSimulator:
             )
 
         if (self.thermostat is None) and (temperature is not None):
-            logger.info(
-                f"Initializing thermostat ({temperature:0.2f} K)"
-            )
+            logger.info(f"Initializing thermostat ({temperature:0.2f} K)")
             logger.info("Setting default thermostat constant to 100x timestep")
             self.thermostat = BrendsenThermostat(
                 target_temperature=temperature,
@@ -114,8 +113,9 @@ class MDSimulator:
 
         self.step: int = 0
         self.elapsed_time: float = 0.0
-        self.force = _compute_force(self.potential, self.structure)
+        self.force = _compute_force(self.potential, initial_structure)
         self.temperature = _get_temperature(self.velocity, self.mass)
+        self._structure = replace(initial_structure)
 
     def run_simulation(
         self,
@@ -151,12 +151,12 @@ class MDSimulator:
         new_position = (
             self.position
             + self.velocity * self.time_step
-            + 0.5 * self.force * self.time_step**2
+            + 0.5 * self.force * self.time_step * self.time_step
         )
-        self.structure = replace(self.structure, position=new_position)
-        new_force = _compute_force(self.potential, self.structure)
+        new_force = _compute_force(self.potential, self._structure)
         self.velocity += 0.5 * (self.force + new_force) * self.time_step
         self.force = new_force
+        self._structure = replace(self._structure, position=new_position)
 
     @classmethod
     def generate_random_velocity(
@@ -185,21 +185,28 @@ class MDSimulator:
 
     @property
     def position(self) -> Array:
-        return self.structure.position
+        return self._structure.position
 
     @property
     def natoms(self) -> int:
-        return self.structure.natoms
+        return self._structure.natoms
 
     @property
     def elements(self) -> Tuple[Element]:
-        return self.structure.elements
+        return self._structure.elements
+
+    def get_structure(self) -> Structure:
+        return replace(
+            self._structure,
+            force=self.force,
+            total_energy=self.potential(self._structure)
+        )
 
     def get_pressure(self) -> Array:
         assert (
-            self.structure.box
+            self._structure.box
         ), "Calulating pressure... input structure must have PBC box"
-        volume = self.structure.box.volume
+        volume = self._structure.box.volume
         virial = _get_virial_term(self.velocity, self.mass, self.position, self.force)
         return virial / (3.0 * volume)  # type: ignore
 
@@ -212,7 +219,7 @@ class MDSimulator:
         return _get_center_of_mass(self.position, self.mass)
 
     def get_potential_energy(self) -> Array:
-        return _get_potential_energy(self.potential, self.structure)
+        return _get_potential_energy(self.potential, self._structure)
 
     def get_kinetic_energy(self) -> Array:
         return _get_kinetic_energy(self.velocity, self.mass)
