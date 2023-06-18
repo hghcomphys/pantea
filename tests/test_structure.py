@@ -23,6 +23,7 @@ LJ_DATA: Dict[str, Any] = {
     "total_charge": [],
     "lattice": [],
     "atom_type": [1, 1],
+    "mass": [36785.88642640456] * 2,
 }
 
 H2O_DATA: Dict[str, Any] = {
@@ -91,12 +92,13 @@ H2O_DATA: Dict[str, Any] = {
     "total_energy": [-32.1390027258],
     "total_charge": [8.0e-07],
     "atom_type": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
+    "mass": [29164.39033379815, 1837.4714329938454, 1837.4714329938454] * 4,
 }
 
 
 class TestStructure:
     lj: Structure = Structure.create_from_dict(
-        LJ_DATA, dtype=jnp.float32
+        LJ_DATA, dtype=jnp.float32  # type: ignore
     )  # type: ignore
     h2o: Structure = Structure.create_from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
@@ -140,11 +142,25 @@ class TestStructure:
         [
             (
                 lj,
-                (2, ("Ne",), None, jnp.float32, None),
+                (
+                    2,
+                    ("Ne",),
+                    None,
+                    jnp.float32,
+                    None,
+                    jnp.asarray(LJ_DATA["mass"]),
+                ),
             ),
             (
                 h2o,
-                (12, ("H", "O"), 11.0, _dtype.FLOATX, jnp.asarray(H2O_DATA["lattice"])),
+                (
+                    12,
+                    ("H", "O"),
+                    11.0,
+                    _dtype.FLOATX,
+                    jnp.asarray(H2O_DATA["lattice"]),
+                    jnp.asarray(H2O_DATA["mass"]),
+                ),
             ),
         ],
     )
@@ -161,3 +177,4 @@ class TestStructure:
             assert structure.lattice is expected[4]
         else:
             assert jnp.allclose(structure.lattice, expected[4])
+        assert jnp.allclose(structure.mass, expected[5])

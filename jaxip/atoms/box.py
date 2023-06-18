@@ -119,5 +119,12 @@ class Box(BaseJaxPytreeDataClass):
             return self.lattice.diagonal()
         return None
 
+    @property
+    def volume(self) -> Optional[Array]:
+        """Return volume of the box."""
+        if self.lattice is not None:
+            return jnp.prod(self.length)
+        return None
+
 
 register_jax_pytree_node(Box)
