@@ -12,6 +12,7 @@ Subpackages
    jaxip.descriptors
    jaxip.models
    jaxip.potentials
+   jaxip.simulation
    jaxip.utils
 
 Submodules
