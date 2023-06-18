@@ -8,7 +8,7 @@ import pytest
 from ase import Atoms
 
 from jaxip.atoms.structure import Structure
-from jaxip.simulation.molecular_dynamics import MDSimulator
+from jaxip.simulation.md import MDSimulator
 from jaxip.types import Array
 from jaxip.units import units
 

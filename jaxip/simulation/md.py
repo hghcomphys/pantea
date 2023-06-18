@@ -45,10 +45,7 @@ def _get_virial_term(
     position: Array,
     force: Array,
 ) -> Array:
-    return (
-        2 * _get_kinetic_energy(velocity, mass)
-        + (position * force).sum()
-    )
+    return 2 * _get_kinetic_energy(velocity, mass) + (position * force).sum()
 
 
 def _get_potential_energy(
@@ -66,8 +63,6 @@ def _compute_force(
 
 
 class MDSimulator:
-    """A molecular dynamics simulator to predict trajectory of particles over time."""
-
     def __init__(
         self,
         potential: PotentialInterface,
@@ -78,7 +73,34 @@ class MDSimulator:
         thermostat: Optional[BrendsenThermostat] = None,
         atomic_mass: Optional[Array] = None,
         random_seed: int = 12345,
-    ):
+    ) -> None:
+        """
+        A molecular dynamics simulator to predict trajectory of particles over time.
+
+        :param potential: input potential function
+        :type potential: PotentialInterface
+        :param initial_structure: initial structure of atoms
+        :type initial_structure: Structure
+        :param time_step: time step in Hartree time unit
+        :type time_step: float
+        :param initial_velocity: Initial velocity of atom,
+            otherwise it can be randomly generated from the input temperature, defaults to None
+        :type initial_velocity: Optional[Array], optional
+        :param temperature: input temperature which can be used for generating random velocity
+            or setting target temperature for internally initialized thermostat if needed, defaults to None
+        :type temperature: Optional[float], optional
+        :param thermostat: input thermostat that controls the temperature of the system
+            to the desired value, defaults to None
+        :type thermostat: Optional[BrendsenThermostat], optional
+        :param atomic_mass: atomic mass of atoms in the input structure, defaults to None
+        :type atomic_mass: Optional[Array], optional
+        :param random_seed: seed for generating random velocities, defaults to 12345
+        :type random_seed: int, optional
+
+        This simulator is intended to be used for small systems of atoms during
+        the potential training in order to generate new dataset.
+        """
+
         logger.debug(f"Initializing {self.__class__.__name__}")
         self.potential = potential
         self.time_step = time_step
@@ -177,7 +199,7 @@ class MDSimulator:
     def repr_physical_params(self) -> str:
         return (
             f"{self.step:<10} "
-            f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<15.10f} "
+            f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<10.5f} "
             f"Temp[K]:{self.temperature:<15.10f} "
             f"Etot[Ha]:{self.get_total_energy():<15.10f} "
             f"Epot[Ha]:{self.get_potential_energy():<15.10f} "
@@ -199,7 +221,7 @@ class MDSimulator:
         return replace(
             self._structure,
             force=self.force,
-            total_energy=self.potential(self._structure)
+            total_energy=self.potential(self._structure),
         )
 
     def get_pressure(self) -> Array:
