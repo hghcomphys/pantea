@@ -2,6 +2,11 @@
 History
 =======
 
+0.6.0 (2023-06-18)
+-------------------
+* Add molecular dynamics (MD) simulator
+
+
 0.5.0 (2023-03-02)
 -------------------
 * Implemented Kalman filter trainer 
