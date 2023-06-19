@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.atoms import Structure
+from jaxip.atoms._structure import _get_center_of_mass
 from jaxip.logger import logger
 from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
@@ -19,11 +20,6 @@ class PotentialInterface(Protocol):
 
     def compute_force(self, structure: Structure) -> Array:
         ...
-
-
-@jax.jit
-def _get_center_of_mass(array: Array, mass: Array) -> Array:
-    return jnp.sum(mass * array, axis=0) / jnp.sum(mass)
 
 
 @jax.jit
