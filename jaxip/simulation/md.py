@@ -149,13 +149,13 @@ class MDSimulator:
             for _ in range(num_steps):
                 if is_output and ((self.step - init_step) % output_freq == 0):
                     print(self.repr_physical_params())
-                self.molecular_dynamics_step()
+                self.update()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         if is_output:
             print(self.repr_physical_params())
 
-    def molecular_dynamics_step(self) -> None:
+    def update(self) -> None:
         """Update parameters for next time step."""
         self.verlet_integration()
         self.step += 1
@@ -193,6 +193,7 @@ class MDSimulator:
         return velocity
 
     def repr_physical_params(self) -> str:
+        """Represent current physical parameters."""
         return (
             f"{self.step:<10} "
             f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<10.5f} "

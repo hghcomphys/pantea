@@ -1,7 +1,6 @@
 from dataclasses import replace
 from typing import Optional, Protocol, Tuple
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -21,13 +20,6 @@ class PotentialInterface(Protocol):
         ...
 
 
-def _compute_potential_energy(
-    potential: PotentialInterface,
-    structure: Structure,
-) -> Array:
-    return potential(structure)
-
-
 class MCSimulator:
     def __init__(
         self,
@@ -35,6 +27,7 @@ class MCSimulator:
         initial_structure: Structure,
         temperature: float,
         translate_step: float,
+        movements_per_step: int = 1,
         atomic_mass: Optional[Array] = None,
         random_seed: int = 12345,
     ) -> None:
@@ -62,6 +55,7 @@ class MCSimulator:
         self.potential = potential
         self.temperature = temperature
         self.translate_step = translate_step
+        self.movements_per_step = movements_per_step
 
         self.mass: Array
         if atomic_mass is not None:
@@ -71,7 +65,7 @@ class MCSimulator:
             self.mass = initial_structure.mass.reshape(-1, 1)
 
         self.step: int = 0
-        self.energy = _compute_potential_energy(self.potential, initial_structure)
+        self.energy = self.potential(initial_structure)
         self._structure = replace(initial_structure)
         np.random.seed(random_seed)
 
@@ -89,28 +83,32 @@ class MCSimulator:
             for _ in range(num_steps):
                 if is_output and ((self.step - init_step) % output_freq == 0):
                     print(self.repr_physical_params())
-                self.monte_carlo_step()
+                self.update()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         if is_output:
             print(self.repr_physical_params())
 
-    def monte_carlo_step(self) -> None:
+    def update(self) -> None:
         """Update parameters for next time step."""
         self.metropolis_algorithm()
         self.step += 1
 
     def metropolis_algorithm(self) -> None:
         """Update atom positions based on metropolis algorithm."""
-        displacement = np.random.uniform(
+        displacements = np.random.uniform(
             low=-self.translate_step,
             high=self.translate_step,
-            size=(3,),
+            size=(self.movements_per_step, 3),
         )
-        atom_index = np.random.randint(low=0, high=self.natoms)
-        new_position = self._structure.position.at[atom_index].add(displacement)
+        atom_indices = np.random.randint(
+            low=0,
+            high=self.natoms,
+            size=(self.movements_per_step,)
+        )
+        new_position = self._structure.position.at[atom_indices].add(displacements)
         new_structure = replace(self._structure, position=new_position)
-        new_energy = _compute_potential_energy(self.potential, new_structure)
+        new_energy = self.potential(new_structure)
 
         accept: bool = False
         if new_energy <= self.energy:
@@ -124,6 +122,7 @@ class MCSimulator:
             self._structure = new_structure
 
     def repr_physical_params(self) -> str:
+        """Represent current physical parameters."""
         return (
             f"{self.step:<10} "
             f"Temp[K]:{self.temperature:<15.10f} "
@@ -149,4 +148,4 @@ class MCSimulator:
         )
 
     def get_potential_energy(self) -> Array:
-        return _compute_potential_energy(self.potential, self._structure)
+        return self.potential(self._structure)
