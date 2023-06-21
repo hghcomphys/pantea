@@ -69,26 +69,6 @@ class MCSimulator:
         self._structure = replace(initial_structure)
         np.random.seed(random_seed)
 
-    def run_simulation(
-        self,
-        num_steps: int = 1,
-        output_freq: Optional[int] = None,
-    ) -> None:
-        """Run Monte carlo simulation for a given number of steps."""
-        if output_freq is None:
-            output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
-        is_output = output_freq > 0
-        init_step = self.step
-        try:
-            for _ in range(num_steps):
-                if is_output and ((self.step - init_step) % output_freq == 0):
-                    print(self.repr_physical_params())
-                self.update()
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt")
-        if is_output:
-            print(self.repr_physical_params())
-
     def update(self) -> None:
         """Update parameters for next time step."""
         self.metropolis_algorithm()
@@ -102,9 +82,7 @@ class MCSimulator:
             size=(self.movements_per_step, 3),
         )
         atom_indices = np.random.randint(
-            low=0,
-            high=self.natoms,
-            size=(self.movements_per_step,)
+            low=0, high=self.natoms, size=(self.movements_per_step,)
         )
         new_position = self._structure.position.at[atom_indices].add(displacements)
         new_structure = replace(self._structure, position=new_position)

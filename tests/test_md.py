@@ -140,12 +140,12 @@ class TestMDSimulator:
             ),
         ],
     )
-    def test_md_step(
+    def test_update(
         self,
         md: MDSimulator,
         expected: Tuple,
     ) -> None:
-        md.molecular_dynamics_step()
+        md.update()
         assert md.step == 1
         assert jnp.allclose(md.elapsed_time, expected[0])
         assert jnp.allclose(md.time_step, expected[0])
