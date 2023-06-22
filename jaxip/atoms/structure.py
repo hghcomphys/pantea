@@ -2,8 +2,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from functools import cached_property
-from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
+from typing import (
+    Any,
+    DefaultDict,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 import jax
 import jax.numpy as jnp

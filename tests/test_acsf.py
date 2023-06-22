@@ -60,7 +60,6 @@ def h2o_acsf() -> ACSF:
 
 
 class TestACSF:
-
     lj_structure: Structure = Structure.create_from_dict(
         {
             "position": [[0.0, 0.0, 0.0], [0.588897275, 0.588897275, 0.588897275]],

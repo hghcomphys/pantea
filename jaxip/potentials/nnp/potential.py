@@ -27,9 +27,8 @@ from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.nnp.kalman_filter import KalmanFilterUpdater
-from jaxip.potentials.nnp.settings import (
-    NeuralNetworkPotentialSettings as PotentialSettings,
-)
+from jaxip.potentials.nnp.settings import \
+    NeuralNetworkPotentialSettings as PotentialSettings
 from jaxip.types import Array, Element
 
 

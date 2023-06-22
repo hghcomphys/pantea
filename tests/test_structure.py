@@ -1,9 +1,11 @@
-from jaxip.types import dtype as _dtype
-from jaxip.atoms.structure import Structure
-import pytest
-import jax.numpy as jnp
 import os
 from typing import Any, Dict, Tuple
+
+import jax.numpy as jnp
+import pytest
+
+from jaxip.atoms.structure import Structure
+from jaxip.types import dtype as _dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"

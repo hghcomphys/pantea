@@ -1,6 +1,8 @@
-from jaxip.types import Array
-import jax.numpy as jnp
 from typing import Protocol
+
+import jax.numpy as jnp
+
+from jaxip.types import Array
 
 
 class MDSimulatorInterface(Protocol):

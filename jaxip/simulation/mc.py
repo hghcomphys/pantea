@@ -44,7 +44,7 @@ class MCSimulator:
         :type temperature: float
         :param atomic_mass: atomic mass of atoms in the input structure, defaults to None
         :type atomic_mass: Optional[Array], optional
-        :param random_seed: seed for generating random velocities, defaults to 12345
+        :param random_seed: seed for generating random atom movements, defaults to 12345
         :type random_seed: int, optional
 
         This simulator is intended to be used for small systems of atoms during
