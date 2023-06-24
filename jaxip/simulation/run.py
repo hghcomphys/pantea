@@ -28,7 +28,24 @@ def run_simulation(
     filename: Optional[Path] = None,
     append: bool = False,
 ) -> None:
-    """Run Monte carlo simulation for a given number of steps."""
+    """
+    Run an input simulator for a given number of steps.
+
+    :param simulator: either a molecular dynamics (MD) or monte carlo (MC) simulator
+    :type simulator: SimulatorInterface
+    :param num_steps: number of steps, defaults to 1
+    :type num_steps: int, optional
+    :param output_freq: print outputs and/or dump configuration file after this number of steps, defaults to None
+    :type output_freq: Optional[int], optional
+    :param filename: output configuration file (e.g., `*.xyz`) as supported in the ASE, defaults to None
+    :type filename: Optional[Path], optional
+    :param append: whether append to the exiting configuration file or not, defaults to False
+    :type append: bool, optional
+
+
+    The input simulator, for example, can be molecular dynamics (MD) or
+    monte carlo (MC).
+    """
 
     cls_name = simulator.__class__.__name__
     logger.info(f"Running {cls_name} for {num_steps} steps")
