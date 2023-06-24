@@ -143,6 +143,7 @@ class MDSimulator:
         self.temperature = _get_temperature(self.velocity, self.mass)
         if self.thermostat is not None:
             self.velocity = self.thermostat.get_rescaled_velocity(self)
+            self.temperature = _get_temperature(self.velocity, self.mass)
 
     def verlet_integration(self) -> None:
         """Update atom positions and velocities based on Verlet algorithm."""

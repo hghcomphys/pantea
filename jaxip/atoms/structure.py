@@ -2,16 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    Generator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-)
+from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -339,7 +330,7 @@ class Structure(BaseJaxPytreeDataClass):
         """
         return jnp.nonzero(self.atom_type == self.element_map[element])[0]
 
-    @jax.jit
+    # @jax.jit
     def calculate_distance(
         self,
         atom_index: Array,
