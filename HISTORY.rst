@@ -2,9 +2,9 @@
 History
 =======
 
-0.6.0 (2023-06-18)
+0.6.x (2023-06-18)
 -------------------
-* Add molecular dynamics (MD) simulator
+* molecular dynamics (MD) and Monte-Carlo (MC) simulators
 
 
 0.5.0 (2023-03-02)
