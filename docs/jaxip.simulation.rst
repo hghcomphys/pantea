@@ -4,10 +4,26 @@ jaxip.simulation package
 Submodules
 ----------
 
-jaxip.simulation.molecular\_dynamics module
--------------------------------------------
+jaxip.simulation.mc module
+--------------------------
 
-.. automodule:: jaxip.simulation.molecular_dynamics
+.. automodule:: jaxip.simulation.mc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+jaxip.simulation.md module
+--------------------------
+
+.. automodule:: jaxip.simulation.md
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+jaxip.simulation.run module
+---------------------------
+
+.. automodule:: jaxip.simulation.run
    :members:
    :undoc-members:
    :show-inheritance:
