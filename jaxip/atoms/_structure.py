@@ -44,3 +44,8 @@ def _calculate_distance(
 ) -> Tuple[Array, Array]:
     """Calculate an array of distances between multiple atoms and the neighbors (using `jax.vmap`)."""
     return _vmap_calculate_distance(atom_position, neighbor_position, lattice)
+
+
+@jax.jit
+def _get_center_of_mass(array: Array, mass: Array) -> Array:
+    return jnp.sum(mass * array, axis=0) / jnp.sum(mass)

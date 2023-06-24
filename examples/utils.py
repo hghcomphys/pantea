@@ -1,6 +1,7 @@
 # !env > .env
 import os
 
+
 def set_env(filename):
     """
     An utility function to import conda environment variables into notebook when running on GPUs.

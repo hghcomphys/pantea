@@ -28,7 +28,7 @@ class Neighbor(BaseJaxPytreeDataClass):
         """Post initialize the neighbor list."""
         logger.debug(f"Initializing {self}")
         self._assert_jit_dynamic_attributes(expected=("mask",))
-        self._assert_jit_static_attributes(expected=('r_cutoff', 'r_cutoff_updated'))
+        self._assert_jit_static_attributes(expected=("r_cutoff", "r_cutoff_updated"))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

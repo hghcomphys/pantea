@@ -20,12 +20,10 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.nnp.metrics import ErrorMetric
-from jaxip.potentials.nnp.nnp import (
-    NeuralNetworkPotentialInterface as PotentialInterface,
-)
-from jaxip.potentials.nnp.settings import (
-    NeuralNetworkPotentialSettings as PotentialSettings,
-)
+from jaxip.potentials.nnp.nnp import \
+    NeuralNetworkPotentialInterface as PotentialInterface
+from jaxip.potentials.nnp.settings import \
+    NeuralNetworkPotentialSettings as PotentialSettings
 from jaxip.types import Array, Element
 
 

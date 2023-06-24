@@ -178,10 +178,8 @@ class RunnerAdaptor:
 
         line = in_file.readline()
         while line:
-
             # read a frame
             if "begin" in line.rstrip("/n").split()[0]:
-
                 # prepare sample
                 sample = Sample()
                 cell = []
@@ -190,7 +188,6 @@ class RunnerAdaptor:
                 total_charge = 0.0
 
                 while True:
-
                     line = read_and_tokenize_line(in_file)
 
                     if "comment" in line[0]:
@@ -275,7 +272,6 @@ class RuNNerAdaptorForLAMMPS(RunnerAdaptor):
         with open(filename, "r") as in_file:
             # loop over lines in file
             for line in in_file:
-
                 # create a instance of sample data
                 sample = Sample()
 
@@ -351,7 +347,6 @@ class RuNNerAdaptorForVASP(RunnerAdaptor):
         number_of_strucure=None,
         seed=1234,
     ):
-
         if number_of_strucure is None:
             samples = self.dataset.samples
         else:
@@ -365,10 +360,8 @@ class RuNNerAdaptorForVASP(RunnerAdaptor):
 
         index = 0
         for sample in samples:
-
             index += 1
             with open(filename + "_%d" % index, "w") as out_file:
-
                 # comment
                 out_file.write(", ATOM=")
                 for symbol in symbol_list:
@@ -416,10 +409,8 @@ class RuNNerAdaptorForVASP(RunnerAdaptor):
         sample = Sample()
 
         with open(filename, "r") as in_file:
-
             # loop over lines in file
             for line in in_file:
-
                 # create a instance of sample data
                 sample = Sample()
 
@@ -453,9 +444,7 @@ class RuNNerAdaptorForVASP(RunnerAdaptor):
                 # read atomic positions
                 atomid = 0
                 for natoms, n in zip(natoms_each_type, range(len(natoms_each_type))):
-
                     for i in range(natoms):
-
                         atomid += 1
                         line = read_and_tokenize_line(in_file)
 
@@ -494,7 +483,6 @@ class RuNNerAdaptorForVASP(RunnerAdaptor):
             # loop over lines in file
 
             for line in in_file:
-
                 # read line
                 # line = next(in_file)
                 # print(line)

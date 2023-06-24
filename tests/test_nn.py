@@ -15,7 +15,6 @@ from jaxip.types import dtype as _dtype
 
 
 class TestNeuralNetworkModel:
-
     nn_1: NeuralNetworkModel = NeuralNetworkModel(hidden_layers=((2, "tanh"),))
     nn_2: NeuralNetworkModel = NeuralNetworkModel(
         hidden_layers=((4, "tanh"), (8, "identity")),

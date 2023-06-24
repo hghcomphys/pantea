@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.atoms import Structure
+from jaxip.atoms._structure import _get_center_of_mass
 from jaxip.logger import logger
 from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
@@ -19,11 +20,6 @@ class PotentialInterface(Protocol):
 
     def compute_force(self, structure: Structure) -> Array:
         ...
-
-
-@jax.jit
-def _get_center_of_mass(array: Array, mass: Array) -> Array:
-    return jnp.sum(mass * array, axis=0) / jnp.sum(mass)
 
 
 @jax.jit
@@ -139,27 +135,7 @@ class MDSimulator:
         self.temperature = _get_temperature(self.velocity, self.mass)
         self._structure = replace(initial_structure)
 
-    def run_simulation(
-        self,
-        num_steps: int = 1,
-        output_freq: Optional[int] = None,
-    ) -> None:
-        """Run molecular simulation for a given number of steps."""
-        if output_freq is None:
-            output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
-        is_output = output_freq > 0
-        init_step = self.step
-        try:
-            for _ in range(num_steps):
-                if is_output and ((self.step - init_step) % output_freq == 0):
-                    print(self.repr_physical_params())
-                self.molecular_dynamics_step()
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt")
-        if is_output:
-            print(self.repr_physical_params())
-
-    def molecular_dynamics_step(self) -> None:
+    def update(self) -> None:
         """Update parameters for next time step."""
         self.verlet_integration()
         self.step += 1
@@ -167,6 +143,7 @@ class MDSimulator:
         self.temperature = _get_temperature(self.velocity, self.mass)
         if self.thermostat is not None:
             self.velocity = self.thermostat.get_rescaled_velocity(self)
+            self.temperature = _get_temperature(self.velocity, self.mass)
 
     def verlet_integration(self) -> None:
         """Update atom positions and velocities based on Verlet algorithm."""
@@ -197,12 +174,16 @@ class MDSimulator:
         return velocity
 
     def repr_physical_params(self) -> str:
+        """Represent current physical parameters."""
         return (
             f"{self.step:<10} "
             f"time[ps]:{units.TO_PICO_SECOND * self.elapsed_time:<10.5f} "
-            f"Temp[K]:{self.temperature:<15.10f} "
+            f"Temp[K]:{self.temperature:<10.5f} "
             f"Etot[Ha]:{self.get_total_energy():<15.10f} "
             f"Epot[Ha]:{self.get_potential_energy():<15.10f} "
+            f"Pres[kb]:{self.get_pressure() * units.TO_KILO_BAR:<10.5f}"
+            if self._structure.box
+            else ""
         )
 
     @property
@@ -229,7 +210,12 @@ class MDSimulator:
             self._structure.box
         ), "Calulating pressure... input structure must have PBC box"
         volume = self._structure.box.volume
-        virial = _get_virial_term(self.velocity, self.mass, self.position, self.force)
+        virial = _get_virial_term(
+            self.velocity,
+            self.mass,
+            self.position,
+            self.force,
+        )
         return virial / (3.0 * volume)  # type: ignore
 
     def get_com_velocity(self) -> Array:

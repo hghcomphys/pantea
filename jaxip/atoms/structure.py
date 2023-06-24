@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from functools import cached_property
 from typing import Any, DefaultDict, Dict, Generator, List, NamedTuple, Optional, Tuple
 
 import jax
@@ -11,7 +10,7 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from jaxip.atoms._structure import _calculate_distance
+from jaxip.atoms._structure import _calculate_distance, _get_center_of_mass
 from jaxip.atoms.box import Box
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
@@ -313,9 +312,7 @@ class Structure(BaseJaxPytreeDataClass):
         to_element = self.element_map.atom_type_to_element
         elements = (to_element[int(at)] for at in self.atom_type)
         return jnp.array(
-            tuple(
-                ElementMap.element_to_atomic_mass(element) for element in elements
-            )
+            tuple(ElementMap.element_to_atomic_mass(element) for element in elements)
         )
 
     def __repr__(self) -> str:
@@ -333,7 +330,7 @@ class Structure(BaseJaxPytreeDataClass):
         """
         return jnp.nonzero(self.atom_type == self.element_map[element])[0]
 
-    @jax.jit
+    # @jax.jit
     def calculate_distance(
         self,
         atom_index: Array,
@@ -395,12 +392,8 @@ class Structure(BaseJaxPytreeDataClass):
         logger.info("Creating a representation of the structure in form of ASE atoms")
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atom_type],
-            positions=[
-                units.TO_ANGSTROM * np.asarray(pos) for pos in self.position
-            ],
-            cell=units.TO_ANGSTROM * np.asarray(self.box.lattice)
-            if self.box
-            else None,
+            positions=[units.TO_ANGSTROM * np.asarray(pos) for pos in self.position],
+            cell=units.TO_ANGSTROM * np.asarray(self.box.lattice) if self.box else None,
             pbc=True if self.box else False,
             charges=[np.asarray(ch) for ch in self.charge],
         )
@@ -436,6 +429,10 @@ class Structure(BaseJaxPytreeDataClass):
         energy_offset = self._get_energy_offset(atom_energy)
         self.energy += energy_offset
         self.total_energy += energy_offset.sum()
+
+    def get_com_position(self) -> Array:
+        """Return center of mass position."""
+        return _get_center_of_mass(self.position, self.mass)
 
     # --------------------------------------------------------------------------------------
 
