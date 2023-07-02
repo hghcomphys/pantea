@@ -18,7 +18,7 @@ H2O_DATA = {
         [0.0, 11.8086403654, 0.0],
         [0.0, 0.0, 11.8086403654],
     ],
-    "position": [
+    "positions": [
         [-0.0075149684, -0.99679652, 2.0432096893],
         [1.6785530169, -1.7652744389, 0.6272511261],
         [1.3209809278, -4.4733785988, 0.478346376],
@@ -32,8 +32,8 @@ H2O_DATA = {
         [-2.2546133518, 0.9970025001, -3.8398101183],
         [-1.9353630189, 4.1351176211, -4.0833580223],
     ],
-    "element": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
-    "charge": [
+    "elements": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
+    "charges": [
         0.442739,
         -0.244991,
         -0.31647,
@@ -47,8 +47,8 @@ H2O_DATA = {
         -0.0713622,
         -0.317081,
     ],
-    "energy": [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0],
-    "force": [
+    "energies": [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0],
+    "forces": [
         [0.0576867169, -0.2578270722, -0.2339365489],
         [-0.5157027617, -1.4143481512, -0.1199800167],
         [0.261360575, 2.1511972322, 0.444809068],
@@ -64,7 +64,7 @@ H2O_DATA = {
     ],
     "total_energy": [-32.2949885081],
     "total_charge": [-6e-07],
-    "atom_type": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
+    "atom_types": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
 }
 
 
@@ -155,9 +155,9 @@ class TestRunnerDataset:
     ) -> None:
         structure: Structure = dataset[1]
         for i, attr in enumerate(Structure._get_atom_attributes()):
-            if attr == "position":
+            if attr == "positions":
                 assert jnp.allclose(
-                    structure.position, structure.box.shift_inside_box(expected[i])
+                    structure.positions, structure.box.shift_inside_box(expected[i])
                 )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])

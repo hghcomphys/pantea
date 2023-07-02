@@ -8,7 +8,7 @@ from jaxip.types import Array
 class MDSimulatorInterface(Protocol):
     temperature: float
     time_step: float
-    velocity: Array
+    velocities: Array
 
 
 class BrendsenThermostat:
@@ -22,7 +22,7 @@ class BrendsenThermostat:
         self.target_temperature = target_temperature
         self.time_constant = time_constant
 
-    def get_rescaled_velocity(
+    def get_rescaled_velocities(
         self,
         simulator: MDSimulatorInterface,
     ) -> Array:
@@ -31,4 +31,4 @@ class BrendsenThermostat:
             + (simulator.time_step / self.time_constant)
             * (simulator.temperature / self.target_temperature - 1.0)
         )
-        return simulator.velocity / scaling_factor
+        return simulator.velocities / scaling_factor

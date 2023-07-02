@@ -29,7 +29,7 @@ class ToStructure(TransformerInterface):
         self.dtype: Dtype = _dtype.FLOATX if dtype is None else dtype
 
     def __call__(self, data: Dict[str, Any]) -> Structure:
-        return Structure.create_from_dict(
+        return Structure.from_dict(
             data,
             r_cutoff=self.r_cutoff,
             dtype=self.dtype,

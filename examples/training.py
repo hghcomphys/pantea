@@ -30,7 +30,7 @@ structures = RunnerDataset(Path(potdir, "input.data"), persist=True)
 # structures = [structures[i] for i in range(len(structures))]
 
 # Potential
-nnp = NeuralNetworkPotential.create_from_file(Path(potdir, "input.nn"))
+nnp = NeuralNetworkPotential.from_file(Path(potdir, "input.nn"))
 
 # nnp.load_scaler()
 nnp.fit_scaler(structures)

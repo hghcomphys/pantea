@@ -12,11 +12,11 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 
 LJ_DATA: Dict[str, Any] = {
-    "position": [[0.0, 0.0, 0.0], [0.583123772, 0.583123772, 0.583123772]],
-    "element": ["Ne", "Ne"],
-    "charge": [0.0, 0.0],
-    "energy": [0.0, 0.0],
-    "force": [
+    "positions": [[0.0, 0.0, 0.0], [0.583123772, 0.583123772, 0.583123772]],
+    "elements": ["Ne", "Ne"],
+    "charges": [0.0, 0.0],
+    "energies": [0.0, 0.0],
+    "forces": [
         [-11.4260918, -11.4260918, -11.4260918],
         [11.4260918, 11.4260918, 11.4260918],
     ],
@@ -24,8 +24,8 @@ LJ_DATA: Dict[str, Any] = {
     "comment": ["r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"],
     "total_charge": [],
     "lattice": [],
-    "atom_type": [1, 1],
-    "mass": [36785.88642640456] * 2,
+    "atom_types": [1, 1],
+    "masses": [36785.88642640456] * 2,
 }
 
 H2O_DATA: Dict[str, Any] = {
@@ -34,7 +34,7 @@ H2O_DATA: Dict[str, Any] = {
         [0.0, 11.8086403654, 0.0],
         [0.0, 0.0, 11.8086403654],
     ],
-    "position": [
+    "positions": [
         [0.2958498542, -0.8444146738, 1.9618569793],
         [1.7226932399, -1.8170359274, 0.5237867306],
         [1.2660050151, -4.3958431356, 0.822408813],
@@ -48,8 +48,8 @@ H2O_DATA: Dict[str, Any] = {
         [-2.3516507887, 0.9376745482, -4.0756290424],
         [-1.7819663898, 4.1957022409, -4.0621741923],
     ],
-    "element": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
-    "charge": [
+    "elements": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
+    "charges": [
         0.423192,
         -0.243872,
         -0.313417,
@@ -63,7 +63,7 @@ H2O_DATA: Dict[str, Any] = {
         -0.0691934,
         -0.297707,
     ],
-    "energy": [
+    "energies": [
         0.0,
         0.0,
         0.0,
@@ -77,7 +77,7 @@ H2O_DATA: Dict[str, Any] = {
         0.0,
         0.0,
     ],
-    "force": [
+    "forces": [
         [-0.4727795521, -0.0084561951, 0.0460983059],
         [0.1920381912, 0.0587784661, 0.6142110612],
         [-0.8869675228, -0.7832124482, -0.7448845423],
@@ -93,18 +93,18 @@ H2O_DATA: Dict[str, Any] = {
     ],
     "total_energy": [-32.1390027258],
     "total_charge": [8.0e-07],
-    "atom_type": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
-    "mass": [29164.39033379815, 1837.4714329938454, 1837.4714329938454] * 4,
+    "atom_types": [2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1],
+    "masses": [29164.39033379815, 1837.4714329938454, 1837.4714329938454] * 4,
 }
 
 
 class TestStructure:
-    lj: Structure = Structure.create_from_dict(
+    lj: Structure = Structure.from_dict(
         LJ_DATA, dtype=jnp.float32  # type: ignore
     )  # type: ignore
-    h2o: Structure = Structure.create_from_dict(H2O_DATA, r_cutoff=11.0)
+    h2o: Structure = Structure.from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
-        ["position", "force", "energy", "total_energy", "charge", "total_charge"]
+        ["positions", "forces", "energies", "total_energy", "charges", "total_charge"]
     )
 
     @pytest.mark.parametrize(
@@ -132,9 +132,9 @@ class TestStructure:
         expected: Tuple,
     ) -> None:
         for i, attr in enumerate(Structure._get_atom_attributes()):
-            if attr == "position":
+            if attr == "positions":
                 assert jnp.allclose(
-                    structure.position, structure.box.shift_inside_box(expected[i])
+                    structure.positions, structure.box.shift_inside_box(expected[i])
                 )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])
@@ -150,7 +150,8 @@ class TestStructure:
                     None,
                     jnp.float32,
                     None,
-                    jnp.asarray(LJ_DATA["mass"]),
+                    jnp.asarray(LJ_DATA["masses"]),
+                    tuple(LJ_DATA["elements"]),
                 ),
             ),
             (
@@ -161,7 +162,8 @@ class TestStructure:
                     11.0,
                     _dtype.FLOATX,
                     jnp.asarray(H2O_DATA["lattice"]),
-                    jnp.asarray(H2O_DATA["mass"]),
+                    jnp.asarray(H2O_DATA["masses"]),
+                    tuple(H2O_DATA["elements"]),
                 ),
             ),
         ],
@@ -172,11 +174,12 @@ class TestStructure:
         expected: Tuple,
     ) -> None:
         assert structure.natoms == expected[0]
-        assert structure.elements == expected[1]
+        assert structure.get_unique_elements() == expected[1]
         assert structure.r_cutoff == expected[2]
         assert structure.dtype == expected[3]
         if structure.lattice is None:
             assert structure.lattice is expected[4]
         else:
             assert jnp.allclose(structure.lattice, expected[4])
-        assert jnp.allclose(structure.mass, expected[5])
+        assert jnp.allclose(structure.get_masses(), expected[5])
+        assert structure.get_elements() == expected[6]

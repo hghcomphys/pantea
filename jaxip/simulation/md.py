@@ -11,37 +11,37 @@ from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
 from jaxip.units import units
 
-KB = units.BOLTZMANN_CONSTANT
+KB: float = units.BOLTZMANN_CONSTANT
 
 
 class PotentialInterface(Protocol):
     def __call__(self, structure: Structure) -> Array:
         ...
 
-    def compute_force(self, structure: Structure) -> Array:
+    def compute_forces(self, structure: Structure) -> Array:
         ...
 
 
 @jax.jit
-def _get_kinetic_energy(velocity: Array, mass: Array) -> Array:
-    return 0.5 * jnp.sum(mass * velocity * velocity)
+def _get_kinetic_energy(velocities: Array, masses: Array) -> Array:
+    return 0.5 * jnp.sum(masses * velocities * velocities)
 
 
 @jax.jit
-def _get_temperature(velocity: Array, mass: Array) -> Array:
-    kinetic_energy = _get_kinetic_energy(velocity, mass)
-    natoms = velocity.shape[0]
+def _get_temperature(velocities: Array, masses: Array) -> Array:
+    kinetic_energy = _get_kinetic_energy(velocities, masses)
+    natoms = velocities.shape[0]
     return 2 * kinetic_energy / (3 * natoms * KB)
 
 
 @jax.jit
 def _get_virial_term(
-    velocity: Array,
-    mass: Array,
-    position: Array,
-    force: Array,
+    velocities: Array,
+    masses: Array,
+    positions: Array,
+    forces: Array,
 ) -> Array:
-    return 2 * _get_kinetic_energy(velocity, mass) + (position * force).sum()
+    return 2 * _get_kinetic_energy(velocities, masses) + (positions * forces).sum()
 
 
 def _get_potential_energy(
@@ -51,11 +51,11 @@ def _get_potential_energy(
     return potential(structure)
 
 
-def _compute_force(
+def _compute_forces(
     potential: PotentialInterface,
     structure: Structure,
 ) -> Array:
-    return potential.compute_force(structure)
+    return potential.compute_forces(structure)
 
 
 class MDSimulator:
@@ -64,10 +64,10 @@ class MDSimulator:
         potential: PotentialInterface,
         initial_structure: Structure,
         time_step: float,
-        initial_velocity: Optional[Array] = None,
+        initial_velocities: Optional[Array] = None,
         temperature: Optional[float] = None,
         thermostat: Optional[BrendsenThermostat] = None,
-        atomic_mass: Optional[Array] = None,
+        atomic_masses: Optional[Array] = None,
         random_seed: int = 12345,
     ) -> None:
         """
@@ -79,17 +79,17 @@ class MDSimulator:
         :type initial_structure: Structure
         :param time_step: time step in Hartree time unit
         :type time_step: float
-        :param initial_velocity: Initial velocity of atom,
+        :param initial_velocities: Initial atom velocities,
             otherwise it can be randomly generated from the input temperature, defaults to None
-        :type initial_velocity: Optional[Array], optional
-        :param temperature: input temperature which can be used for generating random velocity
+        :type initial_velocities: Optional[Array], optional
+        :param temperature: input temperature which can be used for generating random velocities
             or setting target temperature for internally initialized thermostat if needed, defaults to None
         :type temperature: Optional[float], optional
         :param thermostat: input thermostat that controls the temperature of the system
             to the desired value, defaults to None
         :type thermostat: Optional[BrendsenThermostat], optional
-        :param atomic_mass: atomic mass of atoms in the input structure, defaults to None
-        :type atomic_mass: Optional[Array], optional
+        :param atomic_masses: atomic mass of atoms in the input structure, defaults to None
+        :type atomic_masses: Optional[Array], optional
         :param random_seed: seed for generating random velocities, defaults to 12345
         :type random_seed: int, optional
 
@@ -102,28 +102,28 @@ class MDSimulator:
         self.time_step = time_step
         self.thermostat = thermostat
 
-        self.mass: Array
-        if atomic_mass is not None:
-            self.mass = atomic_mass.reshape(-1, 1)
+        self.masses: Array
+        if atomic_masses is not None:
+            self.masses = atomic_masses.reshape(-1, 1)
         else:
             logger.info("Extracting atomc masses from input structure")
-            self.mass = initial_structure.mass.reshape(-1, 1)
+            self.masses = initial_structure.get_masses().reshape(-1, 1)
 
-        self.velocity: Array
-        if initial_velocity is not None:
-            self.velocity = initial_velocity
+        self.velocities: Array
+        if initial_velocities is not None:
+            self.velocities = initial_velocities
         else:
             assert (
                 temperature is not None
-            ), "At least one of initial temperature or initial velocity must be given"
+            ), "At least one of input initial temperature or initial velocities must be given"
             logger.info(f"Generating random velocities ({temperature:0.2f} K)")
-            self.velocity = self.generate_random_velocity(
-                temperature, mass=self.mass, seed=random_seed
+            self.velocities = self.generate_random_velocities(
+                temperature, masses=self.masses, seed=random_seed
             )
 
         if (self.thermostat is None) and (temperature is not None):
             logger.info(f"Initializing thermostat ({temperature:0.2f} K)")
-            logger.info("Setting default thermostat constant to 100x timestep")
+            logger.info("Setting default thermostat constant to 100x time step")
             self.thermostat = BrendsenThermostat(
                 target_temperature=temperature,
                 time_constant=100 * self.time_step,
@@ -131,8 +131,8 @@ class MDSimulator:
 
         self.step: int = 0
         self.elapsed_time: float = 0.0
-        self.force = _compute_force(self.potential, initial_structure)
-        self.temperature = _get_temperature(self.velocity, self.mass)
+        self.forces = _compute_forces(self.potential, initial_structure)
+        self.temperature = _get_temperature(self.velocities, self.masses)
         self._structure = replace(initial_structure)
 
     def update(self) -> None:
@@ -140,38 +140,38 @@ class MDSimulator:
         self.verlet_integration()
         self.step += 1
         self.elapsed_time += self.time_step
-        self.temperature = _get_temperature(self.velocity, self.mass)
+        self.temperature = _get_temperature(self.velocities, self.masses)
         if self.thermostat is not None:
-            self.velocity = self.thermostat.get_rescaled_velocity(self)
-            self.temperature = _get_temperature(self.velocity, self.mass)
+            self.velocities = self.thermostat.get_rescaled_velocities(self)
+            self.temperature = _get_temperature(self.velocities, self.masses)
 
     def verlet_integration(self) -> None:
         """Update atom positions and velocities based on Verlet algorithm."""
-        new_position = (
-            self.position
-            + self.velocity * self.time_step
-            + 0.5 * self.force * self.time_step * self.time_step
+        new_positions = (
+            self.positions
+            + self.velocities * self.time_step
+            + 0.5 * self.forces * self.time_step * self.time_step
         )
-        new_force = _compute_force(self.potential, self._structure)
-        self.velocity += 0.5 * (self.force + new_force) * self.time_step
-        self.force = new_force
-        self._structure = replace(self._structure, position=new_position)
+        new_forces = _compute_forces(self.potential, self._structure)
+        self.velocities += 0.5 * (self.forces + new_forces) * self.time_step
+        self.forces = new_forces
+        self._structure = replace(self._structure, positions=new_positions)
 
     @classmethod
-    def generate_random_velocity(
+    def generate_random_velocities(
         cls,
         temperature: float,
-        mass: Array,
+        masses: Array,
         seed: int,
     ) -> Array:
         """Generate Maxwell-Boltzmann distributed random velocities."""
         key = jax.random.PRNGKey(seed)
-        mass = mass.reshape(-1, 1)
-        natoms = mass.shape[0]
-        velocity = jax.random.normal(key, shape=(natoms, 3))
-        velocity *= jnp.sqrt(temperature / _get_temperature(velocity, mass))
-        velocity -= _get_center_of_mass(velocity, mass)
-        return velocity
+        masses = masses.reshape(-1, 1)
+        natoms = masses.shape[0]
+        velocities = jax.random.normal(key, shape=(natoms, 3))
+        velocities *= jnp.sqrt(temperature / _get_temperature(velocities, masses))
+        velocities -= _get_center_of_mass(velocities, masses)
+        return velocities
 
     def repr_physical_params(self) -> str:
         """Represent current physical parameters."""
@@ -187,21 +187,20 @@ class MDSimulator:
         )
 
     @property
-    def position(self) -> Array:
-        return self._structure.position
+    def positions(self) -> Array:
+        return self._structure.positions
 
     @property
     def natoms(self) -> int:
         return self._structure.natoms
 
-    @property
-    def elements(self) -> Tuple[Element]:
-        return self._structure.elements
+    def get_elements(self) -> Tuple[Element]:
+        return self._structure.get_elements()
 
     def get_structure(self) -> Structure:
         return replace(
             self._structure,
-            force=self.force,
+            forces=self.forces,
             total_energy=self.potential(self._structure),
         )
 
@@ -211,26 +210,24 @@ class MDSimulator:
         ), "Calulating pressure... input structure must have PBC box"
         volume = self._structure.box.volume
         virial = _get_virial_term(
-            self.velocity,
-            self.mass,
-            self.position,
-            self.force,
+            self.velocities,
+            self.masses,
+            self.positions,
+            self.forces,
         )
         return virial / (3.0 * volume)  # type: ignore
 
-    def get_com_velocity(self) -> Array:
-        """Return center of mass velocity."""
-        return _get_center_of_mass(self.velocity, self.mass)
+    def get_center_of_mass_velocity(self) -> Array:
+        return _get_center_of_mass(self.velocities, self.masses)
 
-    def get_com_position(self) -> Array:
-        """Return center of mass position."""
-        return _get_center_of_mass(self.position, self.mass)
+    def get_center_of_mass_position(self) -> Array:
+        return _get_center_of_mass(self.positions, self.masses)
 
     def get_potential_energy(self) -> Array:
         return _get_potential_energy(self.potential, self._structure)
 
     def get_kinetic_energy(self) -> Array:
-        return _get_kinetic_energy(self.velocity, self.mass)
+        return _get_kinetic_energy(self.velocities, self.masses)
 
     def get_total_energy(self) -> Array:
         return self.get_potential_energy() + self.get_kinetic_energy()

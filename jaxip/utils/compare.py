@@ -23,11 +23,11 @@ def compare(
     :return: a dictionary of error metrics.
     """
     assert all(
-        structure1.atom_type == structure2.atom_type
+        structure1.atom_types == structure2.atom_types
     ), "Expected similar structures with the same atom types."
 
     result: Dict[str, Any] = dict()
-    frc_diff: Array = structure1.force - structure2.force
+    frc_diff: Array = structure1.forces - structure2.forces
     eng_diff: Array = structure1.total_energy - structure2.total_energy
     errors = [errors] if isinstance(errors, str) else errors
     print(f"Comparing two structures, error metrics: {', '.join(errors)}")

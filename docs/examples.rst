@@ -1,4 +1,4 @@
 .. toctree::
 
-   notebooks/tutorials.ipynb
+   notebooks/getting_started.ipynb
    notebooks/training.ipynb

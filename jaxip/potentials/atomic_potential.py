@@ -43,9 +43,9 @@ class AtomicPotential:
 
         return _compute_atomic_energy(
             self,
-            structure.position[aid],
+            structure.positions[aid],
             params,
-            structure.get_inputs()[element],
+            structure.get_per_element_inputs()[element],
         )
 
     @property

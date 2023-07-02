@@ -121,7 +121,7 @@ The trained potential can then be used to evaluate the energy and force componen
         structure = structures[0]
 
         # Instantiate potential from input settings file
-        nnp = NeuralNetworkPotential.create_from_file("input.nn")
+        nnp = NeuralNetworkPotential.from_file("input.nn")
 
         # Fit descriptor scaler and model weights
         nnp.fit_scaler(structures)

@@ -5,12 +5,13 @@ from typing import Optional, Tuple
 import jax.numpy as jnp
 
 from jaxip.atoms.structure import Structure
-from jaxip.descriptors.acsf._acsf import (_calculate_descriptor,
-                                          _calculate_grad_descriptor_per_atom)
+from jaxip.descriptors.acsf._acsf import (
+    _calculate_descriptor,
+    _calculate_grad_descriptor_per_atom,
+)
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
-from jaxip.descriptors.acsf.symmetry import (BaseSymmetryFunction,
-                                             EnvironmentElements)
+from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
 from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
@@ -104,16 +105,16 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     def __call__(
         self,
         structure: Structure,
-        atom_index: Optional[Array] = None,
+        atom_indices: Optional[Array] = None,
     ) -> Array:
         """
         Calculate descriptor values for the input given structure and atom index.
 
         :param structure: input structure instance
         :type structure: Structure
-        :param atom_index: index for atom(s), defaults select all atom indices
+        :param atom_indices: atom indices, defaults select all atom indices
         of type the central element of the descriptor.
-        :type atom_index: Optional[Array], optional
+        :type atom_indices: Optional[Array], optional
         :return: descriptor values
         :rtype: Array
         """
@@ -125,26 +126,27 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
                 f", angular={self.num_angular_symmetry_functions}"
             )
 
-        if atom_index is None:
-            atom_index = structure.select(self.element)
+        if atom_indices is None:
+            atom_indices = structure.select(self.element)
         else:
-            atom_index = jnp.atleast_1d(atom_index)  # type: ignore
+            atom_indices = jnp.atleast_1d(atom_indices)  # type: ignore
             # Check aid atom type match the central element
             if not jnp.all(
                 structure.element_map.element_to_atype[self.element]
-                == structure.atom_type[atom_index]
+                == structure.atom_types[atom_indices]
             ):
                 logger.error(
-                    f"Inconsistent central element '{self.element}': input aid={atom_index}"
-                    f" (atype='{int(structure.atom_type[atom_index])}')",
+                    f"Inconsistent central element '{self.element}': "
+                    f" input atom indices={atom_indices}"
+                    f" (atom_types='{int(structure.atom_types[atom_indices])}')",
                     exception=ValueError,
                 )
 
         return _calculate_descriptor(
             self,
-            structure.position[atom_index],
-            structure.position,
-            structure.atom_type,
+            structure.positions[atom_indices],
+            structure.positions,
+            structure.atom_types,
             structure.box.lattice,
             structure.element_map.element_to_atype,
         )
@@ -170,11 +172,11 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
 
         return _calculate_grad_descriptor_per_atom(
             self,
-            structure.position[
+            structure.positions[
                 atom_index
             ],  # must be a single atom position shape=(1, 3)
-            structure.position,
-            structure.atom_type,
+            structure.positions,
+            structure.atom_types,
             structure.box.lattice,
             structure.element_map.element_to_atype,
         )

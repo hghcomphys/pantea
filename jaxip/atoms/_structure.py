@@ -47,5 +47,5 @@ def _calculate_distance(
 
 
 @jax.jit
-def _get_center_of_mass(array: Array, mass: Array) -> Array:
-    return jnp.sum(mass * array, axis=0) / jnp.sum(mass)
+def _get_center_of_mass(array: Array, masses: Array) -> Array:
+    return jnp.sum(masses * array, axis=0) / jnp.sum(masses)

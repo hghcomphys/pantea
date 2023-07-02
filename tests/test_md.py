@@ -5,11 +5,11 @@ import jax.numpy as jnp
 import pytest
 from ase import Atoms
 
-
-from .ljpot import LJPotential
 from jaxip.atoms.structure import Structure
 from jaxip.simulation.md import MDSimulator
 from jaxip.units import units
+
+from .ljpot import LJPotential
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
@@ -18,11 +18,11 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 def get_structure() -> Structure:
     d = 6  # Angstrom
     uc = Atoms("He", positions=[(d / 2, d / 2, d / 2)], cell=(d, d, d))
-    s = Structure.create_from_ase(uc.repeat((2, 2, 2)))
+    s = Structure.from_ase(uc.repeat((2, 2, 2)))
     return s
 
 
-def get_potential():
+def get_potential() -> LJPotential:
     return LJPotential(
         sigma=2.5238 * units.FROM_ANGSTROM,
         epsilon=4.7093e-04 * units.FROM_ELECTRON_VOLT,
@@ -61,11 +61,11 @@ class TestMDSimulator:
         assert md.step == 0
         assert jnp.allclose(md.elapsed_time, 0.0)
         assert jnp.allclose(md.time_step, expected[0])
-        assert jnp.allclose(md.get_com_velocity(), jnp.zeros(3))
+        assert jnp.allclose(md.get_center_of_mass_velocity(), jnp.zeros(3))
         assert jnp.allclose(md.temperature, expected[1])
         assert jnp.allclose(md.get_pressure(), expected[2])
         assert jnp.allclose(md.get_total_energy(), expected[3])
-        assert jnp.allclose(md.get_com_position(), expected[4])
+        assert jnp.allclose(md.get_center_of_mass_position(), expected[4])
 
     @pytest.mark.parametrize(
         "md, structure",
@@ -81,8 +81,8 @@ class TestMDSimulator:
         md: MDSimulator,
         structure: Structure,
     ) -> None:
-        assert jnp.allclose(md.position, structure.position)
-        assert jnp.allclose(md.mass, structure.mass)
+        assert jnp.allclose(md.positions, structure.positions)
+        assert jnp.allclose(md.masses, structure.get_masses())
 
     @pytest.mark.parametrize(
         "md, expected",
@@ -108,8 +108,5 @@ class TestMDSimulator:
         assert md.step == 1
         assert jnp.allclose(md.elapsed_time, expected[0])
         assert jnp.allclose(md.time_step, expected[0])
-        assert jnp.allclose(md.get_com_velocity(), jnp.zeros(3))
-        assert jnp.allclose(md.temperature, expected[1])
-        assert jnp.allclose(md.get_pressure(), expected[2])
-        assert jnp.allclose(md.get_total_energy(), expected[3])
-        assert jnp.allclose(md.get_com_position(), expected[4])
+        assert jnp.allclose(md.get_center_of_mass_velocity(), jnp.zeros(3))
+        assert jnp.allclose(md.get_center_of_mass_position(), expected[4])
