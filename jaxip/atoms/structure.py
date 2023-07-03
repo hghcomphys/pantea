@@ -2,17 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-)
+from typing import (Any, DefaultDict, Dict, Generator, Iterator, List,
+                    NamedTuple, Optional, Tuple)
 
 import jax
 import jax.numpy as jnp
@@ -32,13 +23,11 @@ from jaxip.units import units
 
 
 class Inputs(NamedTuple):
-    """
-    Represent data types array of Structure.
-    """
+    """Represent array data of Structure for computing energy and forces."""
 
-    atom_position: Array
-    position: Array
-    atype: Array
+    atom_positions: Array
+    positions: Array
+    atom_types: Array
     lattice: Array
     emap: Dict[Element, Array]
 
@@ -46,34 +35,34 @@ class Inputs(NamedTuple):
 @dataclass
 class Structure(BaseJaxPytreeDataClass):
     """
-        A structure in the context of a simulation box consists of
-        arrays that store atomic attributes for a collection of atoms.
+    A structure in the context of a simulation box consists of
+    arrays that store atomic attributes for a collection of atoms.
 
-        Atomic attributes:
-    s
-        * `positions`: per-atom position x, y, and z
-        * `forces`: per-atom force components x, y, and z
-        * `energies`:  per-atom energy
-        * `total_energy`: total energy of atoms in simulation box
-        * `charges`:  per-atom electric charge
-        * `total_charge`: total charge of atoms in simulation box
-        * `atom_types`: per-atom type (an unique integer) corresponding to each element
+    Atomic attributes:
 
-        The structure serves as a fundamental data unit for the atoms in the simulation box.
-        Multiple structures can be gathered into a list to train a potential, or alternatively,
-        the total energy and force components can be computed for a specific structure.
+    * `positions`: per-atom position x, y, and z
+    * `forces`: per-atom force components x, y, and z
+    * `energies`:  per-atom energy
+    * `total_energy`: total energy of atoms in simulation box
+    * `charges`:  per-atom electric charge
+    * `total_charge`: total charge of atoms in simulation box
+    * `atom_types`: per-atom type (an unique integer) corresponding to each element
 
-        Each structure has three additional instances:
+    The structure serves as a fundamental data unit for the atoms in the simulation box.
+    Multiple structures can be gathered into a list to train a potential, or alternatively,
+    the total energy and force components can be computed for a specific structure.
 
-        * `Box`: applying periodic boundary conditions (PBC)
-        * `ElementMap`: determines how to extract the atom type (integer) from the element (string)
-        * `Neighbor`: computes the list of neighboring atoms inside a cutoff radius
+    Each structure has three additional instances:
 
-        .. note::
-            `Structure` can be considered as an individual domain
-            for MPI implementation of large-scale MD simulation (see `miniMD`_).
+    * `Box`: applying periodic boundary condition (PBC) along x, y, and z directions 
+    * `ElementMap`: determines how to extract the atom type (integer) from the element (string)
+    * `Neighbor`: computes the list of neighboring atoms inside a cutoff radius
 
-        .. _miniMD: https://github.com/Mantevo/miniMD
+    .. note::
+        `Structure` can be considered as an individual domain
+        for MPI implementation of large-scale MD simulation (see `miniMD`_).
+
+    .. _miniMD: https://github.com/Mantevo/miniMD
     """
 
     positions: Array
@@ -88,7 +77,28 @@ class Structure(BaseJaxPytreeDataClass):
     neighbor: Neighbor
     requires_neighbor_update: bool = field(default=True, repr=False)
 
-    # --------------------------------------------------------------------------------------
+    def __post_init__(self) -> None:
+        self.positions = self.box.shift_inside_box(self.positions)
+        logger.debug(f"Initializing {self.__class__.__name__}()")
+        self._assert_jit_dynamic_attributes(
+            expected=(
+                "positions",
+                "forces",
+                "energies",
+                "total_energy",
+                "charges",
+                "total_charge",
+                "atom_types",
+            )
+        )
+        self._assert_jit_static_attributes(
+            expected=(
+                "box",
+                "element_map",
+                "neighbor",
+                "requires_neighbor_update",
+            )
+        )
 
     @classmethod
     def from_dict(
@@ -98,34 +108,37 @@ class Structure(BaseJaxPytreeDataClass):
         dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
-        Create a new instance of structure from data dictionary including
-        positions, forces, box, neighbor, etc.
+        Create an instance of structure from an input data dictionary that includes
+        separate lists of positions, forces, elements, lattice, etc.
 
         :param data: input data
-        :param r_cutoff: neighbor atom cutoff radius, defaults to None
-        :param dtype: data type of arrays, defaults to None
-        :return: an initialized instance
+        :param r_cutoff: neighbor atoms cutoff radius, defaults to None
+        :param dtype: data type for arrays, defaults to None
+        :return: an initialized Structure
         """
         if dtype is None:
             dtype = _dtype.FLOATX
 
-        kwargs: Dict[str, Any] = dict()
-        data_: DefaultDict[str, List] = defaultdict(list, data)
+        input_data: DefaultDict[str, List] = defaultdict(list, data)
+        inputs: Dict[str, Any] = dict()
         try:
-            element_map: ElementMap = ElementMap(data_["elements"])
-            kwargs.update(
-                cls._init_arrays(data_, element_map=element_map, dtype=dtype),
+            element_map: ElementMap = ElementMap(input_data["elements"])
+            inputs.update(
+                cls._init_arrays(
+                    input_data,
+                    element_map=element_map,
+                    dtype=dtype,
+                ),
             )
-            kwargs["box"] = cls._init_box(data_["lattice"], dtype=dtype)
-            kwargs["element_map"] = element_map
-            kwargs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
-
+            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
+            inputs["element_map"] = element_map
+            inputs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
         except KeyError:
             logger.error(
                 "Cannot find at least one of the expected keyword in the input data.",
                 exception=KeyError,
             )
-        return cls(**kwargs)
+        return cls(**inputs)
 
     @classmethod
     def from_ase(
@@ -138,8 +151,8 @@ class Structure(BaseJaxPytreeDataClass):
         Create an instance of structure from `ASE`_ atoms.
 
         :param atoms: input ASE atoms instance
-        :param r_cutoff: neighbor atom cutoff radius, defaults to None
-        :param dtype: data type of arrays, defaults to None
+        :param r_cutoff: neighbor atoms cutoff radius, defaults to None
+        :param dtype: data type for arrays, defaults to None
         :return: an initialized instance
 
         .. _ASE: https://wiki.fysik.dtu.dk/ase/index.html
@@ -147,8 +160,7 @@ class Structure(BaseJaxPytreeDataClass):
         if dtype is None:
             dtype = _dtype.FLOATX
 
-        kwargs: Dict[str, Any] = dict()
-        # Extract atom info from the ASE atoms instance
+        inputs: Dict[str, Any] = dict()
         data = {
             "elements": [
                 ElementMap.atomic_number_to_element(n)
@@ -169,42 +181,43 @@ class Structure(BaseJaxPytreeDataClass):
             if attr in data:
                 data[f"total_{attr}"] = sum(data[attr])
 
-        data_: DefaultDict[str, List] = defaultdict(list, data)
+        input_data: DefaultDict[str, List] = defaultdict(list, data)
         try:
-            element_map: ElementMap = ElementMap(data_["elements"])
-            kwargs.update(
-                cls._init_arrays(data_, element_map=element_map, dtype=dtype),
+            element_map: ElementMap = ElementMap(input_data["elements"])
+            inputs.update(
+                cls._init_arrays(input_data, element_map=element_map, dtype=dtype),
             )
-            kwargs["box"] = cls._init_box(data_["lattice"], dtype=dtype)
-            kwargs["element_map"] = element_map
-            kwargs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
+            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
+            inputs["element_map"] = element_map
+            inputs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
 
         except KeyError:
             logger.error(
                 "Can not find at least one of the expected keyword in the input data.",
                 exception=KeyError,
             )
-        return cls(**kwargs)
+        return cls(**inputs)
 
-    @staticmethod
+    @classmethod
     def _init_arrays(
+        cls,
         data: Dict[str, Any],
         element_map: ElementMap,
         dtype: Dtype,
     ) -> Dict[str, Array]:
-        """Initialize a dictionary of arrays of atomic attributes from the input data."""
+        """Initialize array atomic attributes from the input data dictionary."""
         logger.debug("Allocating arrays for a structure as follows:")
         arrays: Dict[str, Array] = dict()
         for atom_attr in Structure._get_atom_attributes():
             try:
                 array: Array
                 if atom_attr == "atom_types":
-                    array = jnp.asarray(
+                    array = jnp.array(
                         [element_map(atom) for atom in data["elements"]],
                         dtype=_dtype.INDEX,
                     )
                 else:
-                    array = jnp.asarray(data[atom_attr], dtype=dtype)
+                    array = jnp.array(data[atom_attr], dtype=dtype)
                 arrays[atom_attr] = array
                 logger.debug(
                     f"{atom_attr:12} -> Array(shape={array.shape}, dtype='{array.dtype}')"
@@ -229,43 +242,16 @@ class Structure(BaseJaxPytreeDataClass):
 
     @classmethod
     def _get_atom_attributes(cls) -> Tuple[str, ...]:
-        """Get atom attributes which are basically array values."""
         return cls._get_jit_dynamic_attributes()
-
-    def __post_init__(self) -> None:
-        """Post initializations."""
-        self.positions = self.box.shift_inside_box(self.positions)
-        logger.debug(f"Initializing {self.__class__.__name__}()")
-        self._assert_jit_dynamic_attributes(
-            expected=(
-                "positions",
-                "forces",
-                "energies",
-                "total_energy",
-                "charges",
-                "total_charge",
-                "atom_types",
-            )
-        )
-        self._assert_jit_static_attributes(
-            expected=(
-                "box",
-                "element_map",
-                "neighbor",
-                "requires_neighbor_update",
-            )
-        )
 
     def __hash__(self) -> int:
         """Use the parent class's hash method because of JIT."""
         return super().__hash__()
 
-    # --------------------------------------------------------------------------------------
-
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
         Set cutoff radius of neighbor atoms in the structure.
-        This method is useful when having a potential with different cutoff radius.
+        This method is useful when having potentials with different cutoff radius.
 
         Updating of the neighbor list for a new cutoff radius is skipped if it is the same the previous one.
         It's important to note that the Neighbor object in Structure is considered as a buffer and not
@@ -297,16 +283,14 @@ class Structure(BaseJaxPytreeDataClass):
         """Return cutoff radius of neighboring atoms."""
         return self.neighbor.r_cutoff
 
-    # --------------------------------------------------------------------------------------
-
     @property
     def natoms(self) -> int:
-        """Number of atoms in the structure"""
+        """Return number of atoms in the structure"""
         return self.positions.shape[0]
 
     @property
     def dtype(self) -> Dtype:
-        """Datatype of the arrays in the structure (e.g. float32)."""
+        """Return data type of the arrays in the structure (e.g., float32)."""
         return self.positions.dtype
 
     @property
@@ -334,7 +318,9 @@ class Structure(BaseJaxPytreeDataClass):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}"
-            f"(natoms={self.natoms}, elements={self.get_unique_elements()}, dtype={self.dtype})"
+            f"(natoms={self.natoms}, "
+            f"elements={self.get_unique_elements()}, "
+            f"dtype={self.dtype})"
         )
 
     def select(self, element: Element) -> Array:
@@ -382,7 +368,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
-        Return arrays of atomic attributes in form of dictionary of numpy arrays.
+        Represent atomic attributes in form of dictionary of numpy arrays.
         To be used, for example, for dumping structure data into a file.
 
         :return: dictionary of atom attributes.
@@ -396,8 +382,9 @@ class Structure(BaseJaxPytreeDataClass):
 
     def to_ase(self) -> AseAtoms:
         """
-        An ASE representation of the structure.
-        The returned atoms object can be used to visualize or modify the structure using the ASE package.
+        An ASE (atoms) representation of the structure.
+        The returned atoms object can be used to visualize or
+        modify the structure using ASE package.
 
         .. warning::
             This works only for orthogonal cells.
@@ -414,10 +401,8 @@ class Structure(BaseJaxPytreeDataClass):
             charges=[np.asarray(ch) for ch in self.charges],
         )
 
-    # --------------------------------------------------------------------------------------
-
     def _get_energy_offset(self, atom_energy: Dict[Element, float]) -> Array:
-        """Return a array of energy offset."""
+        """Get an array of energy offsets."""
 
         energy_offset: Array = jnp.empty_like(self.energies)
         for element in self.get_unique_elements():
@@ -447,13 +432,13 @@ class Structure(BaseJaxPytreeDataClass):
         self.total_energy += energy_offset.sum()
 
     def get_center_of_mass_position(self) -> Array:
-        """Return center of mass position."""
+        """Get center of mass position."""
         return _get_center_of_mass(self.positions, self.get_masses())
 
     # --------------------------------------------------------------------------------------
 
     def get_per_element_inputs(self) -> Dict[Element, Inputs]:
-        """A tuple of required info which are used for training and evaluating the potential."""
+        """A tuple of required info per element for training and evaluating the potential."""
 
         def extract_inputs() -> Generator[Tuple[Element, Inputs], None, None]:
             for element in self.get_unique_elements():

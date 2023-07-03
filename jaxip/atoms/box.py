@@ -14,8 +14,8 @@ from jaxip.types import dtype as _dtype
 @dataclass
 class Box(BaseJaxPytreeDataClass):
     """
-    Simulation box which is responsible for applying PBCs
-    when there are available lattice info.
+    Simulation box which is for applying PBC
+    when there lattice matrix is available.
 
     .. warning::
         Current implementation works only for orthogonal cells.
@@ -32,7 +32,7 @@ class Box(BaseJaxPytreeDataClass):
 
         if self.lattice is not None:
             try:
-                self.lattice = jnp.asarray(
+                self.lattice = jnp.array(
                     self.lattice,
                     dtype=self.dtype,
                 ).reshape(3, 3)

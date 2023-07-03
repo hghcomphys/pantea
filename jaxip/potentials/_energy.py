@@ -32,8 +32,8 @@ def _compute_atomic_energy(
     x = _calculate_descriptor(
         atomic_potential.descriptor,
         positions,
-        inputs.position,
-        inputs.atype,
+        inputs.positions,
+        inputs.atom_types,
         inputs.lattice,
         inputs.emap,
     )
