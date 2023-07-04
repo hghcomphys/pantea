@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pytest
 
 from jaxip.atoms.structure import Structure
-from jaxip.types import dtype as _dtype
+from jaxip.types import _dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
@@ -21,7 +21,9 @@ LJ_DATA: Dict[str, Any] = {
         [11.4260918, 11.4260918, 11.4260918],
     ],
     "total_energy": [-0.21838404],
-    "comment": ["r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"],
+    "comment": [
+        "r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"
+    ],
     "total_charge": [],
     "lattice": [],
     "atom_types": [1, 1],
@@ -104,7 +106,14 @@ class TestStructure:
     )  # type: ignore
     h2o: Structure = Structure.from_dict(H2O_DATA, r_cutoff=11.0)
     atom_attributes: Tuple[str, ...] = tuple(
-        ["positions", "forces", "energies", "total_energy", "charges", "total_charge"]
+        [
+            "positions",
+            "forces",
+            "energies",
+            "total_energy",
+            "charges",
+            "total_charge",
+        ]
     )
 
     @pytest.mark.parametrize(
@@ -134,7 +143,8 @@ class TestStructure:
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "positions":
                 assert jnp.allclose(
-                    structure.positions, structure.box.shift_inside_box(expected[i])
+                    structure.positions,
+                    structure.box.shift_inside_box(expected[i]),
                 )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])

@@ -4,7 +4,7 @@ import jax.numpy as jnp
 
 from jaxip.logger import logger
 from jaxip.types import Array, Dtype
-from jaxip.types import dtype as _dtype
+from jaxip.types import _dtype
 
 
 def set_as_attribute(

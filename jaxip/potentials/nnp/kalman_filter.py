@@ -20,7 +20,7 @@ from jaxip.potentials.nnp.nnp import \
 from jaxip.potentials.nnp.settings import \
     NeuralNetworkPotentialSettings as PotentialSettings
 from jaxip.types import Array, Element
-from jaxip.types import dtype as default_dtype
+from jaxip.types import _dtype
 
 
 def _tree_flatten(pytree: Dict) -> Array:
@@ -72,7 +72,7 @@ class KalmanFilterUpdater:
         self.num_states: int = self.W.shape[0]
         # Error covariance matrix
         self.P: Array = (1.0 / self.epsilon) * jnp.identity(
-            self.num_states, dtype=default_dtype.FLOATX
+            self.num_states, dtype=_dtype.FLOATX
         )
 
     def fit(
@@ -101,21 +101,21 @@ class KalmanFilterUpdater:
             E_ref: Array = structure.total_energy
             E_pot: Array = _compute_energy(
                 frozendict(atomic_potential),
-                structure.get_positions(),
+                structure.get_per_element_positions(),
                 model_params,
-                structure.get_inputs(),
+                structure.get_per_element_inputs(),
             )
             return (E_ref - E_pot)[0] / structure.natoms
 
         def compute_force_error(state_vector: Array, structure: Structure) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
-            F_ref: Array = _tree_flatten(structure.get_forces())
+            F_ref: Array = _tree_flatten(structure.get_per_element_forces())
             F_pot: Array = _tree_flatten(
                 _compute_force(
                     frozendict(atomic_potential),
-                    structure.get_positions(),
+                    structure.get_per_element_positions(),
                     model_params,
-                    structure.get_inputs(),
+                    structure.get_per_element_inputs(),
                 )
             )
             return (F_ref - F_pot)[..., 0]
@@ -185,11 +185,11 @@ class KalmanFilterUpdater:
                 # Measurement noise
                 if self.kalman_type == 0:
                     A += (1.0 / self.eta) * jnp.identity(
-                        num_observations, dtype=default_dtype.FLOATX
+                        num_observations, dtype=_dtype.FLOATX
                     )
                 elif self.kalman_type == 1:
                     A += self.lambda0 * jnp.identity(
-                        num_observations, dtype=default_dtype.FLOATX
+                        num_observations, dtype=_dtype.FLOATX
                     )
 
                 # Kalman gain matrix
@@ -204,7 +204,7 @@ class KalmanFilterUpdater:
 
                 # Process noise.
                 self.P += self.q * jnp.identity(
-                    self.num_states, dtype=default_dtype.FLOATX
+                    self.num_states, dtype=_dtype.FLOATX
                 )
 
                 # Update state vector
