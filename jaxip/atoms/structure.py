@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import (Any, DefaultDict, Dict, Generator, Iterator, List,
-                    NamedTuple, Optional, Tuple)
+from dataclasses import dataclass
+from typing import (
+    Any,
+    DefaultDict,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 import jax
 import jax.numpy as jnp
@@ -17,8 +26,7 @@ from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from jaxip.types import Array, Dtype, Element
-from jaxip.types import dtype as _dtype
+from jaxip.types import Array, Dtype, Element, _dtype
 from jaxip.units import units
 
 
@@ -35,7 +43,7 @@ class Inputs(NamedTuple):
 @dataclass
 class Structure(BaseJaxPytreeDataClass):
     """
-    A structure in the context of a simulation box consists of
+    A structure in the context of simulation box consists of
     arrays that store atomic attributes for a collection of atoms.
 
     Atomic attributes:
@@ -54,7 +62,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     Each structure has three additional instances:
 
-    * `Box`: applying periodic boundary condition (PBC) along x, y, and z directions 
+    * `Box`: applying periodic boundary condition (PBC) along x, y, and z directions
     * `ElementMap`: determines how to extract the atom type (integer) from the element (string)
     * `Neighbor`: computes the list of neighboring atoms inside a cutoff radius
 
@@ -75,7 +83,6 @@ class Structure(BaseJaxPytreeDataClass):
     box: Box
     element_map: ElementMap
     neighbor: Neighbor
-    requires_neighbor_update: bool = field(default=True, repr=False)
 
     def __post_init__(self) -> None:
         self.positions = self.box.shift_inside_box(self.positions)
@@ -96,7 +103,6 @@ class Structure(BaseJaxPytreeDataClass):
                 "box",
                 "element_map",
                 "neighbor",
-                "requires_neighbor_update",
             )
         )
 
@@ -185,7 +191,9 @@ class Structure(BaseJaxPytreeDataClass):
         try:
             element_map: ElementMap = ElementMap(input_data["elements"])
             inputs.update(
-                cls._init_arrays(input_data, element_map=element_map, dtype=dtype),
+                cls._init_arrays(
+                    input_data, element_map=element_map, dtype=dtype
+                ),
             )
             inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
             inputs["element_map"] = element_map
@@ -206,7 +214,7 @@ class Structure(BaseJaxPytreeDataClass):
         dtype: Dtype,
     ) -> Dict[str, Array]:
         """Initialize array atomic attributes from the input data dictionary."""
-        logger.debug("Allocating arrays for a structure as follows:")
+        logger.debug(f"{cls.__name__} is allocating arrays as follows:")
         arrays: Dict[str, Array] = dict()
         for atom_attr in Structure._get_atom_attributes():
             try:
@@ -225,7 +233,7 @@ class Structure(BaseJaxPytreeDataClass):
             except KeyError:
                 logger.error(
                     f"Cannot find atom attribute {atom_attr} in the input data",
-                    exception=KeyError,  # type:ignore
+                    exception=KeyError,
                 )
         return arrays
 
@@ -245,35 +253,28 @@ class Structure(BaseJaxPytreeDataClass):
         return cls._get_jit_dynamic_attributes()
 
     def __hash__(self) -> int:
-        """Use the parent class's hash method because of JIT."""
+        """Use parent class's hash method because of JIT."""
         return super().__hash__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
         Set cutoff radius of neighbor atoms in the structure.
-        This method is useful when having potentials with different cutoff radius.
 
-        Updating of the neighbor list for a new cutoff radius is skipped if it is the same the previous one.
-        It's important to note that the Neighbor object in Structure is considered as a buffer and not
-        part of the atomic structure data, and it is used for calculating descriptors, potential, etc.
-        It is the task of calling classes to prepare the buffer neighbor before using it.
+        This method is useful for potentials with different cutoff radius.
+        It's important to note that the neighbor object in Structure is
+        as a buffer and not part of atomic structure data,
+        and it is used for calculating descriptors, potential, etc.
+        The neighbor list of atoms must be updated before using it.
 
         :param r_cutoff: a new values for the cutoff radius
         :type r_cutoff: float
         """
-        if self.r_cutoff == r_cutoff:
-            logger.info(
-                f"Skipping updating the neighbor list (cutoff radius): "
-                f"{self.r_cutoff} vs. {r_cutoff} (new)"
-            )
-            return
-
         self.neighbor.set_cutoff_radius(r_cutoff)
-        self.requires_neighbor_update = True
 
     def update_neighbor(self) -> None:
         """
-        Update the neighbor list of the structure.
+        Update the neighbor list of atoms in the structure.
+
         This task can be computationally expensive.
         """
         self.neighbor.update(self)
@@ -312,7 +313,10 @@ class Structure(BaseJaxPytreeDataClass):
         to_element = self.element_map.atom_type_to_element
         elements = (to_element[int(at)] for at in self.atom_types)
         return jnp.array(
-            tuple(ElementMap.element_to_atomic_mass(element) for element in elements)
+            tuple(
+                ElementMap.element_to_atomic_mass(element)
+                for element in elements
+            )
         )
 
     def __repr__(self) -> str:
@@ -333,7 +337,7 @@ class Structure(BaseJaxPytreeDataClass):
         return jnp.nonzero(self.atom_types == self.element_map[element])[0]
 
     # @jax.jit
-    def calculate_distance(
+    def calculate_distances(
         self,
         atom_indices: Array,
         neighbor_indices: Optional[Array] = None,
@@ -353,18 +357,22 @@ class Structure(BaseJaxPytreeDataClass):
         :return:  distances, position differences
         :rtype: Tuple[Array, Array]
         """
-        atom_positions = self.positions[jnp.asarray([atom_indices])].reshape(-1, 3)
+        atom_positions = self.positions[jnp.asarray([atom_indices])].reshape(
+            -1, 3
+        )
         if neighbor_indices is not None:
-            neighbor_positions = self.positions[jnp.atleast_1d(neighbor_indices)]
+            neighbor_positions = self.positions[
+                jnp.atleast_1d(neighbor_indices)
+            ]
         else:
             neighbor_positions = self.positions
 
-        dis, dx = _calculate_distance(
-            atom_positions, neighbor_positions, self.box.lattice
+        distances, position_differences = _calculate_distance(
+            atom_positions,
+            neighbor_positions,
+            self.box.lattice,
         )
-        return jnp.squeeze(dis), jnp.squeeze(dx)
-
-    # --------------------------------------------------------------------------------------
+        return jnp.squeeze(distances), jnp.squeeze(position_differences)
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -392,18 +400,23 @@ class Structure(BaseJaxPytreeDataClass):
         :return: ASE representation of the structure
         :rtype: AseAtoms
         """
-        logger.info("Creating a representation of the structure in form of ASE atoms")
+        logger.info(
+            "Creating a representation of the structure in form of ASE atoms"
+        )
         return AseAtoms(
             symbols=[self.element_map(int(at)) for at in self.atom_types],
-            positions=[units.TO_ANGSTROM * np.asarray(pos) for pos in self.positions],
-            cell=units.TO_ANGSTROM * np.asarray(self.box.lattice) if self.box else None,
+            positions=[
+                units.TO_ANGSTROM * np.asarray(pos) for pos in self.positions
+            ],
+            cell=units.TO_ANGSTROM * np.asarray(self.box.lattice)
+            if self.box
+            else None,
             pbc=True if self.box else False,
             charges=[np.asarray(ch) for ch in self.charges],
         )
 
     def _get_energy_offset(self, atom_energy: Dict[Element, float]) -> Array:
         """Get an array of energy offsets."""
-
         energy_offset: Array = jnp.empty_like(self.energies)
         for element in self.get_unique_elements():
             energy_offset = energy_offset.at[self.select(element)].set(
@@ -435,10 +448,8 @@ class Structure(BaseJaxPytreeDataClass):
         """Get center of mass position."""
         return _get_center_of_mass(self.positions, self.get_masses())
 
-    # --------------------------------------------------------------------------------------
-
     def get_per_element_inputs(self) -> Dict[Element, Inputs]:
-        """A tuple of required info per element for training and evaluating the potential."""
+        """A tuple of required info per element for training and evaluating a potential."""
 
         def extract_inputs() -> Generator[Tuple[Element, Inputs], None, None]:
             for element in self.get_unique_elements():
@@ -449,7 +460,8 @@ class Structure(BaseJaxPytreeDataClass):
                     self.atom_types,
                     self.box.lattice,  # type:ignore
                     tree_util.tree_map(
-                        lambda x: jnp.asarray(x), self.element_map.element_to_atype
+                        lambda x: jnp.asarray(x),
+                        self.element_map.element_to_atype,
                     ),
                 )
 

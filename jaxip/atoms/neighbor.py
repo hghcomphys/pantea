@@ -1,9 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import jax.numpy as jnp
 
-from jaxip.atoms._neighbor import _calculate_cutoff_mask
+from jaxip.atoms._neighbor import _calculate_cutoff_masks
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
@@ -12,7 +12,7 @@ from jaxip.types import Array
 @dataclass
 class Neighbor(BaseJaxPytreeDataClass):
     """
-    Create a neighbor list of atoms for an input structure
+    Create a neighbor list of atoms for structure.
     and it is by design independent of `Structure`.
 
     .. note::
@@ -20,15 +20,14 @@ class Neighbor(BaseJaxPytreeDataClass):
         This is usually implemented together with defining a skin radius.
     """
 
-    mask: Optional[Array] = None
+    masks: Optional[Array] = None
     r_cutoff: Optional[float] = None
-    r_cutoff_updated: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
         logger.debug(f"Initializing {self}")
-        self._assert_jit_dynamic_attributes(expected=("mask",))
-        self._assert_jit_static_attributes(expected=("r_cutoff", "r_cutoff_updated"))
+        self._assert_jit_dynamic_attributes(expected=("masks",))
+        self._assert_jit_static_attributes(expected=("r_cutoff",))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
@@ -43,18 +42,18 @@ class Neighbor(BaseJaxPytreeDataClass):
         :type r_cutoff: float
         """
         logger.debug(
-            f"Setting Neighbor cutoff radius from {self.r_cutoff} to {r_cutoff}"
+            f"Setting Neighbor cutoff radius from "
+            f"{self.r_cutoff} to {r_cutoff}"
         )
         self.r_cutoff = r_cutoff
-        self.r_cutoff_updated = True
 
     def update(self, structure) -> None:
         """
-        Update the list neighboring atoms.
+        Update the list of neighboring atoms.
 
         It is based on mask approach which is different from the conventional methods
         for updating the neighbor list (e.g. by defining neighbor indices).
-        It's many due to the fact that jax execute quite fast on vectorized presentations
+        It's due to the fact that jax execute quite fast on vectorized variables
         rather than simple looping in python (jax.jit).
 
         .. note::
@@ -62,22 +61,17 @@ class Neighbor(BaseJaxPytreeDataClass):
             But for time being the mask-based approach works well on `JAX`.
         """
         if self.r_cutoff is None:
-            logger.debug("Skipped updating the neighbor list (no cutoff radius)")
+            logger.debug(
+                "Skipped updating the neighbor list"
+                f"(r_cutoff={self.r_cutoff})"
+            )
             return
 
-        if (not structure.requires_neighbor_update) and (not self.r_cutoff_updated):
-            logger.debug("Skipped updating the neighbor list")
-            return
-
-        logger.debug("Updating the neighbor list")
-        self.mask = _calculate_cutoff_mask(
+        logger.debug("Updating neighbor list")
+        self.mask = _calculate_cutoff_masks(
             structure,
             jnp.atleast_1d(self.r_cutoff),
         )
-
-        # Avoid updating the neighbor list for the next call
-        structure.requires_neighbor_update = False
-        self.r_cutoff_updated = False
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"

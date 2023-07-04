@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import InitVar, dataclass
+from typing import Optional, cast
 
 import jax
 import jax.numpy as jnp
@@ -7,8 +7,7 @@ import jax.numpy as jnp
 from jaxip.atoms._box import _apply_pbc
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from jaxip.types import Array, Dtype
-from jaxip.types import dtype as _dtype
+from jaxip.types import Array, Dtype, _dtype
 
 
 @dataclass
@@ -23,18 +22,18 @@ class Box(BaseJaxPytreeDataClass):
     """
 
     lattice: Optional[Array] = None
-    dtype: Optional[Dtype] = None
+    dtype: InitVar[Optional[Dtype]] = None
 
-    def __pos_init__(self) -> None:
+    def __pos_init__(self, dtype: Dtype) -> None:
         """Post initialize simulation box (super-cell)."""
-        if self.dtype is None:
-            self.dtype = _dtype.FLOATX
+        if dtype is None:
+            dtype = _dtype.FLOATX
 
         if self.lattice is not None:
             try:
                 self.lattice = jnp.array(
                     self.lattice,
-                    dtype=self.dtype,
+                    dtype=dtype,
                 ).reshape(3, 3)
             except ValueError:
                 logger.error(
@@ -44,7 +43,6 @@ class Box(BaseJaxPytreeDataClass):
 
         logger.debug(f"Initializing {self}")
         self._assert_jit_dynamic_attributes(expected=("lattice",))
-        self._assert_jit_static_attributes(expected=("dtype",))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
@@ -62,7 +60,8 @@ class Box(BaseJaxPytreeDataClass):
         Apply the periodic boundary condition (PBC) on the input position array.
 
         All atoms must be positioned inside the box beforehand, otherwise
-        this method may not work as expected, see :meth:`structure.Structure.shift_inside_box`.
+        this method may not work as expected,
+        see :meth:`structure.Structure.shift_inside_box`.
 
         :param dx: positional difference
         :type dx: Array
@@ -74,7 +73,7 @@ class Box(BaseJaxPytreeDataClass):
         return dx
 
     @jax.jit
-    def shift_inside_box(self, x: Array) -> Array:
+    def shift_inside_box(self, positions: Array) -> Array:
         """
         Shift the input atom coordinates inside the PBC simulation box.
 
@@ -85,8 +84,8 @@ class Box(BaseJaxPytreeDataClass):
         """
         if self.length is not None:
             logger.debug("Shift all atoms inside the simulation box")
-            return jnp.remainder(x, self.length)
-        return x
+            return jnp.remainder(positions, self.length)
+        return positions
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice})"
@@ -123,7 +122,7 @@ class Box(BaseJaxPytreeDataClass):
     def volume(self) -> Optional[Array]:
         """Return volume of the box."""
         if self.lattice is not None:
-            return jnp.prod(self.length)
+            return jnp.prod(cast(Array, self.length))
         return None
 
 
