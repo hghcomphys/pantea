@@ -11,7 +11,10 @@ from jaxip.descriptors.acsf._acsf import (
 )
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
-from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
+from jaxip.descriptors.acsf.symmetry import (
+    BaseSymmetryFunction,
+    EnvironmentElements,
+)
 from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
@@ -132,7 +135,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             atom_indices = jnp.atleast_1d(atom_indices)  # type: ignore
             # Check aid atom type match the central element
             if not jnp.all(
-                structure.element_map.element_to_atype[self.element]
+                structure.element_map.element_to_atom_type[self.element]
                 == structure.atom_types[atom_indices]
             ):
                 logger.error(
@@ -148,7 +151,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             structure.positions,
             structure.atom_types,
             structure.box.lattice,
-            structure.element_map.element_to_atype,
+            structure.element_map.element_to_atom_type,
         )
 
     def grad(
@@ -178,7 +181,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             structure.positions,
             structure.atom_types,
             structure.box.lattice,
-            structure.element_map.element_to_atype,
+            structure.element_map.element_to_atom_type,
         )
 
     @property
@@ -194,7 +197,10 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     @property
     def num_symmetry_functions(self) -> int:
         """Return the total (`two-body` and `tree-body`) number of symmetry functions."""
-        return self.num_radial_symmetry_functions + self.num_angular_symmetry_functions
+        return (
+            self.num_radial_symmetry_functions
+            + self.num_angular_symmetry_functions
+        )
 
     @property
     def num_descriptors(self) -> int:
@@ -207,7 +213,10 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             [
                 cfn.r_cutoff
                 for (_, cfn) in itertools.chain(
-                    *[self.radial_symmetry_functions, self.angular_symmetry_functions]
+                    *[
+                        self.radial_symmetry_functions,
+                        self.angular_symmetry_functions,
+                    ]
                 )
             ]
         )

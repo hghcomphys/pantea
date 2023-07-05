@@ -38,13 +38,17 @@ class LJPotential:
         self.r_cutoff = r_cutoff
 
     def __call__(self, structure: Structure) -> Array:
-        r, _ = structure.calculate_distance(atom_indices=jnp.arange(structure.natoms))
+        r, _ = structure.calculate_distances(
+            atom_indices=jnp.arange(structure.natoms)
+        )
         mask = (0 < r) & (r < self.r_cutoff)
         pair_energies = _compute_pair_energy(self, r)
         return 0.5 * jnp.where(mask, pair_energies, 0.0).sum()  # type: ignore
 
     def compute_forces(self, structure: Structure) -> Array:
-        r, R = structure.calculate_distance(atom_indices=jnp.arange(structure.natoms))
+        r, R = structure.calculate_distances(
+            atom_indices=jnp.arange(structure.natoms)
+        )
         mask = (0 < r) & (r < self.r_cutoff)
         pair_forces = jnp.where(
             jnp.expand_dims(mask, axis=-1),

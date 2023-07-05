@@ -10,12 +10,12 @@ from jaxip.types import Array
 
 
 @jax.jit
-def _calculate_distance_per_atom(
+def _calculate_distances_per_atom(
     atom_position: Array,
     neighbor_position: Array,
     lattice: Optional[Array] = None,
 ) -> Tuple[Array, Array]:
-    """Calculate an array of distances between a single atom and neighboring atoms."""
+    """Calculate distances between a single atom and neighboring atoms."""
     dx: Array = atom_position - neighbor_position
     if lattice is not None:
         dx = _apply_pbc(dx, lattice)
@@ -30,20 +30,21 @@ def _calculate_distance_per_atom(
     return dist, dx  # type: ignore
 
 
-_vmap_calculate_distance: Callable = jax.vmap(
-    _calculate_distance_per_atom,
+_vmap_calculate_distances: Callable = jax.vmap(
+    _calculate_distances_per_atom,
     in_axes=(0, None, None),
 )
 
 
 @jax.jit
-def _calculate_distance(
+def _calculate_distances(
     atom_position: Array,
     neighbor_position: Array,
     lattice: Optional[Array] = None,
 ) -> Tuple[Array, Array]:
-    """Calculate an array of distances between multiple atoms and the neighbors (using `jax.vmap`)."""
-    return _vmap_calculate_distance(atom_position, neighbor_position, lattice)
+    """Calculate an array of distances between multiple atoms
+    and the neighbors (using `jax.vmap`)."""
+    return _vmap_calculate_distances(atom_position, neighbor_position, lattice)
 
 
 @jax.jit

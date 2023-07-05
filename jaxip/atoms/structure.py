@@ -20,7 +20,7 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from jaxip.atoms._structure import _calculate_distance, _get_center_of_mass
+from jaxip.atoms._structure import _calculate_distances, _get_center_of_mass
 from jaxip.atoms.box import Box
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
@@ -334,7 +334,9 @@ class Structure(BaseJaxPytreeDataClass):
         :param element: element name (e.g. `H` for hydrogen)
         :return: atom indices
         """
-        return jnp.nonzero(self.atom_types == self.element_map[element])[0]
+        return jnp.nonzero(
+            self.atom_types == self.element_map.element_to_atom_type[element]
+        )[0]
 
     # @jax.jit
     def calculate_distances(
@@ -367,7 +369,7 @@ class Structure(BaseJaxPytreeDataClass):
         else:
             neighbor_positions = self.positions
 
-        distances, position_differences = _calculate_distance(
+        distances, position_differences = _calculate_distances(
             atom_positions,
             neighbor_positions,
             self.box.lattice,
@@ -400,11 +402,10 @@ class Structure(BaseJaxPytreeDataClass):
         :return: ASE representation of the structure
         :rtype: AseAtoms
         """
-        logger.info(
-            "Creating a representation of the structure in form of ASE atoms"
-        )
+        logger.info("Creating an ASE representation of the structure")
+        to_element = self.element_map.atom_type_to_element
         return AseAtoms(
-            symbols=[self.element_map(int(at)) for at in self.atom_types],
+            symbols=[to_element[int(at)] for at in self.atom_types],
             positions=[
                 units.TO_ANGSTROM * np.asarray(pos) for pos in self.positions
             ],
@@ -416,7 +417,6 @@ class Structure(BaseJaxPytreeDataClass):
         )
 
     def _get_energy_offset(self, atom_energy: Dict[Element, float]) -> Array:
-        """Get an array of energy offsets."""
         energy_offset: Array = jnp.empty_like(self.energies)
         for element in self.get_unique_elements():
             energy_offset = energy_offset.at[self.select(element)].set(
@@ -426,7 +426,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def remove_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
-        Remove the input atom reference energies from the per-atom and total energy.
+        Remove input atom reference energies from each atom and also the total energy.
 
         :param atom_energy: atom reference energy
         """
@@ -436,7 +436,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def add_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
-        Add the input atom reference energies from the per-atom and total energy.
+        Add input atom reference energies to each the atom and the total energy.
 
         :param atom_energy: atom reference energy
         """
@@ -449,7 +449,7 @@ class Structure(BaseJaxPytreeDataClass):
         return _get_center_of_mass(self.positions, self.get_masses())
 
     def get_per_element_inputs(self) -> Dict[Element, Inputs]:
-        """A tuple of required info per element for training and evaluating a potential."""
+        """Get required info per element for training and evaluating a potential."""
 
         def extract_inputs() -> Generator[Tuple[Element, Inputs], None, None]:
             for element in self.get_unique_elements():
@@ -461,7 +461,7 @@ class Structure(BaseJaxPytreeDataClass):
                     self.box.lattice,  # type:ignore
                     tree_util.tree_map(
                         lambda x: jnp.asarray(x),
-                        self.element_map.element_to_atype,
+                        self.element_map.element_to_atom_type,
                     ),
                 )
 
