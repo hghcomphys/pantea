@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
     Any,
+    Callable,
     DefaultDict,
     Dict,
     Generator,
@@ -20,8 +21,7 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from jaxip.atoms._structure import _calculate_distances, _get_center_of_mass
-from jaxip.atoms.box import Box
+from jaxip.atoms.box import Box, _apply_pbc
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
 from jaxip.logger import logger
@@ -30,14 +30,42 @@ from jaxip.types import Array, Dtype, Element, _dtype
 from jaxip.units import units
 
 
-class Inputs(NamedTuple):
-    """Represent array data of Structure for computing energy and forces."""
+@jax.jit
+def _calculate_distances_per_atom(
+    atom_position: Array,
+    neighbor_position: Array,
+    lattice: Optional[Array] = None,
+) -> Tuple[Array, Array]:
+    """Calculate distances between a single atom and neighboring atoms."""
+    dx: Array = atom_position - neighbor_position
+    if lattice is not None:
+        dx = _apply_pbc(dx, lattice)
 
-    atom_positions: Array
-    positions: Array
-    atom_types: Array
-    lattice: Array
-    emap: Dict[Element, Array]
+    # Fix NaN in gradient of np.linalg.norm
+    # see https://github.com/google/jax/issues/3058
+    is_zero = dx.sum(axis=1, keepdims=True) == 0.0
+    dx_ = jnp.where(is_zero, jnp.ones_like(dx), dx)
+    dist = jnp.linalg.norm(dx_, ord=2, axis=1)
+    dist = jnp.where(jnp.squeeze(is_zero), 0.0, dist)
+
+    return dist, dx  # type: ignore
+
+
+_vmap_calculate_distances: Callable = jax.vmap(
+    _calculate_distances_per_atom,
+    in_axes=(0, None, None),
+)
+
+
+@jax.jit
+def _calculate_distances(
+    atom_position: Array,
+    neighbor_position: Array,
+    lattice: Optional[Array] = None,
+) -> Tuple[Array, Array]:
+    """Calculate an array of distances between multiple atoms
+    and the neighbors (using `jax.vmap`)."""
+    return _vmap_calculate_distances(atom_position, neighbor_position, lattice)
 
 
 @dataclass
@@ -80,12 +108,11 @@ class Structure(BaseJaxPytreeDataClass):
     charges: Array
     total_charge: Array
     atom_types: Array
-    box: Box
     element_map: ElementMap
-    neighbor: Neighbor
+    box: Optional[Box] = None
+    neighbor: Optional[Neighbor] = None
 
     def __post_init__(self) -> None:
-        self.positions = self.box.shift_inside_box(self.positions)
         logger.debug(f"Initializing {self.__class__.__name__}()")
         self._assert_jit_dynamic_attributes(
             expected=(
@@ -100,11 +127,13 @@ class Structure(BaseJaxPytreeDataClass):
         )
         self._assert_jit_static_attributes(
             expected=(
-                "box",
                 "element_map",
+                "box",
                 "neighbor",
             )
         )
+        if self.box is not None:
+            self.positions = self.box.shift_inside_box(self.positions)
 
     @classmethod
     def from_dict(
@@ -136,9 +165,9 @@ class Structure(BaseJaxPytreeDataClass):
                     dtype=dtype,
                 ),
             )
-            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
             inputs["element_map"] = element_map
-            inputs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
+            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
+            inputs["neighbor"] = cls._init_neighbor(r_cutoff)
         except KeyError:
             logger.error(
                 "Cannot find at least one of the expected keyword in the input data.",
@@ -195,10 +224,9 @@ class Structure(BaseJaxPytreeDataClass):
                     input_data, element_map=element_map, dtype=dtype
                 ),
             )
-            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
             inputs["element_map"] = element_map
-            inputs["neighbor"] = Neighbor(r_cutoff=r_cutoff)
-
+            inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
+            inputs["neighbor"] = cls._init_neighbor(r_cutoff)
         except KeyError:
             logger.error(
                 "Can not find at least one of the expected keyword in the input data.",
@@ -237,16 +265,55 @@ class Structure(BaseJaxPytreeDataClass):
                 )
         return arrays
 
-    @staticmethod
-    def _init_box(lattice: List[List[float]], dtype: Dtype) -> Box:
-        """Initialize a simulation box from the input lattice matrix."""
-        box: Box
+    @classmethod
+    def _init_box(
+        cls,
+        lattice: List[List[float]],
+        dtype: Dtype,
+    ) -> Optional[Box]:
+        """Initialize simulation box from input lattice matrix."""
         if len(lattice) > 0:
-            box = Box(jnp.asarray(lattice, dtype=dtype))
+            return Box(lattice, dtype=dtype)
         else:
-            logger.debug("No lattice info were found in structure")
-            box = Box()
-        return box
+            logger.debug("No lattice info were found")
+
+    @classmethod
+    def _init_neighbor(
+        cls, r_cutoff: Optional[float] = None
+    ) -> Optional[Neighbor]:
+        """Initialize neighbor input cutoff radius."""
+        if r_cutoff is not None:
+            return Neighbor(r_cutoff=r_cutoff)
+        else:
+            logger.debug("No neighbor info were found")
+
+    def set_cutoff_radius(self, r_cutoff: float) -> None:
+        """
+        Set cutoff radius of neighbor atoms in the structure.
+
+        This is a method for working with potentials with different cutoff radius.
+        It's important to note that the neighbor object in Structure behaves
+        as a buffer and not part of atomic structure data.
+        It is used for calculating descriptors, potential, etc.
+        The neighbor list of atoms must be updated before using it.
+
+        :param r_cutoff: a new values for the cutoff radius
+        :type r_cutoff: float
+        """
+        if self.neighbor is not None:
+            self.neighbor.set_cutoff_radius(r_cutoff)
+        else:
+            self.neighbor = Neighbor(r_cutoff)
+
+    def update_neighbor(self) -> None:
+        """Update the neighbor list of atoms in the structure."""
+        if self.neighbor is not None:
+            self.neighbor.update(self)
+        else:
+            logger.warning(
+                "Cutoff radius must be defined first. "
+                "Skipped updating the neighbor list."
+            )
 
     @classmethod
     def _get_atom_attributes(cls) -> Tuple[str, ...]:
@@ -255,34 +322,6 @@ class Structure(BaseJaxPytreeDataClass):
     def __hash__(self) -> int:
         """Use parent class's hash method because of JIT."""
         return super().__hash__()
-
-    def set_cutoff_radius(self, r_cutoff: float) -> None:
-        """
-        Set cutoff radius of neighbor atoms in the structure.
-
-        This method is useful for potentials with different cutoff radius.
-        It's important to note that the neighbor object in Structure is
-        as a buffer and not part of atomic structure data,
-        and it is used for calculating descriptors, potential, etc.
-        The neighbor list of atoms must be updated before using it.
-
-        :param r_cutoff: a new values for the cutoff radius
-        :type r_cutoff: float
-        """
-        self.neighbor.set_cutoff_radius(r_cutoff)
-
-    def update_neighbor(self) -> None:
-        """
-        Update the neighbor list of atoms in the structure.
-
-        This task can be computationally expensive.
-        """
-        self.neighbor.update(self)
-
-    @property
-    def r_cutoff(self) -> Optional[float]:
-        """Return cutoff radius of neighboring atoms."""
-        return self.neighbor.r_cutoff
 
     @property
     def natoms(self) -> int:
@@ -295,9 +334,16 @@ class Structure(BaseJaxPytreeDataClass):
         return self.positions.dtype
 
     @property
+    def r_cutoff(self) -> Optional[float]:
+        """Return cutoff radius of neighboring atoms."""
+        if self.neighbor is not None:
+            return self.neighbor.r_cutoff
+
+    @property
     def lattice(self) -> Optional[Array]:
         """Cell 3x3 matrix."""
-        return self.box.lattice
+        if self.box is not None:
+            return self.box.lattice
 
     def get_unique_elements(self) -> Tuple[Element, ...]:
         return tuple(sorted(set(self.get_elements())))
@@ -372,7 +418,7 @@ class Structure(BaseJaxPytreeDataClass):
         distances, position_differences = _calculate_distances(
             atom_positions,
             neighbor_positions,
-            self.box.lattice,
+            self.lattice,
         )
         return jnp.squeeze(distances), jnp.squeeze(position_differences)
 
@@ -486,6 +532,16 @@ class Structure(BaseJaxPytreeDataClass):
                 yield element, self.forces[atom_indices]
 
         return {element: force for element, force in extract_forces()}
+
+
+class Inputs(NamedTuple):
+    """Represent array data of Structure for computing energy and forces."""
+
+    atom_positions: Array
+    positions: Array
+    atom_types: Array
+    lattice: Array
+    emap: Dict[Element, Array]
 
 
 register_jax_pytree_node(Structure)

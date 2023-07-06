@@ -1,12 +1,38 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
+import jax
 import jax.numpy as jnp
 
-from jaxip.atoms._neighbor import _calculate_cutoff_masks
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
+
+
+@jax.jit
+def _calculate_cutoff_masks_per_atom(
+    rij: Array,
+    r_cutoff: Array,
+) -> Array:
+    """Return masks (boolean array) of a signle atom inside a cutoff radius."""
+    return (rij <= r_cutoff) & (rij != 0.0)
+
+
+_vmap_calculate_neighbor_mask = jax.vmap(
+    _calculate_cutoff_masks_per_atom,
+    in_axes=(0, None),
+)
+
+
+@jax.jit
+def _calculate_cutoff_masks(
+    structure,
+    r_cutoff: Array,
+) -> Array:
+    """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
+    atom_indices = jnp.arange(structure.natoms)  # all atoms
+    rij, _ = structure.calculate_distances(atom_indices)
+    return _vmap_calculate_neighbor_mask(rij, r_cutoff)
 
 
 @dataclass
@@ -20,8 +46,8 @@ class Neighbor(BaseJaxPytreeDataClass):
         This is usually implemented together with defining a skin radius.
     """
 
-    masks: Optional[Array] = None
-    r_cutoff: Optional[float] = None
+    r_cutoff: float
+    masks: Optional[Array] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
@@ -68,7 +94,7 @@ class Neighbor(BaseJaxPytreeDataClass):
             return
 
         logger.debug("Updating neighbor list")
-        self.mask = _calculate_cutoff_masks(
+        self.masks = _calculate_cutoff_masks(
             structure,
             jnp.atleast_1d(self.r_cutoff),
         )

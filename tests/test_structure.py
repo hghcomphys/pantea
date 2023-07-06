@@ -142,10 +142,12 @@ class TestStructure:
     ) -> None:
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "positions":
-                assert jnp.allclose(
-                    structure.positions,
-                    structure.box.shift_inside_box(expected[i]),
+                expected_positions = (
+                    expected[i]
+                    if structure.box is None
+                    else structure.box.shift_inside_box(expected[i])
                 )
+                assert jnp.allclose(structure.positions, expected_positions)
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])
 

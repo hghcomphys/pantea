@@ -1,13 +1,22 @@
 from dataclasses import InitVar, dataclass
-from typing import Optional, cast
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
 
-from jaxip.atoms._box import _apply_pbc
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array, Dtype, _dtype
+
+
+@jax.jit
+def _apply_pbc(dx: Array, lattice: Array) -> Array:
+    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
+    box = lattice.diagonal()
+    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
+    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
+
+    return dx
 
 
 @dataclass
@@ -21,38 +30,27 @@ class Box(BaseJaxPytreeDataClass):
         No support for triclinic cells yet.
     """
 
-    lattice: Optional[Array] = None
+    lattice: Array
     dtype: InitVar[Optional[Dtype]] = None
 
-    def __pos_init__(self, dtype: Dtype) -> None:
+    def __post_init__(self, dtype: Optional[Dtype] = None) -> None:
         """Post initialize simulation box (super-cell)."""
+        logger.debug(f"Initializing {self}")
         if dtype is None:
             dtype = _dtype.FLOATX
+        try:
+            self.lattice = jnp.array(self.lattice, dtype=dtype).reshape(3, 3)
+        except ValueError:
+            logger.error(
+                "Unexpected lattice matrix type or dimension",
+                exception=ValueError,  # type:ignore
+            )
 
-        if self.lattice is not None:
-            try:
-                self.lattice = jnp.array(
-                    self.lattice,
-                    dtype=dtype,
-                ).reshape(3, 3)
-            except ValueError:
-                logger.error(
-                    "Unexpected lattice matrix type or dimension",
-                    exception=ValueError,  # type:ignore
-                )
-
-        logger.debug(f"Initializing {self}")
         self._assert_jit_dynamic_attributes(expected=("lattice",))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()
-
-    def __bool__(self) -> bool:
-        """Check whether the box instance with lattice info makes sense."""
-        if self.lattice is None:
-            return False
-        return True
 
     @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
@@ -68,9 +66,7 @@ class Box(BaseJaxPytreeDataClass):
         :return: PBC applied input
         :rtype: Optional[Array]
         """
-        if self.lattice is not None:
-            return _apply_pbc(dx, self.lattice)
-        return dx
+        return _apply_pbc(dx, self.lattice)
 
     @jax.jit
     def shift_inside_box(self, positions: Array) -> Array:
@@ -82,48 +78,36 @@ class Box(BaseJaxPytreeDataClass):
         :return: shifted atom positions
         :rtype: Array
         """
-        if self.length is not None:
-            logger.debug("Shift all atoms inside the simulation box")
-            return jnp.remainder(positions, self.length)
-        return positions
+        logger.debug("Shift all atoms inside the simulation box")
+        return jnp.remainder(positions, self.length)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice})"
 
     @property
-    def lx(self) -> Optional[Array]:
+    def lx(self) -> Array:
         """Return length of cell in x-direction."""
-        if self.lattice is not None:
-            return self.lattice[0, 0]
-        return None
+        return self.lattice[0, 0]
 
     @property
-    def ly(self) -> Optional[Array]:
+    def ly(self) -> Array:
         """Return length of cell in y-direction."""
-        if self.lattice is not None:
-            return self.lattice[1, 1]
-        return None
+        return self.lattice[1, 1]
 
     @property
-    def lz(self) -> Optional[Array]:
+    def lz(self) -> Array:
         """Return length of cell in z-direction."""
-        if self.lattice is not None:
-            return self.lattice[2, 2]
-        return None
+        return self.lattice[2, 2]
 
     @property
-    def length(self) -> Optional[Array]:
+    def length(self) -> Array:
         """Return length of cell in x, y, and z-directions."""
-        if self.lattice is not None:
-            return self.lattice.diagonal()
-        return None
+        return self.lattice.diagonal()
 
     @property
-    def volume(self) -> Optional[Array]:
+    def volume(self) -> Array:
         """Return volume of the box."""
-        if self.lattice is not None:
-            return jnp.prod(cast(Array, self.length))
-        return None
+        return jnp.prod(self.length)
 
 
 register_jax_pytree_node(Box)
