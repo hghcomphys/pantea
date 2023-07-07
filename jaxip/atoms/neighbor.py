@@ -1,15 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
 
+from jaxip.atoms._structure import _calculate_distances
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
 
 
-@jax.jit
+# @jax.jit
 def _calculate_cutoff_masks_per_atom(
     rij: Array,
     r_cutoff: Array,
@@ -18,7 +19,7 @@ def _calculate_cutoff_masks_per_atom(
     return (rij <= r_cutoff) & (rij != 0.0)
 
 
-_vmap_calculate_neighbor_mask = jax.vmap(
+_vmap_calculate_cutoff_masks: Callable = jax.vmap(
     _calculate_cutoff_masks_per_atom,
     in_axes=(0, None),
 )
@@ -30,9 +31,12 @@ def _calculate_cutoff_masks(
     r_cutoff: Array,
 ) -> Array:
     """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
-    atom_indices = jnp.arange(structure.natoms)  # all atoms
-    rij, _ = structure.calculate_distances(atom_indices)
-    return _vmap_calculate_neighbor_mask(rij, r_cutoff)
+    rij, _ = _calculate_distances(
+        atom_positions=structure.positions,
+        neighbor_positions=structure.positions,
+        lattice=structure.lattice,
+    )
+    return _vmap_calculate_cutoff_masks(rij, r_cutoff)
 
 
 @dataclass

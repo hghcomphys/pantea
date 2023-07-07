@@ -4,10 +4,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
     Any,
-    Callable,
     DefaultDict,
     Dict,
-    Generator,
     Iterator,
     List,
     NamedTuple,
@@ -21,51 +19,17 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from jaxip.atoms.box import Box, _apply_pbc
+from jaxip.atoms._structure import (
+    _calculate_center_of_mass,
+    _calculate_distances,
+)
+from jaxip.atoms.box import Box
 from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array, Dtype, Element, _dtype
 from jaxip.units import units
-
-
-@jax.jit
-def _calculate_distances_per_atom(
-    atom_position: Array,
-    neighbor_position: Array,
-    lattice: Optional[Array] = None,
-) -> Tuple[Array, Array]:
-    """Calculate distances between a single atom and neighboring atoms."""
-    dx: Array = atom_position - neighbor_position
-    if lattice is not None:
-        dx = _apply_pbc(dx, lattice)
-
-    # Fix NaN in gradient of np.linalg.norm
-    # see https://github.com/google/jax/issues/3058
-    is_zero = dx.sum(axis=1, keepdims=True) == 0.0
-    dx_ = jnp.where(is_zero, jnp.ones_like(dx), dx)
-    dist = jnp.linalg.norm(dx_, ord=2, axis=1)
-    dist = jnp.where(jnp.squeeze(is_zero), 0.0, dist)
-
-    return dist, dx  # type: ignore
-
-
-_vmap_calculate_distances: Callable = jax.vmap(
-    _calculate_distances_per_atom,
-    in_axes=(0, None, None),
-)
-
-
-@jax.jit
-def _calculate_distances(
-    atom_position: Array,
-    neighbor_position: Array,
-    lattice: Optional[Array] = None,
-) -> Tuple[Array, Array]:
-    """Calculate an array of distances between multiple atoms
-    and the neighbors (using `jax.vmap`)."""
-    return _vmap_calculate_distances(atom_position, neighbor_position, lattice)
 
 
 @dataclass
@@ -310,9 +274,9 @@ class Structure(BaseJaxPytreeDataClass):
         if self.neighbor is not None:
             self.neighbor.update(self)
         else:
-            logger.warning(
-                "Cutoff radius must be defined first. "
-                "Skipped updating the neighbor list."
+            logger.error(
+                "Cannot update neighbor list, set the cutoff radius first",
+                exception=ValueError,
             )
 
     @classmethod
@@ -335,7 +299,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     @property
     def r_cutoff(self) -> Optional[float]:
-        """Return cutoff radius of neighboring atoms."""
+        """Return cutoff radius for neighboring atoms."""
         if self.neighbor is not None:
             return self.neighbor.r_cutoff
 
@@ -389,11 +353,12 @@ class Structure(BaseJaxPytreeDataClass):
         self,
         atom_indices: Array,
         neighbor_indices: Optional[Array] = None,
-    ) -> Tuple[Array, Array]:
+        return_position_differences: bool = False,
+    ) -> Tuple[Array, ...]:
         """
         Calculate distances between specific atoms (given by atom indices)
         and the neighboring atoms in the structure.
-        This method also returns the corresponding position difference.
+        This method optionally also returns the corresponding position differences.
 
         If no neighbor index is given, all atoms in the structure
         will be considered as neighbor atoms.
@@ -402,8 +367,11 @@ class Structure(BaseJaxPytreeDataClass):
         :type atom_indices: Array
         :param neighbor_indices: indices of neighbor atoms, defaults to None
         :type neighbor_indices: Optional[Array], optional
-        :return:  distances, position differences
-        :rtype: Tuple[Array, Array]
+        :type neighbor_indices: bool, optional
+        :param return_position_differences: whether returning position differences, defaults to False
+        :type return_position_differences: bool, optional
+        :return:  distances between atoms
+        :rtype: Tuple[Array, ...]
         """
         atom_positions = self.positions[jnp.asarray([atom_indices])].reshape(
             -1, 3
@@ -420,7 +388,9 @@ class Structure(BaseJaxPytreeDataClass):
             neighbor_positions,
             self.lattice,
         )
-        return jnp.squeeze(distances), jnp.squeeze(position_differences)
+        if return_position_differences:
+            return jnp.squeeze(distances), jnp.squeeze(position_differences)
+        return (jnp.squeeze(distances),)
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
@@ -456,7 +426,7 @@ class Structure(BaseJaxPytreeDataClass):
                 units.TO_ANGSTROM * np.asarray(pos) for pos in self.positions
             ],
             cell=units.TO_ANGSTROM * np.asarray(self.box.lattice)
-            if self.box
+            if self.box is not None
             else None,
             pbc=True if self.box else False,
             charges=[np.asarray(ch) for ch in self.charges],
@@ -492,19 +462,19 @@ class Structure(BaseJaxPytreeDataClass):
 
     def get_center_of_mass_position(self) -> Array:
         """Get center of mass position."""
-        return _get_center_of_mass(self.positions, self.get_masses())
+        return _calculate_center_of_mass(self.positions, self.get_masses())
 
     def get_per_element_inputs(self) -> Dict[Element, Inputs]:
         """Get required info per element for training and evaluating a potential."""
 
-        def extract_inputs() -> Generator[Tuple[Element, Inputs], None, None]:
+        def extract_inputs() -> Iterator[Tuple[Element, Inputs]]:
             for element in self.get_unique_elements():
                 atom_indices: Array = self.select(element)
                 yield element, Inputs(
                     self.positions[atom_indices],
                     self.positions,
                     self.atom_types,
-                    self.box.lattice,  # type:ignore
+                    self.lattice,
                     tree_util.tree_map(
                         lambda x: jnp.asarray(x),
                         self.element_map.element_to_atom_type,

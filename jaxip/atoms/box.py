@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass
-from typing import Optional
+from typing import Optional, Sequence
 
 import jax
 import jax.numpy as jnp
@@ -15,8 +15,14 @@ def _apply_pbc(dx: Array, lattice: Array) -> Array:
     box = lattice.diagonal()
     dx = jnp.where(dx > 0.5 * box, dx - box, dx)
     dx = jnp.where(dx < -0.5 * box, dx + box, dx)
-
     return dx
+
+
+@jax.jit
+def _shift_inside_box(positions: Array, lattice: Array) -> Array:
+    """Shift the input atom position inside the PBC simulation box."""
+    box = lattice.diagonal()
+    return jnp.remainder(positions, box)
 
 
 @dataclass
@@ -42,10 +48,9 @@ class Box(BaseJaxPytreeDataClass):
             self.lattice = jnp.array(self.lattice, dtype=dtype).reshape(3, 3)
         except ValueError:
             logger.error(
-                "Unexpected lattice matrix type or dimension",
-                exception=ValueError,  # type:ignore
+                f"Unexpected lattice matrix: {self.lattice}",
+                exception=ValueError,
             )
-
         self._assert_jit_dynamic_attributes(expected=("lattice",))
 
     def __hash__(self) -> int:
@@ -79,7 +84,7 @@ class Box(BaseJaxPytreeDataClass):
         :rtype: Array
         """
         logger.debug("Shift all atoms inside the simulation box")
-        return jnp.remainder(positions, self.length)
+        return _shift_inside_box(positions, self.lattice)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice})"
