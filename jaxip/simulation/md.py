@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxip.atoms import Structure
-from jaxip.atoms._structure import _get_center_of_mass
+from jaxip.atoms._structure import _calculate_center_of_mass
 from jaxip.logger import logger
 from jaxip.simulation.thermostat import BrendsenThermostat
 from jaxip.types import Array, Element
@@ -170,7 +170,7 @@ class MDSimulator:
         natoms = masses.shape[0]
         velocities = jax.random.normal(key, shape=(natoms, 3))
         velocities *= jnp.sqrt(temperature / _get_temperature(velocities, masses))
-        velocities -= _get_center_of_mass(velocities, masses)
+        velocities -= _calculate_center_of_mass(velocities, masses)
         return velocities
 
     def repr_physical_params(self) -> str:
@@ -218,10 +218,10 @@ class MDSimulator:
         return virial / (3.0 * volume)  # type: ignore
 
     def get_center_of_mass_velocity(self) -> Array:
-        return _get_center_of_mass(self.velocities, self.masses)
+        return _calculate_center_of_mass(self.velocities, self.masses)
 
     def get_center_of_mass_position(self) -> Array:
-        return _get_center_of_mass(self.positions, self.masses)
+        return _calculate_center_of_mass(self.positions, self.masses)
 
     def get_potential_energy(self) -> Array:
         return _get_potential_energy(self.potential, self._structure)

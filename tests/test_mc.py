@@ -6,10 +6,9 @@ import pytest
 from ase import Atoms
 
 from jaxip.atoms.structure import Structure
+from jaxip.simulation.lj import LJPotential
 from jaxip.simulation.mc import MCSimulator
 from jaxip.units import units
-
-from .ljpot import LJPotential
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
