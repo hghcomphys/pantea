@@ -5,8 +5,8 @@ import jax
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
-from jaxip.atoms._neighbor import _calculate_cutoff_masks_per_atom
 from jaxip.atoms._structure import _calculate_distances_per_atom
+from jaxip.atoms.neighbor import _calculate_cutoff_masks_per_atom
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements

@@ -15,7 +15,7 @@ def _calculate_cutoff_masks_per_atom(
     rij: Array,
     r_cutoff: Array,
 ) -> Array:
-    """Return masks (boolean array) of a signle atom inside a cutoff radius."""
+    """Return masks (boolean array) of a single atom inside a cutoff radius."""
     return (rij <= r_cutoff) & (rij != 0.0)
 
 

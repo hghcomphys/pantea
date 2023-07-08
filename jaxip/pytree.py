@@ -44,8 +44,9 @@ class BaseJaxPytreeDataClass:
 
     def __hash__(self) -> int:
         """
-        Define hash method based on the `JAX JIT compilation` static attributes.
-        This is useful when wants to identify changes on the static arguments of a jit-compiled method.
+        Define hash based on the `JAX JIT compilation` static attributes.
+        This is used for detecting changes on the static arguments
+        of the jit-compiled method.
         """
         aux_data: Dict[str, Any] = self._tree_flatten()[1]
         return hash(tuple(frozenset(sorted(aux_data.items()))))

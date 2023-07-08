@@ -11,10 +11,7 @@ from jaxip.descriptors.acsf._acsf import (
 )
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
-from jaxip.descriptors.acsf.symmetry import (
-    BaseSymmetryFunction,
-    EnvironmentElements,
-)
+from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
 from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
@@ -150,7 +147,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             structure.positions[atom_indices],
             structure.positions,
             structure.atom_types,
-            structure.box.lattice,
+            structure.lattice,
             structure.element_map.element_to_atom_type,
         )
 
@@ -180,7 +177,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             ],  # must be a single atom position shape=(1, 3)
             structure.positions,
             structure.atom_types,
-            structure.box.lattice,
+            structure.lattice,
             structure.element_map.element_to_atom_type,
         )
 
@@ -197,10 +194,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     @property
     def num_symmetry_functions(self) -> int:
         """Return the total (`two-body` and `tree-body`) number of symmetry functions."""
-        return (
-            self.num_radial_symmetry_functions
-            + self.num_angular_symmetry_functions
-        )
+        return self.num_radial_symmetry_functions + self.num_angular_symmetry_functions
 
     @property
     def num_descriptors(self) -> int:

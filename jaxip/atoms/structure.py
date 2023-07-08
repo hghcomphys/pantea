@@ -351,7 +351,7 @@ class Structure(BaseJaxPytreeDataClass):
     # @jax.jit
     def calculate_distances(
         self,
-        atom_indices: Array,
+        atom_indices: Optional[Array] = None,
         neighbor_indices: Optional[Array] = None,
         return_position_differences: bool = False,
     ) -> Tuple[Array, ...]:
@@ -360,11 +360,11 @@ class Structure(BaseJaxPytreeDataClass):
         and the neighboring atoms in the structure.
         This method optionally also returns the corresponding position differences.
 
-        If no neighbor index is given, all atoms in the structure
-        will be considered as neighbor atoms.
+        If atom indices are not specified, all atoms in the structure will be taken into account.
+        Similarly, if neighbor indices are not provided, all neighboring atoms will be considered.
 
-        :param atom_indices: array of atom indices
-        :type atom_indices: Array
+        :param atom_indices: array of atom indices (zero-based index)
+        :type atom_indices: Optional[Array], optional
         :param neighbor_indices: indices of neighbor atoms, defaults to None
         :type neighbor_indices: Optional[Array], optional
         :type neighbor_indices: bool, optional
@@ -373,9 +373,13 @@ class Structure(BaseJaxPytreeDataClass):
         :return:  distances between atoms
         :rtype: Tuple[Array, ...]
         """
-        atom_positions = self.positions[jnp.asarray([atom_indices])].reshape(
-            -1, 3
-        )
+        if atom_indices is not None:
+            atom_positions = self.positions[
+                jnp.asarray([atom_indices])
+            ].reshape(-1, 3)
+        else:
+            atom_positions = self.positions
+
         if neighbor_indices is not None:
             neighbor_positions = self.positions[
                 jnp.atleast_1d(neighbor_indices)
@@ -395,7 +399,7 @@ class Structure(BaseJaxPytreeDataClass):
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
         Represent atomic attributes in form of dictionary of numpy arrays.
-        To be used, for example, for dumping structure data into a file.
+        To be used, for example, when dumping structure data into a file.
 
         :return: dictionary of atom attributes.
         :rtype: Dict[str, np.ndarray]
@@ -445,6 +449,7 @@ class Structure(BaseJaxPytreeDataClass):
         Remove input atom reference energies from each atom and also the total energy.
 
         :param atom_energy: atom reference energy
+        :type atom_energy: Dict[Element, float]]
         """
         energy_offset: Array = self._get_energy_offset(atom_energy)
         self.energies -= energy_offset
@@ -455,6 +460,7 @@ class Structure(BaseJaxPytreeDataClass):
         Add input atom reference energies to each the atom and the total energy.
 
         :param atom_energy: atom reference energy
+        :type atom_energy: Dict[Element, float]]
         """
         energy_offset = self._get_energy_offset(atom_energy)
         self.energies += energy_offset
