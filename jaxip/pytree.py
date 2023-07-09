@@ -32,7 +32,8 @@ class BaseJaxPytreeDataClass:
             getattr(self, attr) for attr in self._get_jit_dynamic_attributes()
         )
         aux_data: Dict[str, Any] = {
-            attr: getattr(self, attr) for attr in self._get_jit_static_attributes()
+            attr: getattr(self, attr)
+            for attr in self._get_jit_static_attributes()
         }
         return (children, aux_data)
 
@@ -55,7 +56,9 @@ class BaseJaxPytreeDataClass:
     def _get_jit_dynamic_attributes(cls) -> Tuple[str, ...]:
         """Get JAX JIT compilation dynamic attribute names (i.e. jax.ndarray)."""
         return tuple(
-            attr for attr, dtype in cls.__annotations__.items() if "Array" in str(dtype)
+            attr
+            for attr, dtype in cls.__annotations__.items()
+            if "Array" in str(dtype)
         )
 
     @classmethod
@@ -83,7 +86,9 @@ class BaseJaxPytreeDataClass:
             )
 
     @classmethod
-    def _assert_jit_static_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None:
+    def _assert_jit_static_attributes(
+        cls, expected: Tuple[str, ...] = tuple()
+    ) -> None:
         cls._assert_jit_attributes(
             cls._get_jit_static_attributes(), expected, tag="static"
         )
