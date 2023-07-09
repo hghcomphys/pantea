@@ -1,10 +1,10 @@
 import os
 from functools import partial
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 
-from jaxip.atoms._structure import _calculate_distances
 from jaxip.atoms.structure import Structure
 from jaxip.types import Array
 
@@ -27,17 +27,15 @@ def _compute_pair_forces(obj, r: Array, R: Array) -> Array:
     return jnp.expand_dims(force_factor, axis=-1) * R
 
 
-# @partial(jax.jit, static_argnums=0)
-def _calculate_distances_and_masks(
-    obj, structure: Structure
-) -> tuple[Array, Array, Array]:
-    r, R = _calculate_distances(
-        atom_positions=structure.positions,
-        neighbor_positions=structure.positions,
-        lattice=structure.lattice,
-    )
-    masks = (0 < r) & (r < obj.r_cutoff)
-    return r, R, masks
+def _get_neighbor_data(
+    structure: Structure,
+    r_cutoff: float,
+) -> Tuple[Array, Array, Array]:
+    if structure.neighbor is None:
+        structure.set_cutoff_radius(r_cutoff)
+        structure.update_neighbor()
+    neighbor = structure.neighbor
+    return (neighbor.masks, neighbor.rij, neighbor.Rij)  # type: ignore
 
 
 class LJPotential:
@@ -56,17 +54,17 @@ class LJPotential:
     @partial(jax.jit, static_argnums=0)
     def __call__(self, structure: Structure) -> Array:
         """Compute total energy."""
-        r, _, masks = _calculate_distances_and_masks(self, structure)
-        pair_energies = _compute_pair_energies(self, r)
+        masks, rij, _ = _get_neighbor_data(structure, r_cutoff=self.r_cutoff)
+        pair_energies = _compute_pair_energies(self, rij)
         return 0.5 * jnp.where(masks, pair_energies, 0.0).sum()  # type: ignore
 
     @partial(jax.jit, static_argnums=0)
     def compute_forces(self, structure: Structure) -> Array:
         """Compute force component for each atoms."""
-        r, R, masks = _calculate_distances_and_masks(self, structure)
+        masks, rij, Rij = _get_neighbor_data(structure, r_cutoff=self.r_cutoff)
         pair_forces = jnp.where(
             jnp.expand_dims(masks, axis=-1),
-            _compute_pair_forces(self, r, R),
-            jnp.zeros_like(R),
+            _compute_pair_forces(self, rij, Rij),
+            jnp.zeros_like(Rij),
         )
         return jnp.sum(pair_forces, axis=1)  # type: ignore

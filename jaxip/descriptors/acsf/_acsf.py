@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jax import jit, lax, vmap
 
 from jaxip.atoms._structure import _calculate_distances_per_atom
-from jaxip.atoms.neighbor import _calculate_cutoff_masks_per_atom
+from jaxip.atoms.neighbor import _calculate_masks_per_atom
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
 from jaxip.descriptors.acsf.symmetry import EnvironmentElements
@@ -22,7 +22,7 @@ def _calculate_radial_acsf_per_atom(
 ) -> Array:
     elements: EnvironmentElements = [k for k in radial.keys()][0]
 
-    mask_cutoff_i = _calculate_cutoff_masks_per_atom(
+    mask_cutoff_i = _calculate_masks_per_atom(
         dist_i, jnp.asarray(radial[elements].r_cutoff)
     )
     mask_cutoff_and_atype_ij = mask_cutoff_i & (
@@ -48,7 +48,7 @@ def _calculate_angular_acsf_per_atom(
     elements: EnvironmentElements = [k for k in angular.keys()][0]
 
     # cutoff-radius mask
-    mask_cutoff_i = _calculate_cutoff_masks_per_atom(
+    mask_cutoff_i = _calculate_masks_per_atom(
         dist_i, jnp.asarray(angular[elements].r_cutoff)
     )
     # mask for neighboring element j

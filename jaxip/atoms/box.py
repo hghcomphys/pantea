@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass
-from typing import Optional, Sequence
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -28,12 +28,12 @@ def _shift_inside_box(positions: Array, lattice: Array) -> Array:
 @dataclass
 class Box(BaseJaxPytreeDataClass):
     """
-    Simulation box which is for applying PBC
-    when there lattice matrix is available.
+    Simulation box is used to implement periodic boundary
+    conditions (PBC) in the presence of a lattice matrix.
 
     .. warning::
-        Current implementation works only for orthogonal cells.
-        No support for triclinic cells yet.
+        The current implementation only works for orthogonal cells
+        and does not support triclinic cells.
     """
 
     lattice: Array
@@ -60,11 +60,11 @@ class Box(BaseJaxPytreeDataClass):
     @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
         """
-        Apply the periodic boundary condition (PBC) on the input position array.
+        Apply the periodic boundary condition (PBC) on the provided position array.
 
-        All atoms must be positioned inside the box beforehand, otherwise
-        this method may not work as expected,
-        see :meth:`structure.Structure.shift_inside_box`.
+        For this method to function correctly, it is essential that all atoms are
+        initially positioned within the boundaries of the box.
+        Otherwise, the results may not be as anticipated.
 
         :param dx: positional difference
         :type dx: Array
@@ -76,7 +76,9 @@ class Box(BaseJaxPytreeDataClass):
     @jax.jit
     def shift_inside_box(self, positions: Array) -> Array:
         """
-        Shift the input atom coordinates inside the PBC simulation box.
+        Adjust the coordinates of the input atoms to ensure they fall
+        within the boundaries of the simulation box that implements
+        periodic boundary conditions (PBC).
 
         :param x: atom positions
         :type x: Array

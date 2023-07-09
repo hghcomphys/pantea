@@ -38,15 +38,14 @@ class Structure(BaseJaxPytreeDataClass):
     A structure in the context of simulation box consists of
     arrays that store atomic attributes for a collection of atoms.
 
-    Atomic attributes:
+    The attributes of atoms within a structure can be described as follows:
 
-    * `positions`: per-atom position x, y, and z
-    * `forces`: per-atom force components x, y, and z
-    * `energies`:  per-atom energy
-    * `total_energy`: total energy of atoms in simulation box
-    * `charges`:  per-atom electric charge
-    * `total_charge`: total charge of atoms in simulation box
-    * `atom_types`: per-atom type (an unique integer) corresponding to each element
+    * `positions`: position of atoms
+    * `forces`: force components
+    * `energies`: associated atom energies
+    * `total_energy`: the total energy of atoms
+    * `charges`:  electric charges
+    * `total_charge`: the total charge of atoms
 
     The structure serves as a fundamental data unit for the atoms in the simulation box.
     Multiple structures can be gathered into a list to train a potential, or alternatively,
@@ -55,12 +54,12 @@ class Structure(BaseJaxPytreeDataClass):
     Each structure has three additional instances:
 
     * `Box`: applying periodic boundary condition (PBC) along x, y, and z directions
-    * `ElementMap`: determines how to extract the atom type (integer) from the element (string)
-    * `Neighbor`: computes the list of neighboring atoms inside a cutoff radius
+    * `ElementMap`: determines how to extract assigned atom types from the element and vice versa
+    * `Neighbor`: computes the list of neighboring atoms inside a specified cutoff radius
 
     .. note::
-        `Structure` can be considered as an individual domain
-        for MPI implementation of large-scale MD simulation (see `miniMD`_).
+        The structure can be viewed as a separate domain for implementing MPI in large-scale
+        molecular dynamics (MD) simulations, as demonstrated in the `miniMD`_ program.
 
     .. _miniMD: https://github.com/Mantevo/miniMD
     """
@@ -107,13 +106,13 @@ class Structure(BaseJaxPytreeDataClass):
         dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
-        Create an instance of structure from an input data dictionary that includes
-        separate lists of positions, forces, elements, lattice, etc.
+        Instantiate a structure object using an input data dictionary that contains
+        distinct lists of positions, forces, elements, lattice, etc.
 
         :param data: input data
         :param r_cutoff: neighbor atoms cutoff radius, defaults to None
         :param dtype: data type for arrays, defaults to None
-        :return: an initialized Structure
+        :return: the initialized Structure
         """
         if dtype is None:
             dtype = _dtype.FLOATX
@@ -147,12 +146,12 @@ class Structure(BaseJaxPytreeDataClass):
         dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
-        Create an instance of structure from `ASE`_ atoms.
+        Create an instance of the structure based on the input `ASE`_ atoms.
 
-        :param atoms: input ASE atoms instance
+        :param atoms: input `ASE`_ atoms instance
         :param r_cutoff: neighbor atoms cutoff radius, defaults to None
         :param dtype: data type for arrays, defaults to None
-        :return: an initialized instance
+        :return: the initialized structure
 
         .. _ASE: https://wiki.fysik.dtu.dk/ase/index.html
         """
@@ -256,10 +255,9 @@ class Structure(BaseJaxPytreeDataClass):
         Set cutoff radius of neighbor atoms in the structure.
 
         This is a method for working with potentials with different cutoff radius.
-        It's important to note that the neighbor object in Structure behaves
-        as a buffer and not part of atomic structure data.
         It is used for calculating descriptors, potential, etc.
-        The neighbor list of atoms must be updated before using it.
+
+        The neighbor list must be updated before using it.
 
         :param r_cutoff: a new values for the cutoff radius
         :type r_cutoff: float
@@ -270,7 +268,14 @@ class Structure(BaseJaxPytreeDataClass):
             self.neighbor = Neighbor(r_cutoff)
 
     def update_neighbor(self) -> None:
-        """Update the neighbor list of atoms in the structure."""
+        """
+        Update the neighbor list.
+
+        This is useful for efficiently determining the neighboring atoms within
+        a specified cutoff radius. The neighbor list allows for faster calculations
+        properties that depend on nearby atoms, such as computing forces, energies,
+        or evaluating interatomic distances.
+        """
         if self.neighbor is not None:
             self.neighbor.update(self)
         else:
@@ -294,7 +299,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     @property
     def dtype(self) -> Dtype:
-        """Return data type of the arrays in the structure (e.g., float32)."""
+        """Return data type of the arrays in the structure (e.g., float64)."""
         return self.positions.dtype
 
     @property
@@ -339,7 +344,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def select(self, element: Element) -> Array:
         """
-        Return all atom indices of the element.
+        Retrieve the indices of all atoms that correspond to the given element.
 
         :param element: element name (e.g. `H` for hydrogen)
         :return: atom indices
@@ -348,13 +353,12 @@ class Structure(BaseJaxPytreeDataClass):
             self.atom_types == self.element_map.element_to_atom_type[element]
         )[0]
 
-    # @jax.jit
+    @jax.jit
     def calculate_distances(
         self,
         atom_indices: Optional[Array] = None,
         neighbor_indices: Optional[Array] = None,
-        return_position_differences: bool = False,
-    ) -> Tuple[Array, ...]:
+    ) -> Tuple[Array, Array]:
         """
         Calculate distances between specific atoms (given by atom indices)
         and the neighboring atoms in the structure.
@@ -392,14 +396,12 @@ class Structure(BaseJaxPytreeDataClass):
             neighbor_positions,
             self.lattice,
         )
-        if return_position_differences:
-            return jnp.squeeze(distances), jnp.squeeze(position_differences)
-        return (jnp.squeeze(distances),)
+        return jnp.squeeze(distances), jnp.squeeze(position_differences)
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
-        Represent atomic attributes in form of dictionary of numpy arrays.
-        To be used, for example, when dumping structure data into a file.
+        The atomic attributes are represented as a dictionary of NumPy arrays.
+        This format can be employed, for instance, when saving the structure data into a file.
 
         :return: dictionary of atom attributes.
         :rtype: Dict[str, np.ndarray]
@@ -412,15 +414,14 @@ class Structure(BaseJaxPytreeDataClass):
 
     def to_ase(self) -> AseAtoms:
         """
-        An ASE (atoms) representation of the structure.
-        The returned atoms object can be used to visualize or
-        modify the structure using ASE package.
+        Represent the structure as ASE atoms.
 
-        .. warning::
-            This works only for orthogonal cells.
+        The returned object can be utilized with the `ASE`_ package
+        for visualization or modification of the structure.
 
-        :return: ASE representation of the structure
-        :rtype: AseAtoms
+        :return: `ASE`_ representation of the structure
+
+        .. _ASE: https://wiki.fysik.dtu.dk/ase/index.html
         """
         logger.info("Creating an ASE representation of the structure")
         to_element = self.element_map.atom_type_to_element
@@ -446,7 +447,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def remove_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
-        Remove input atom reference energies from each atom and also the total energy.
+        Remove the input reference energies to individual atoms and the total energy.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[Element, float]]
@@ -457,7 +458,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def add_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
-        Add input atom reference energies to each the atom and the total energy.
+        Add the input reference energies to individual atoms and the total energy.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[Element, float]]

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -11,7 +13,7 @@ from jaxip.types import Array
 
 
 # @jax.jit
-def _calculate_cutoff_masks_per_atom(
+def _calculate_masks_per_atom(
     rij: Array,
     r_cutoff: Array,
 ) -> Array:
@@ -19,31 +21,40 @@ def _calculate_cutoff_masks_per_atom(
     return (rij <= r_cutoff) & (rij != 0.0)
 
 
-_vmap_calculate_cutoff_masks: Callable = jax.vmap(
-    _calculate_cutoff_masks_per_atom,
+_vmap_calculate_masks: Callable = jax.vmap(
+    _calculate_masks_per_atom,
     in_axes=(0, None),
 )
 
 
-@jax.jit
-def _calculate_cutoff_masks(
-    structure,
+# @jax.jit
+def _calculate_masks(
+    rij: Array,
     r_cutoff: Array,
 ) -> Array:
     """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
-    rij, _ = _calculate_distances(
+    return _vmap_calculate_masks(rij, r_cutoff)
+
+
+@jax.jit
+def _calculate_masks_and_distances(
+    structure,
+    r_cutoff: Array,
+) -> Tuple[Array, Array, Array]:
+    """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
+    rij, Rij = _calculate_distances(
         atom_positions=structure.positions,
         neighbor_positions=structure.positions,
         lattice=structure.lattice,
     )
-    return _vmap_calculate_cutoff_masks(rij, r_cutoff)
+    masks = _calculate_masks(rij, r_cutoff)
+    return masks, rij, Rij
 
 
 @dataclass
 class Neighbor(BaseJaxPytreeDataClass):
     """
     Create a neighbor list of atoms for structure.
-    and it is by design independent of `Structure`.
 
     .. note::
         For MD simulations, re-neighboring the list is required every few steps.
@@ -52,56 +63,43 @@ class Neighbor(BaseJaxPytreeDataClass):
 
     r_cutoff: float
     masks: Optional[Array] = field(default=None, init=False)
+    rij: Optional[Array] = field(default=None, init=False)
+    Rij: Optional[Array] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
         logger.debug(f"Initializing {self}")
-        self._assert_jit_dynamic_attributes(expected=("masks",))
+        self._assert_jit_dynamic_attributes(expected=("masks", "rij", "Rij"))
         self._assert_jit_static_attributes(expected=("r_cutoff",))
-
-    def __hash__(self) -> int:
-        """Enforce to use the parent class's hash method (JIT)."""
-        return super().__hash__()
 
     def set_cutoff_radius(self, r_cutoff: float) -> None:
         """
         Set a given cutoff radius for the neighbor list.
-        The neighbor list will be updated on the first call.
 
         :param r_cutoff: A new cutoff radius
         :type r_cutoff: float
         """
-        logger.debug(
-            f"Setting Neighbor cutoff radius from "
-            f"{self.r_cutoff} to {r_cutoff}"
-        )
+        logger.debug(f"Setting Neighbor cutoff radius to {r_cutoff}")
         self.r_cutoff = r_cutoff
 
+    # @jax.jit
     def update(self, structure) -> None:
         """
         Update the list of neighboring atoms.
 
-        It is based on mask approach which is different from the conventional methods
-        for updating the neighbor list (e.g. by defining neighbor indices).
-        It's due to the fact that jax execute quite fast on vectorized variables
-        rather than simple looping in python (jax.jit).
-
-        .. note::
-            Further adjustments can be added regarding the neighbor list updating methods.
-            But for time being the mask-based approach works well on `JAX`.
+        This approach relies on cutoff masks, which is different from conventional
+        methods used to update the neighbor list (such as defining neighbor indices).
+        The rationale behind this approach is that JAX executes efficiently on
+        vectorized variables, offering faster performance compared to simple Python loops.
         """
-        if self.r_cutoff is None:
-            logger.debug(
-                "Skipped updating the neighbor list"
-                f"(r_cutoff={self.r_cutoff})"
-            )
-            return
-
         logger.debug("Updating neighbor list")
-        self.masks = _calculate_cutoff_masks(
-            structure,
-            jnp.atleast_1d(self.r_cutoff),
+        self.masks, self.rij, self.Rij = _calculate_masks_and_distances(
+            structure, jnp.atleast_1d(self.r_cutoff)
         )
+
+    def __hash__(self) -> int:
+        """Enforce to use the parent class's hash method (JIT)."""
+        return super().__hash__()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
