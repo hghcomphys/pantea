@@ -1,8 +1,7 @@
 from typing import Any, Dict, Optional, Protocol
 
 from jaxip.atoms.structure import Structure
-from jaxip.types import Dtype
-from jaxip.types import _dtype
+from jaxip.types import Dtype, _dtype
 
 
 class TransformerInterface(Protocol):
@@ -29,11 +28,7 @@ class ToStructure(TransformerInterface):
         self.dtype: Dtype = _dtype.FLOATX if dtype is None else dtype
 
     def __call__(self, data: Dict[str, Any]) -> Structure:
-        return Structure.from_dict(
-            data,
-            r_cutoff=self.r_cutoff,
-            dtype=self.dtype,
-        )
+        return Structure.from_dict(data, dtype=self.dtype)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"

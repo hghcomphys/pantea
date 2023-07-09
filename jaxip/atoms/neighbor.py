@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable, Optional, Tuple
+from dataclasses import dataclass
+from typing import Callable, Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -10,6 +10,11 @@ from jaxip.atoms._structure import _calculate_distances
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from jaxip.types import Array
+
+
+class Structure(Protocol):
+    positions: Array
+    lattice: Array
 
 
 # @jax.jit
@@ -38,7 +43,7 @@ def _calculate_masks(
 
 @jax.jit
 def _calculate_masks_and_distances(
-    structure,
+    structure: Structure,
     r_cutoff: Array,
 ) -> Tuple[Array, Array, Array]:
     """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
@@ -62,37 +67,36 @@ class Neighbor(BaseJaxPytreeDataClass):
     """
 
     r_cutoff: float
-    masks: Optional[Array] = field(default=None, init=False)
-    rij: Optional[Array] = field(default=None, init=False)
-    Rij: Optional[Array] = field(default=None, init=False)
+    masks: Array
+    rij: Array
+    Rij: Array
 
     def __post_init__(self) -> None:
         """Post initialize the neighbor list."""
-        logger.debug(f"Initializing {self}")
+        # logger.debug(f"Initializing {self}")
         self._assert_jit_dynamic_attributes(expected=("masks", "rij", "Rij"))
         self._assert_jit_static_attributes(expected=("r_cutoff",))
 
-    def set_cutoff_radius(self, r_cutoff: float) -> None:
-        """
-        Set a given cutoff radius for the neighbor list.
-
-        :param r_cutoff: A new cutoff radius
-        :type r_cutoff: float
-        """
-        logger.debug(f"Setting Neighbor cutoff radius to {r_cutoff}")
-        self.r_cutoff = r_cutoff
+    @classmethod
+    def from_structure(cls, structure, r_cutoff: float) -> Neighbor:
+        masks, rij, Rij = _calculate_masks_and_distances(
+            structure, jnp.atleast_1d(r_cutoff)
+        )
+        return cls(r_cutoff, masks, rij, Rij)
 
     # @jax.jit
-    def update(self, structure) -> None:
+    def update(self, structure, r_cutoff: Optional[float] = None) -> None:
         """
-        Update the list of neighboring atoms.
+        Update neighboring atoms.
 
         This approach relies on cutoff masks, which is different from conventional
         methods used to update the neighbor list (such as defining neighbor indices).
         The rationale behind this approach is that JAX executes efficiently on
         vectorized variables, offering faster performance compared to simple Python loops.
         """
-        logger.debug("Updating neighbor list")
+        logger.debug(f"Updating neighbor list ({r_cutoff=})")
+        if r_cutoff is not None:
+            self.r_cutoff = r_cutoff
         self.masks, self.rij, self.Rij = _calculate_masks_and_distances(
             structure, jnp.atleast_1d(self.r_cutoff)
         )

@@ -101,10 +101,8 @@ H2O_DATA: Dict[str, Any] = {
 
 
 class TestStructure:
-    lj: Structure = Structure.from_dict(
-        LJ_DATA, dtype=jnp.float32  # type: ignore
-    )  # type: ignore
-    h2o: Structure = Structure.from_dict(H2O_DATA, r_cutoff=11.0)
+    lj: Structure = Structure.from_dict(LJ_DATA, dtype=jnp.float32)
+    h2o: Structure = Structure.from_dict(H2O_DATA)
     atom_attributes: Tuple[str, ...] = tuple(
         [
             "positions",
@@ -122,14 +120,14 @@ class TestStructure:
             (
                 lj,
                 tuple(
-                    jnp.asarray(LJ_DATA[attr])
+                    jnp.array(LJ_DATA[attr])
                     for attr in Structure._get_atom_attributes()
                 ),
             ),
             (
                 h2o,
                 tuple(
-                    jnp.asarray(H2O_DATA[attr])
+                    jnp.array(H2O_DATA[attr])
                     for attr in Structure._get_atom_attributes()
                 ),
             ),
@@ -162,7 +160,7 @@ class TestStructure:
                     None,
                     jnp.float32,
                     None,
-                    jnp.asarray(LJ_DATA["masses"]),
+                    jnp.array(LJ_DATA["masses"]),
                     tuple(LJ_DATA["elements"]),
                 ),
             ),
@@ -173,8 +171,8 @@ class TestStructure:
                     ("H", "O"),
                     11.0,
                     _dtype.FLOATX,
-                    jnp.asarray(H2O_DATA["lattice"]),
-                    jnp.asarray(H2O_DATA["masses"]),
+                    jnp.array(H2O_DATA["lattice"]),
+                    jnp.array(H2O_DATA["masses"]),
                     tuple(H2O_DATA["elements"]),
                 ),
             ),
@@ -185,6 +183,8 @@ class TestStructure:
         structure: Structure,
         expected: Tuple,
     ) -> None:
+        if expected[2] is not None:
+            structure.update_neighbor(expected[2])
         assert structure.natoms == expected[0]
         assert structure.get_unique_elements() == expected[1]
         assert structure.r_cutoff == expected[2]

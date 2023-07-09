@@ -102,7 +102,6 @@ class Structure(BaseJaxPytreeDataClass):
     def from_dict(
         cls,
         data: Dict[str, Any],
-        r_cutoff: Optional[float] = None,
         dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
@@ -130,7 +129,6 @@ class Structure(BaseJaxPytreeDataClass):
             )
             inputs["element_map"] = element_map
             inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
-            inputs["neighbor"] = cls._init_neighbor(r_cutoff)
         except KeyError:
             logger.error(
                 "Cannot find at least one of the expected keyword in the input data.",
@@ -142,7 +140,6 @@ class Structure(BaseJaxPytreeDataClass):
     def from_ase(
         cls,
         atoms: AseAtoms,
-        r_cutoff: Optional[float] = None,
         dtype: Optional[Dtype] = None,
     ) -> Structure:
         """
@@ -164,7 +161,9 @@ class Structure(BaseJaxPytreeDataClass):
                 ElementMap.atomic_number_to_element(n)
                 for n in atoms.get_atomic_numbers()
             ],
-            "lattice": np.asarray(atoms.get_cell() * units.FROM_ANGSTROM),
+            "lattice": np.array(
+                atoms.get_cell() * units.FROM_ANGSTROM, dtype=dtype
+            ),
             "positions": atoms.get_positions() * units.FROM_ANGSTROM,
         }
         for attr, ase_attr in zip(
@@ -189,7 +188,6 @@ class Structure(BaseJaxPytreeDataClass):
             )
             inputs["element_map"] = element_map
             inputs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
-            inputs["neighbor"] = cls._init_neighbor(r_cutoff)
         except KeyError:
             logger.error(
                 "Can not find at least one of the expected keyword in the input data.",
@@ -240,47 +238,27 @@ class Structure(BaseJaxPytreeDataClass):
         else:
             logger.debug("No lattice info were found")
 
-    @classmethod
-    def _init_neighbor(
-        cls, r_cutoff: Optional[float] = None
-    ) -> Optional[Neighbor]:
-        """Initialize neighbor input cutoff radius."""
-        if r_cutoff is not None:
-            return Neighbor(r_cutoff=r_cutoff)
-        else:
-            logger.debug("No neighbor info were found")
-
-    def set_cutoff_radius(self, r_cutoff: float) -> None:
+    def update_neighbor(self, r_cutoff: Optional[float] = None) -> None:
         """
-        Set cutoff radius of neighbor atoms in the structure.
+        Update the neighbor list, constructing it if required.
 
-        This is a method for working with potentials with different cutoff radius.
-        It is used for calculating descriptors, potential, etc.
-
-        The neighbor list must be updated before using it.
-
-        :param r_cutoff: a new values for the cutoff radius
-        :type r_cutoff: float
-        """
-        if self.neighbor is not None:
-            self.neighbor.set_cutoff_radius(r_cutoff)
-        else:
-            self.neighbor = Neighbor(r_cutoff)
-
-    def update_neighbor(self) -> None:
-        """
-        Update the neighbor list.
 
         This is useful for efficiently determining the neighboring atoms within
         a specified cutoff radius. The neighbor list allows for faster calculations
         properties that depend on nearby atoms, such as computing forces, energies,
         or evaluating interatomic distances.
+
+        There are various scenarios that may necessitate updating the neighbor list,
+        including changes in the positions of atoms within the structure,
+        modifications to the cutoff radius, or both.
         """
         if self.neighbor is not None:
-            self.neighbor.update(self)
+            self.neighbor.update(self, r_cutoff)
+        elif r_cutoff is not None:
+            self.neighbor = Neighbor.from_structure(self, r_cutoff)
         else:
             logger.error(
-                "Cannot update neighbor list, set the cutoff radius first",
+                "No cutoff radius was found",
                 exception=ValueError,
             )
 
