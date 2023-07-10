@@ -79,13 +79,17 @@ class Neighbor(BaseJaxPytreeDataClass):
 
     @classmethod
     def from_structure(cls, structure, r_cutoff: float) -> Neighbor:
-        masks, rij, Rij = _calculate_masks_and_distances(
+        results = _calculate_masks_and_distances(
             structure, jnp.atleast_1d(r_cutoff)
         )
-        return cls(r_cutoff, masks, rij, Rij)
+        return cls(r_cutoff, *results)
 
     # @jax.jit
-    def update(self, structure, r_cutoff: Optional[float] = None) -> None:
+    def update(
+        self,
+        structure: Structure,
+        r_cutoff: Optional[float] = None,
+    ) -> None:
         """
         Update neighboring atoms.
 

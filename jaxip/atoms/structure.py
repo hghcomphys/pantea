@@ -240,7 +240,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def update_neighbor(self, r_cutoff: Optional[float] = None) -> None:
         """
-        Update the neighbor list, constructing it if required.
+        Update the neighbor list, building it if required.
 
 
         This is useful for efficiently determining the neighboring atoms within
