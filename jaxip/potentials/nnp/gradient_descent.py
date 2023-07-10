@@ -20,10 +20,12 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _energy_fn
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.nnp.metrics import ErrorMetric
-from jaxip.potentials.nnp.nnp import \
-    NeuralNetworkPotentialInterface as PotentialInterface
-from jaxip.potentials.nnp.settings import \
-    NeuralNetworkPotentialSettings as PotentialSettings
+from jaxip.potentials.nnp.nnp import (
+    NeuralNetworkPotentialInterface as PotentialInterface,
+)
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 from jaxip.types import Array, Element
 
 
@@ -118,9 +120,11 @@ class GradientDescentUpdater:
             # Loop over batches
             for _ in tqdm(range(steps)):
                 structures: List[Structure] = random.choices(dataset, k=batch_size)
-                xbatch = tuple(structure.get_inputs() for structure in structures)
+                xbatch = tuple(
+                    structure.get_per_element_inputs() for structure in structures
+                )
                 ybatch = tuple(
-                    (structure.total_energy, structure.get_forces())
+                    (structure.total_energy, structure.get_per_element_forces())
                     for structure in structures
                 )
 

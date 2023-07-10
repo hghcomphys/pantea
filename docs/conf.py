@@ -221,7 +221,7 @@ if os.path.exists(notebooks_dir):
     shutil.rmtree(notebooks_dir)
 os.makedirs(notebooks_dir, exist_ok=True)
 
-for filename in ("tutorials.ipynb", "training.ipynb"):
+for filename in ("getting_started.ipynb", "training.ipynb"):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),
         os.path.join(curdir, "notebooks", filename),

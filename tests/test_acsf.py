@@ -60,20 +60,20 @@ def h2o_acsf() -> ACSF:
 
 
 class TestACSF:
-    lj_structure: Structure = Structure.create_from_dict(
+    lj_structure: Structure = Structure.from_dict(
         {
-            "position": [[0.0, 0.0, 0.0], [0.588897275, 0.588897275, 0.588897275]],
-            "element": ["Ne", "Ne"],
+            "positions": [[0.0, 0.0, 0.0], [0.588897275, 0.588897275, 0.588897275]],
+            "elements": ["Ne", "Ne"],
         }
     )
-    h2o_structure: Structure = Structure.create_from_dict(
+    h2o_structure: Structure = Structure.from_dict(
         {
             "lattice": [
                 [11.8086403654, 0.0, 0.0],
                 [0.0, 11.8086403654, 0.0],
                 [0.0, 0.0, 11.8086403654],
             ],
-            "position": [
+            "positions": [
                 [0.2958498542, -0.8444146738, 1.9618569793],
                 [1.7226932399, -1.8170359274, 0.5237867306],
                 [1.2660050151, -4.3958431356, 0.822408813],
@@ -87,7 +87,7 @@ class TestACSF:
                 [-2.3516507887, 0.9376745482, -4.0756290424],
                 [-1.7819663898, 4.1957022409, -4.0621741923],
             ],
-            "element": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
+            "elements": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
         }
     )
 
@@ -161,4 +161,4 @@ class TestACSF:
         expected: Array,
     ) -> None:
         assert acsf(structure).shape == expected[0]
-        assert jnp.allclose(acsf(structure, atom_index=jnp.asarray(0)), expected[1])
+        assert jnp.allclose(acsf(structure, atom_indices=jnp.asarray(0)), expected[1])

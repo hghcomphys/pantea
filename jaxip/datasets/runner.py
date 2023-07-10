@@ -90,11 +90,11 @@ class RunnerDataset(DatasetInterface):
                 break
             keyword, tokens = tokenize(line)
             if keyword == "atom":
-                data["position"].append([float(t) for t in tokens[:3]])
-                data["element"].append(tokens[3])
-                data["charge"].append(float(tokens[4]))
-                data["energy"].append(float(tokens[5]))
-                data["force"].append([float(t) for t in tokens[6:9]])
+                data["positions"].append([float(t) for t in tokens[:3]])
+                data["elements"].append(tokens[3])
+                data["charges"].append(float(tokens[4]))
+                data["energies"].append(float(tokens[5]))
+                data["forces"].append([float(t) for t in tokens[6:9]])
             elif keyword == "lattice":
                 data["lattice"].append([float(t) for t in tokens[:3]])
             elif keyword == "energy":

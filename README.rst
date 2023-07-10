@@ -74,6 +74,7 @@ The resulting values can then be used to construct a machine learning potential.
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
 
+
 .. code-block:: python
 
         from jaxip.datasets import RunnerDataset
@@ -89,14 +90,15 @@ The resulting values can then be used to construct a machine learning potential.
 
         # Add radial and angular symmetry functions
         cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
-        descriptor.add( G2(cfn, eta=0.5, r_shift=0.0), 'H')
-        descriptor.add( G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
+        descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
+        descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
+        print(descriptor)
 
-        # Compute descriptor values
-        descriptor(structure)
+        values = descriptor(structure)
+        print("Descriptor values:\n", values)
 
-        # Compute gradient
-        descriptor.grad(structure, atom_index=0)
+        gradient = descriptor.grad(structure, atom_index=0)
+        print("Descriptor gradient:\n", gradient)
 
 
 -------------------------------------
@@ -119,7 +121,7 @@ The trained potential can then be used to evaluate the energy and force componen
         structure = structures[0]
 
         # Instantiate potential from input settings file
-        nnp = NeuralNetworkPotential.create_from_file("input.nn")
+        nnp = NeuralNetworkPotential.from_file("input.nn")
 
         # Fit descriptor scaler and model weights
         nnp.fit_scaler(structures)
@@ -134,6 +136,14 @@ The trained potential can then be used to evaluate the energy and force componen
 
         # Force components
         nnp.compute_force(structure)
+
+
+
+Example files: `input.data`_ and `input.nn`_
+
+.. _input.data: https://drive.google.com/file/d/1VMckgIv_OUvCOXQ0pYzaF5yl9AwR0rBy/view?usp=sharing
+.. _input.nn: https://drive.google.com/file/d/15Oq9gAJ2xXVMcHyWXlRukfJFevyVO7lI/view?usp=sharing
+
 
 
 License

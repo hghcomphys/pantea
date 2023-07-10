@@ -52,7 +52,7 @@ def run_simulation(
 
     if output_freq is None:
         output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
-    is_output = output_freq > 0
+    is_output: bool = output_freq > 0
 
     if filename is not None:
         filename = Path(filename)
@@ -65,13 +65,13 @@ def run_simulation(
             with open(str(filename), "w"):
                 pass
 
-    init_step = simulator.step
+    init_step: int = simulator.step
     try:
         for _ in range(num_steps):
             if is_output and ((simulator.step - init_step) % output_freq == 0):
                 print(simulator.repr_physical_params())
                 if filename is not None:
-                    atoms = simulator.get_structure().to_ase_atoms()
+                    atoms = simulator.get_structure().to_ase()
                     ase.io.write(str(filename), atoms, append=True)
             simulator.update()
     except KeyboardInterrupt:

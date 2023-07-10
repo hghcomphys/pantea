@@ -29,7 +29,7 @@ class _CFG(BaseModel):
             json.dump(self.dict(), fp, indent=4)
 
     @classmethod
-    def create_from_json(cls, file: Path) -> _CFG:
+    def from_json(cls, file: Path) -> _CFG:
         """Create a configuration instance from the input json file."""
         with open(str(Path(file)), "r") as fp:
             kwargs = json.load(fp)

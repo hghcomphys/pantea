@@ -32,7 +32,8 @@ class BaseJaxPytreeDataClass:
             getattr(self, attr) for attr in self._get_jit_dynamic_attributes()
         )
         aux_data: Dict[str, Any] = {
-            attr: getattr(self, attr) for attr in self._get_jit_static_attributes()
+            attr: getattr(self, attr)
+            for attr in self._get_jit_static_attributes()
         }
         return (children, aux_data)
 
@@ -44,8 +45,9 @@ class BaseJaxPytreeDataClass:
 
     def __hash__(self) -> int:
         """
-        Define hash method based on the `JAX JIT compilation` static attributes.
-        This is useful when wants to identify changes on the static arguments of a jit-compiled method.
+        Define hash based on the `JAX JIT compilation` static attributes.
+        This is used for detecting changes on the static arguments
+        of the jit-compiled method.
         """
         aux_data: Dict[str, Any] = self._tree_flatten()[1]
         return hash(tuple(frozenset(sorted(aux_data.items()))))
@@ -54,7 +56,9 @@ class BaseJaxPytreeDataClass:
     def _get_jit_dynamic_attributes(cls) -> Tuple[str, ...]:
         """Get JAX JIT compilation dynamic attribute names (i.e. jax.ndarray)."""
         return tuple(
-            attr for attr, dtype in cls.__annotations__.items() if "Array" in str(dtype)
+            attr
+            for attr, dtype in cls.__annotations__.items()
+            if "Array" in str(dtype)
         )
 
     @classmethod
@@ -82,7 +86,9 @@ class BaseJaxPytreeDataClass:
             )
 
     @classmethod
-    def _assert_jit_static_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None:
+    def _assert_jit_static_attributes(
+        cls, expected: Tuple[str, ...] = tuple()
+    ) -> None:
         cls._assert_jit_attributes(
             cls._get_jit_static_attributes(), expected, tag="static"
         )

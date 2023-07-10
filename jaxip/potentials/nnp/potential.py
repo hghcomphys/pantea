@@ -27,8 +27,9 @@ from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
 from jaxip.potentials.nnp.gradient_descent import GradientDescentUpdater
 from jaxip.potentials.nnp.kalman_filter import KalmanFilterUpdater
-from jaxip.potentials.nnp.settings import \
-    NeuralNetworkPotentialSettings as PotentialSettings
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 from jaxip.types import Array, Element
 
 
@@ -58,10 +59,10 @@ class NeuralNetworkPotential:
         from jaxip.potentials.nnp import NeuralNetworkPotentialSettings as Settings
 
         # Method #1 (potential file)
-        nnp1 = NeuralNetworkPotential.create_from_file("input.nn")
+        nnp1 = NeuralNetworkPotential.from_file("input.nn")
 
         # Method #2 (json file)
-        nnp3 = NeuralNetworkPotential.create_from_file('h2o.json')
+        nnp3 = NeuralNetworkPotential.from_file('h2o.json')
 
         # Method #3 (dictionary of parameters)
         settings = Settings(**params_dict)
@@ -79,19 +80,19 @@ class NeuralNetworkPotential:
     updater: Optional[UpdaterInterface] = field(default=None, repr=False, init=False)
 
     @classmethod
-    def create_from_file(cls, filename: Path) -> NeuralNetworkPotential:
+    def from_file(cls, filename: Path) -> NeuralNetworkPotential:
         """Create an instance of the potential from input file (RuNNer format)."""
         logger.info("Creating potential from input file (RuNNer format)")
         potfile = Path(filename)
         suffix: str = potfile.suffix.lower()
         if ".json" == suffix:
             logger.info(f"Initializing from json file: {potfile.name}")
-            settings = PotentialSettings.create_from_json(potfile)
+            settings = PotentialSettings.from_json(potfile)
         else:
             logger.info(
                 f"Initializing from original RuNNer file format: {potfile.name}"
             )
-            settings = PotentialSettings.create_from_file(potfile)
+            settings = PotentialSettings.from_file(potfile)
 
         return NeuralNetworkPotential(
             settings=settings,  # type: ignore
@@ -299,12 +300,12 @@ class NeuralNetworkPotential:
 
         return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
-            structure.get_positions(),
+            structure.get_per_element_positions(),
             self.model_params,
-            structure.get_inputs(),
+            structure.get_per_element_inputs(),
         )
 
-    def compute_force(self, structure: Structure) -> Array:
+    def compute_forces(self, structure: Structure) -> Array:
         """
         Compute force components.
 
@@ -313,12 +314,12 @@ class NeuralNetworkPotential:
         """
         force_dict: Dict[Element, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
-            structure.get_positions(),
+            structure.get_per_element_positions(),
             self.model_params,
-            structure.get_inputs(),
+            structure.get_per_element_inputs(),
         )
-        force: Array = jnp.empty_like(structure.force)
-        for element in structure.elements:
+        force: Array = jnp.empty_like(structure.forces)
+        for element in structure.get_unique_elements():
             atom_index: Array = structure.select(element)
             force = force.at[atom_index].set(force_dict[element])
 
@@ -336,7 +337,7 @@ class NeuralNetworkPotential:
             dataset_size: int = len(dataset)
             for index in tqdm(range(dataset_size)):
                 structure: Structure = dataset[index]
-                elements: Tuple[Element, ...] = structure.elements
+                elements: Tuple[Element, ...] = structure.get_unique_elements()
                 for element in elements:
                     x: Array = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)

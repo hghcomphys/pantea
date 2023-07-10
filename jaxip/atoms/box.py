@@ -1,130 +1,120 @@
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from typing import Optional
 
 import jax
 import jax.numpy as jnp
 
-from jaxip.atoms._box import _apply_pbc
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from jaxip.types import Array, Dtype
-from jaxip.types import dtype as _dtype
+from jaxip.types import Array, Dtype, _dtype
+
+
+@jax.jit
+def _apply_pbc(dx: Array, lattice: Array) -> Array:
+    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
+    box = lattice.diagonal()
+    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
+    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
+    return dx
+
+
+@jax.jit
+def _shift_inside_box(positions: Array, lattice: Array) -> Array:
+    """Shift the input atom position inside the PBC simulation box."""
+    box = lattice.diagonal()
+    return jnp.remainder(positions, box)
 
 
 @dataclass
 class Box(BaseJaxPytreeDataClass):
     """
-    Simulation box which is responsible for applying PBCs
-    when there are available lattice info.
+    Simulation box is used to implement periodic boundary
+    conditions (PBC) in the presence of a lattice matrix.
 
     .. warning::
-        Current implementation works only for orthogonal cells.
-        No support for triclinic cells yet.
+        The current implementation only works for orthogonal cells
+        and does not support triclinic cells.
     """
 
-    lattice: Optional[Array] = None
-    dtype: Optional[Dtype] = None
+    lattice: Array
+    dtype: InitVar[Optional[Dtype]] = None
 
-    def __pos_init__(self) -> None:
+    def __post_init__(self, dtype: Optional[Dtype] = None) -> None:
         """Post initialize simulation box (super-cell)."""
-        if self.dtype is None:
-            self.dtype = _dtype.FLOATX
-
-        if self.lattice is not None:
-            try:
-                self.lattice = jnp.asarray(
-                    self.lattice,
-                    dtype=self.dtype,
-                ).reshape(3, 3)
-            except ValueError:
-                logger.error(
-                    "Unexpected lattice matrix type or dimension",
-                    exception=ValueError,  # type:ignore
-                )
-
         logger.debug(f"Initializing {self}")
+        if dtype is None:
+            dtype = _dtype.FLOATX
+        try:
+            self.lattice = jnp.array(self.lattice, dtype=dtype).reshape(3, 3)
+        except ValueError:
+            logger.error(
+                f"Unexpected lattice matrix: {self.lattice}",
+                exception=ValueError,
+            )
         self._assert_jit_dynamic_attributes(expected=("lattice",))
-        self._assert_jit_static_attributes(expected=("dtype",))
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
         return super().__hash__()
 
-    def __bool__(self) -> bool:
-        """Check whether the box instance with lattice info makes sense."""
-        if self.lattice is None:
-            return False
-        return True
-
     @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
         """
-        Apply the periodic boundary condition (PBC) on the input position array.
+        Apply the periodic boundary condition (PBC) on the provided position array.
 
-        All atoms must be positioned inside the box beforehand, otherwise
-        this method may not work as expected, see :meth:`structure.Structure.shift_inside_box`.
+        For this method to function correctly, it is essential that all atoms are
+        initially positioned within the boundaries of the box.
+        Otherwise, the results may not be as anticipated.
 
         :param dx: positional difference
         :type dx: Array
         :return: PBC applied input
         :rtype: Optional[Array]
         """
-        if self.lattice is not None:
-            return _apply_pbc(dx, self.lattice)
-        return dx
+        return _apply_pbc(dx, self.lattice)
 
     @jax.jit
-    def shift_inside_box(self, x: Array) -> Array:
+    def shift_inside_box(self, positions: Array) -> Array:
         """
-        Shift the input atom coordinates inside the PBC simulation box.
+        Adjust the coordinates of the input atoms to ensure they fall
+        within the boundaries of the simulation box that implements
+        periodic boundary conditions (PBC).
 
         :param x: atom positions
         :type x: Array
         :return: shifted atom positions
         :rtype: Array
         """
-        if self.length is not None:
-            logger.debug("Shift all atoms inside the simulation box")
-            return jnp.remainder(x, self.length)
-        return x
+        logger.debug("Shift all atoms inside the simulation box")
+        return _shift_inside_box(positions, self.lattice)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice})"
 
     @property
-    def lx(self) -> Optional[Array]:
+    def lx(self) -> Array:
         """Return length of cell in x-direction."""
-        if self.lattice is not None:
-            return self.lattice[0, 0]
-        return None
+        return self.lattice[0, 0]
 
     @property
-    def ly(self) -> Optional[Array]:
+    def ly(self) -> Array:
         """Return length of cell in y-direction."""
-        if self.lattice is not None:
-            return self.lattice[1, 1]
-        return None
+        return self.lattice[1, 1]
 
     @property
-    def lz(self) -> Optional[Array]:
+    def lz(self) -> Array:
         """Return length of cell in z-direction."""
-        if self.lattice is not None:
-            return self.lattice[2, 2]
-        return None
+        return self.lattice[2, 2]
 
     @property
-    def length(self) -> Optional[Array]:
+    def length(self) -> Array:
         """Return length of cell in x, y, and z-directions."""
-        if self.lattice is not None:
-            return self.lattice.diagonal()
-        return None
+        return self.lattice.diagonal()
 
     @property
-    def volume(self) -> Optional[Array]:
+    def volume(self) -> Array:
         """Return volume of the box."""
-        if self.lattice is not None:
-            return jnp.prod(self.length)
-        return None
+        return jnp.prod(self.length)
 
 
 register_jax_pytree_node(Box)

@@ -4,19 +4,19 @@ from typing import Optional, Protocol, Tuple
 import jax.numpy as jnp
 import numpy as np
 
-from jaxip.atoms import Structure
+from jaxip.atoms.structure import Structure
 from jaxip.logger import logger
 from jaxip.types import Array, Element
 from jaxip.units import units
 
-KB = units.BOLTZMANN_CONSTANT
+KB: float = units.BOLTZMANN_CONSTANT
 
 
 class PotentialInterface(Protocol):
     def __call__(self, structure: Structure) -> Array:
         ...
 
-    def compute_force(self, structure: Structure) -> Array:
+    def compute_forces(self, structure: Structure) -> Array:
         ...
 
 
@@ -28,7 +28,7 @@ class MCSimulator:
         temperature: float,
         translate_step: float,
         movements_per_step: int = 1,
-        atomic_mass: Optional[Array] = None,
+        atomic_masses: Optional[Array] = None,
         random_seed: int = 12345,
     ) -> None:
         """
@@ -42,8 +42,8 @@ class MCSimulator:
         :type time_step: float
         :param temperature: desired temperature of the system
         :type temperature: float
-        :param atomic_mass: atomic mass of atoms in the input structure, defaults to None
-        :type atomic_mass: Optional[Array], optional
+        :param atomic_masses: atomic mass of atoms in the input structure, defaults to None
+        :type atomic_masses: Optional[Array], optional
         :param random_seed: seed for generating random atom movements, defaults to 12345
         :type random_seed: int, optional
 
@@ -57,12 +57,12 @@ class MCSimulator:
         self.translate_step = translate_step
         self.movements_per_step = movements_per_step
 
-        self.mass: Array
-        if atomic_mass is not None:
-            self.mass = atomic_mass.reshape(-1, 1)
+        self.masses: Array
+        if atomic_masses is not None:
+            self.masses = atomic_masses.reshape(-1, 1)
         else:
             logger.info("Extracting atomc masses from input structure")
-            self.mass = initial_structure.mass.reshape(-1, 1)
+            self.masses = initial_structure.get_masses().reshape(-1, 1)
 
         self.step: int = 0
         self.energy = self.potential(initial_structure)
@@ -84,8 +84,8 @@ class MCSimulator:
         atom_indices = np.random.randint(
             low=0, high=self.natoms, size=(self.movements_per_step,)
         )
-        new_position = self._structure.position.at[atom_indices].add(displacements)
-        new_structure = replace(self._structure, position=new_position)
+        new_position = self._structure.positions.at[atom_indices].add(displacements)
+        new_structure = replace(self._structure, positions=new_position)
         new_energy = self.potential(new_structure)
 
         accept: bool = False
@@ -108,16 +108,15 @@ class MCSimulator:
         )
 
     @property
-    def position(self) -> Array:
-        return self._structure.position
+    def positions(self) -> Array:
+        return self._structure.positions
 
     @property
     def natoms(self) -> int:
         return self._structure.natoms
 
-    @property
-    def elements(self) -> Tuple[Element]:
-        return self._structure.elements
+    def get_elements(self) -> Tuple[Element]:
+        return self._structure.get_elements()
 
     def get_structure(self) -> Structure:
         return replace(

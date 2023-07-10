@@ -10,8 +10,9 @@ import pytest
 
 from jaxip.datasets import RunnerDataset
 from jaxip.potentials import NeuralNetworkPotential
-from jaxip.potentials.nnp.settings import \
-    NeuralNetworkPotentialSettings as PotentialSettings
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
 
 dataset_file = Path("tests", "h2o.data")
 potential_file = Path("tests", "h2o.json")
@@ -19,9 +20,7 @@ potential_file = Path("tests", "h2o.json")
 
 class TestNeuralNetworkPotential:
     dataset = RunnerDataset(dataset_file)
-    nnp: NeuralNetworkPotential = NeuralNetworkPotential.create_from_file(
-        potential_file
-    )
+    nnp: NeuralNetworkPotential = NeuralNetworkPotential.from_file(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, expected",
@@ -42,7 +41,7 @@ class TestNeuralNetworkPotential:
     ) -> None:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
-        assert nnp.settings == PotentialSettings.create_from_json(potential_file)
+        assert nnp.settings == PotentialSettings.from_json(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
@@ -82,7 +81,7 @@ class TestNeuralNetworkPotential:
 
         # total energy
         assert jnp.allclose(nnp(dataset[0]), expected[0])
-        assert jnp.allclose(nnp.compute_force(dataset[0]), expected[1])
+        assert jnp.allclose(nnp.compute_forces(dataset[0]), expected[1])
 
     @pytest.mark.parametrize(
         "nnp, dataset",

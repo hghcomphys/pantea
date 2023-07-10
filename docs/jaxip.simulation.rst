@@ -4,6 +4,14 @@ jaxip.simulation package
 Submodules
 ----------
 
+jaxip.simulation.lj module
+--------------------------
+
+.. automodule:: jaxip.simulation.lj
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 jaxip.simulation.mc module
 --------------------------
 

@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import pytest
 from ase import Atoms
 
-from .ljpot import LJPotential
 from jaxip.atoms.structure import Structure
+from jaxip.simulation.lj import LJPotential
 from jaxip.simulation.mc import MCSimulator
 from jaxip.units import units
 
@@ -17,11 +17,11 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 def get_structure() -> Structure:
     d = 6  # Angstrom
     uc = Atoms("He", positions=[(d / 2, d / 2, d / 2)], cell=(d, d, d))
-    s = Structure.create_from_ase(uc.repeat((2, 2, 2)))
+    s = Structure.from_ase(uc.repeat((2, 2, 2)))
     return s
 
 
-def get_potential():
+def get_potential() -> LJPotential:
     return LJPotential(
         sigma=2.5238 * units.FROM_ANGSTROM,
         epsilon=4.7093e-04 * units.FROM_ELECTRON_VOLT,
@@ -75,8 +75,8 @@ class TestMCSimulator:
         mc: MCSimulator,
         structure: Structure,
     ) -> None:
-        assert jnp.allclose(mc.position, structure.position)
-        assert jnp.allclose(mc.mass, structure.mass)
+        assert jnp.allclose(mc.positions, structure.positions)
+        assert jnp.allclose(mc.masses, structure.get_masses())
 
     @pytest.mark.parametrize(
         "mc, expected",

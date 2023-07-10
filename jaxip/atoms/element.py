@@ -71,48 +71,47 @@ class ElementMap:
     def __init__(self, elements: List[Element]) -> None:
         """Initialize element map."""
         self.unique_elements: Set[Element] = set(elements)
-        self._elem_to_atomic_num: Dict[Element, int] = dict()
-        self._elem_to_atom_type: Dict[Element, int] = dict()
-        self._atom_type_to_elem: Dict[int, Element] = dict()
+        self._element_to_atomic_number: Dict[Element, int] = dict()
+        self._element_to_atom_type: Dict[Element, int] = dict()
+        self._atom_type_to_element: Dict[int, Element] = dict()
         self._create_mapping_dicts()
+        logger.debug(f"Initialized {self.__class__.__name__}")
 
-        logger.debug(f"Initializing {self.__class__.__name__}()")
+    def __call__(self, item: Union[Element, int]) -> Union[int, Element]:
+        """Map an element to the atom type and vice versa."""
+        result: Union[int, Element]
+        if isinstance(item, int):
+            return self._atom_type_to_element[item]
+        elif isinstance(item, Element):
+            return self._element_to_atom_type[item]
+        else:
+            logger.error(
+                f"Unknown item type '{type(item)}'", exception=TypeError
+            )
+            return  # type: ignore
 
     def _create_mapping_dicts(self) -> None:
         """
         Create dictionary to map elements, atom types, and atomic numbers.
-        The given atom types are given and sorted based on elements' atomic number.
+        The atom types are sorted based on elements' atomic number.
         """
-        self._elem_to_atomic_num = {
+        self._element_to_atomic_number = {
             elem: _KNOWN_ELEMENTS_DICT[elem] for elem in self.unique_elements
         }
-        self._elem_to_atom_type = {
+        self._element_to_atom_type = {
             elem: atom_type
             for atom_type, elem in enumerate(
                 sorted(
-                    self._elem_to_atomic_num,
-                    key=self._elem_to_atomic_num.get,  # type: ignore
+                    self._element_to_atomic_number,
+                    key=self._element_to_atomic_number.get,  # type: ignore
                 ),
                 start=1,
             )
         }
-        self._atom_type_to_elem = {
-            atom_type: elem for elem, atom_type in self._elem_to_atom_type.items()
+        self._atom_type_to_element = {
+            atom_type: elem
+            for elem, atom_type in self._element_to_atom_type.items()
         }
-
-    def __getitem__(self, item: Union[Element, int]) -> Union[int, Element]:
-        """Map an element to the atom type and vice versa."""
-        result: Union[int, Element]
-        if isinstance(item, int):
-            result = self._atom_type_to_elem[item]
-        elif isinstance(item, Element):
-            result = self._elem_to_atom_type[item]
-        else:
-            logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
-        return result  # type: ignore
-
-    def __call__(self, item: Union[Element, int]) -> Union[int, Element]:
-        return self[item]
 
     @classmethod
     def get_atomic_number(cls, element: Element) -> int:
@@ -138,21 +137,27 @@ class ElementMap:
     def atom_type_to_element(self) -> Dict[int, Element]:
         """
         Return a dictionary mapping of atom type to element.
-        This property is defined due to a serialization issue of the ElementMap class during parallelization.
 
-        :return: a dictionary of mapping an atom type (integer) to the corresponding element (string)
+        This property is defined due to a serialization issue
+        of the ElementMap class during parallelization.
+
+        :return: a dictionary of mapping an atom type (integer)
+        to the corresponding element (string)
         """
-        return self._atom_type_to_elem
+        return self._atom_type_to_element
 
     @property
-    def element_to_atype(self) -> Dict[Element, int]:
+    def element_to_atom_type(self) -> Dict[Element, int]:
         """
         Return a mapping dictionary of element to atom type.
-        This property is defined due to a serialization issue of the ElementMap class during parallelization.
 
-        :return: a dictionary of mapping an element (string) to the corresponding atom type (integer)
+        This property is defined due to a serialization issue of
+        the ElementMap class during parallelization.
+
+        :return: a dictionary of mapping an element (string) to
+        the corresponding atom type (integer)
         """
-        return self._elem_to_atom_type
+        return self._element_to_atom_type
 
     @classmethod
     def atomic_number_to_element(cls, atomic_number: int) -> Element:

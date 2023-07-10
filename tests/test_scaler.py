@@ -10,7 +10,7 @@ from jax import random
 
 from jaxip.descriptors.scaler import Scaler
 from jaxip.types import Array
-from jaxip.types import dtype as _dtype
+from jaxip.types import _dtype
 from jaxip.utils.batch import create_batch
 
 key = random.PRNGKey(2023)
