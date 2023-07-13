@@ -47,7 +47,20 @@ H2O_DATA = {
         -0.0713622,
         -0.317081,
     ],
-    "energies": [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0],
+    "energies": [
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+    ],
     "forces": [
         [0.0576867169, -0.2578270722, -0.2339365489],
         [-0.5157027617, -1.4143481512, -0.1199800167],
@@ -70,10 +83,9 @@ H2O_DATA = {
 
 class TestRunnerDataset:
     h2o: RunnerDataset = RunnerDataset(filename=h2o_filename)
-    h2o_raw: RunnerDataset = RunnerDataset(
-        filename=h2o_filename, transform=lambda x: x  # type: ignore
+    h2o_persist: RunnerDataset = RunnerDataset(
+        filename=h2o_filename, persist=True
     )
-    h2o_persist: RunnerDataset = RunnerDataset(filename=h2o_filename, persist=True)
 
     @pytest.mark.parametrize(
         "dataset",
@@ -94,10 +106,6 @@ class TestRunnerDataset:
             (
                 h2o,
                 (2, Structure),
-            ),
-            (
-                h2o_raw,
-                (2, dict),
             ),
         ],
     )
@@ -128,13 +136,13 @@ class TestRunnerDataset:
         dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
-        assert len(dataset._cached_structures) == expected[0]
+        assert len(dataset._cache) == expected[0]
         dataset[0]
-        assert len(dataset._cached_structures) == expected[1]
+        assert len(dataset._cache) == expected[1]
         dataset[0]
-        assert len(dataset._cached_structures) == expected[2]
+        assert len(dataset._cache) == expected[2]
         dataset[1]
-        assert len(dataset._cached_structures) == expected[3]
+        assert len(dataset._cache) == expected[3]
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -157,7 +165,8 @@ class TestRunnerDataset:
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "positions":
                 assert jnp.allclose(
-                    structure.positions, structure.box.shift_inside_box(expected[i])
+                    structure.positions,
+                    structure.box.shift_inside_box(expected[i]),  # type: ignore
                 )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])
