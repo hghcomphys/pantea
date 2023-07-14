@@ -46,11 +46,10 @@ class RunnerDataset(DatasetInterface):
         self.persist: bool = persist
         self._cache: Dict[int, Structure] = dict()
         self._current_index: int = 0
-        if dtype is None:
-            self.dtype = _dtype.FLOATX
+        self.dtype = dtype if dtype is not None else _dtype.FLOATX
 
     def __len__(self) -> int:
-        """Return number of structures."""
+        """Return number of available structures."""
         num_structures: int = 0
         with open(str(self.filename), "r") as file:
             while self._ignore_next(file):
@@ -89,6 +88,12 @@ class RunnerDataset(DatasetInterface):
                 yield structure
                 index += 1
 
+    def cache_structures(self) -> None:
+        """Cache all structures into the memory."""
+        self.persist = True
+        for _ in self.read_structures():
+            pass
+
     def _read_next(self, file: TextIO) -> Dict[str, List]:
         data = defaultdict(list)
         while True:
@@ -119,13 +124,13 @@ class RunnerDataset(DatasetInterface):
             line = file.readline()
             if not line:
                 return False
-            keyword, tokens = tokenize(line)
+            keyword, _ = tokenize(line)
             if keyword == "end":
                 break
         return True
 
     def _read_structure(self, index: int) -> Structure:
-        logger.debug(f"loading structure({index=})")
+        logger.debug(f"load structure({index=})")
         with open(str(self.filename), "r") as file:
             for _ in range(index):
                 self._ignore_next(file)
@@ -152,5 +157,6 @@ class RunnerDataset(DatasetInterface):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}"
-            f"(filename='{str(self.filename)}', dtype={self.dtype.dtype})"
+            f"(filename='{str(self.filename)}'"
+            f", persist={self.persist}, dtype={self.dtype.dtype})"
         )

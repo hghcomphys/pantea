@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+from jaxip.types import _dtype
+
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
@@ -86,19 +88,9 @@ class TestRunnerDataset:
     h2o_persist: RunnerDataset = RunnerDataset(
         filename=h2o_filename, persist=True
     )
-
-    @pytest.mark.parametrize(
-        "dataset",
-        [
-            h2o,
-        ],
+    h2o_float64: RunnerDataset = RunnerDataset(
+        filename=h2o_filename, dtype=jnp.float64
     )
-    def test_mandatory_methods(
-        self,
-        dataset: RunnerDataset,
-    ) -> None:
-        getattr(dataset, "__len__")
-        getattr(dataset, "__getitem__")
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -114,9 +106,30 @@ class TestRunnerDataset:
         dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
-        assert len(dataset) == expected[0]
-        for index in range(len(dataset)):
+        num_structures = len(dataset)
+        assert num_structures == expected[0]
+        for index in range(num_structures):
             assert isinstance(dataset[index], expected[1])
+
+    @pytest.mark.parametrize(
+        "dataset, expected",
+        [
+            (
+                h2o,
+                (_dtype.FLOATX,),
+            ),
+            (
+                h2o_float64,
+                (jnp.float64,),
+            ),
+        ],
+    )
+    def test_dtype(
+        self,
+        dataset: RunnerDataset,
+        expected: Tuple,
+    ) -> None:
+        assert dataset.dtype == expected[0]
 
     @pytest.mark.parametrize(
         "dataset, expected",
