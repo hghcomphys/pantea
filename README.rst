@@ -23,7 +23,7 @@ Description
 -----------
 Jaxip is an optimized Python library on basis of Google `JAX`_ that enables 
 development of emerging machine learning interatomic potentials 
-for use in computational physics, chemistry, material science. 
+for use in computational physics, chemistry, and material science. 
 These potentials are necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 
@@ -38,7 +38,7 @@ See `documentation`_ for more information.
 Features
 --------
 * The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
-* It uses `autograd` to make defining new descriptors straightforward.
+* It uses `automatic differentiation` to make defining new descriptors straightforward.
 * Jaxip is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
@@ -135,7 +135,7 @@ The trained potential can then be used to evaluate the energy and force componen
         nnp(structure)
 
         # Force components
-        nnp.compute_force(structure)
+        nnp.compute_forces(structure)
 
 
 

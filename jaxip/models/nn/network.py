@@ -9,8 +9,7 @@ from frozendict import frozendict
 from jaxip.logger import logger
 from jaxip.models.model import ModelInterface
 from jaxip.models.nn.activation import _activation_function_map
-from jaxip.types import Array, Dtype
-from jaxip.types import _dtype
+from jaxip.types import Array, Dtype, _dtype
 
 
 class NeuralNetworkModel(nn.Module, ModelInterface):
