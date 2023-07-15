@@ -13,13 +13,16 @@ from jaxip.utils.tokenize import tokenize
 
 class RunnerDataset(DatasetInterface):
     """
-    Dataset for `RuNNer`_ input data format.
 
-    The input structure file contains atomic attribute  and a simulation box.
-    Each snapshot contains per-atom and collective properties as follows:
+    The dataset used for the input data format of `RuNNer`_ consists of atomic attributes
+    and simulation box information. Within each snapshot, there are two types of
+    properties: `per-atom` properties and `collective` properties.
 
-    * `per-atom` properties include the element name, positions, energy, charge, force components, etc.
-    * `collective` properties such as lattice, total energy, and total charge.
+    The per-atom properties encompass various attributes like the element name,
+    positions, energy, charge, force components, and more.
+
+    On the other hand, the collective properties include attributes
+    such as lattice parameters, total energy, and total charge.
 
     .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
     """
@@ -31,11 +34,11 @@ class RunnerDataset(DatasetInterface):
         dtype: Optional[Dtype] = None,
     ) -> None:
         """
-        Initialize `RuNNer`_ structure dataset from input file.
+        Create a `RuNNer`_ structure dataset by initializing it from an input file.
 
         :param filename: input file name
         :type filename: Path
-        :param persist: Persist structure data in the memory, defaults to False
+        :param persist: Persist any loaded structure data in the memory, defaults to False
         :type persist: bool, optional
         :param dtype: floating point precision for the structure data, defaults to None
         :type dtype: Optional[Dtype], optional
@@ -45,7 +48,6 @@ class RunnerDataset(DatasetInterface):
         self.filename: Path = Path(filename)
         self.persist: bool = persist
         self._cache: Dict[int, Structure] = dict()
-        self._current_index: int = 0
         self.dtype = dtype if dtype is not None else _dtype.FLOATX
 
     def __len__(self) -> int:
@@ -63,11 +65,14 @@ class RunnerDataset(DatasetInterface):
         This is a lazy call which means that only required section
         of data is loaded into the memory.
         """
-        return self._read_structure_from_cache(index)
+        return self._read_from_cache(index)
 
-    def read_structures(self) -> Iterator[Structure]:
+    def read_sequential(self) -> Iterator[Structure]:
         """
         Read structures sequentially.
+
+        It must be noted that reading data in a consecutive manner is
+        faster compared to random indexing read.
 
         :return: Structure
         :rtype: Iterator[Structure]
@@ -88,16 +93,31 @@ class RunnerDataset(DatasetInterface):
                 yield structure
                 index += 1
 
-    def cache_structures(self) -> None:
-        """Cache all structures into the memory."""
+    def preload(self) -> None:
+        """
+        Preload (cache) all structures into memory.
+
+        This ensures that any structure can be rapidly loaded from memory in subsequent operations.
+        """
         self.persist = True
-        for _ in self.read_structures():
+        for _ in self.read_sequential():
             pass
 
-    def _read_next(self, file: TextIO) -> Dict[str, List]:
+    @classmethod
+    def _read_next(cls, file: TextIO) -> Dict[str, List]:
+        """Read next structure data between `begin` and `end` keywords."""
         data = defaultdict(list)
+        read_block: bool = False
         while True:
-            line: str = file.readline()
+            line = file.readline()
+            if not line:
+                break
+            keyword, _ = tokenize(line)
+            if keyword == "begin":
+                read_block = True
+                break
+        while read_block:
+            line = file.readline()
             if not line:
                 break
             keyword, tokens = tokenize(line)
@@ -116,10 +136,11 @@ class RunnerDataset(DatasetInterface):
             elif keyword == "comment":
                 data["comment"].append(" ".join(line.split()[1:]))
             elif keyword == "end":
-                break
+                read_block = False
         return data
 
-    def _ignore_next(self, file: TextIO) -> bool:
+    @classmethod
+    def _ignore_next(cls, file: TextIO) -> bool:
         while True:
             line = file.readline()
             if not line:
@@ -129,7 +150,7 @@ class RunnerDataset(DatasetInterface):
                 break
         return True
 
-    def _read_structure(self, index: int) -> Structure:
+    def _read(self, index: int) -> Structure:
         logger.debug(f"load structure({index=})")
         with open(str(self.filename), "r") as file:
             for _ in range(index):
@@ -139,16 +160,17 @@ class RunnerDataset(DatasetInterface):
                 raise IndexError(
                     f"The given index {index} is out of bound (len={len(self)})"
                 )
-        return Structure.from_dict(data, dtype=self.dtype)
+        return self._to_structure(data)
 
     def _to_structure(self, data: Dict[str, List]) -> Structure:
         return Structure.from_dict(data, dtype=self.dtype)
 
-    def _read_structure_from_cache(self, index: int) -> Structure:
+    def _read_from_cache(self, index: int) -> Structure:
+        """Read the desired structure from cache, if possible."""
         if not self.persist:
-            return self._read_structure(index)
+            return self._read(index)
         if index not in self._cache:
-            structure = self._read_structure(index)
+            structure = self._read(index)
             self._cache[index] = structure
             return structure
         else:

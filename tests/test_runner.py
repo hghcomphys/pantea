@@ -13,7 +13,7 @@ import pytest
 from jaxip.atoms.structure import Structure
 from jaxip.datasets.runner import RunnerDataset
 
-h2o_filename = Path("tests", "h2o.data")
+H2O_FILENAME = Path("tests", "h2o.data")
 H2O_DATA = {
     "lattice": [
         [11.8086403654, 0.0, 0.0],
@@ -84,12 +84,12 @@ H2O_DATA = {
 
 
 class TestRunnerDataset:
-    h2o: RunnerDataset = RunnerDataset(filename=h2o_filename)
+    h2o: RunnerDataset = RunnerDataset(filename=H2O_FILENAME)
     h2o_persist: RunnerDataset = RunnerDataset(
-        filename=h2o_filename, persist=True
+        filename=H2O_FILENAME, persist=True
     )
     h2o_float64: RunnerDataset = RunnerDataset(
-        filename=h2o_filename, dtype=jnp.float64
+        filename=H2O_FILENAME, dtype=jnp.float64
     )
 
     @pytest.mark.parametrize(
@@ -177,9 +177,15 @@ class TestRunnerDataset:
         structure: Structure = dataset[1]
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "positions":
-                assert jnp.allclose(
-                    structure.positions,
-                    structure.box.shift_inside_box(expected[i]),  # type: ignore
-                )
+                if structure.box is not None:
+                    assert jnp.allclose(
+                        structure.positions,
+                        structure.box.shift_inside_box(expected[i]),
+                    )
+                else:
+                    assert jnp.allclose(
+                        structure.positions,
+                        expected[i],
+                    )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])
