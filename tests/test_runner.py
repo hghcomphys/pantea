@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+from jaxip.types import _dtype
+
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
@@ -11,7 +13,7 @@ import pytest
 from jaxip.atoms.structure import Structure
 from jaxip.datasets.runner import RunnerDataset
 
-h2o_filename = Path("tests", "h2o.data")
+H2O_FILENAME = Path("tests", "h2o.data")
 H2O_DATA = {
     "lattice": [
         [11.8086403654, 0.0, 0.0],
@@ -47,7 +49,20 @@ H2O_DATA = {
         -0.0713622,
         -0.317081,
     ],
-    "energies": [-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, -0.0],
+    "energies": [
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+        -0.0,
+    ],
     "forces": [
         [0.0576867169, -0.2578270722, -0.2339365489],
         [-0.5157027617, -1.4143481512, -0.1199800167],
@@ -69,24 +84,13 @@ H2O_DATA = {
 
 
 class TestRunnerDataset:
-    h2o: RunnerDataset = RunnerDataset(filename=h2o_filename)
-    h2o_raw: RunnerDataset = RunnerDataset(
-        filename=h2o_filename, transform=lambda x: x  # type: ignore
+    h2o: RunnerDataset = RunnerDataset(filename=H2O_FILENAME)
+    h2o_persist: RunnerDataset = RunnerDataset(
+        filename=H2O_FILENAME, persist=True
     )
-    h2o_persist: RunnerDataset = RunnerDataset(filename=h2o_filename, persist=True)
-
-    @pytest.mark.parametrize(
-        "dataset",
-        [
-            h2o,
-        ],
+    h2o_float64: RunnerDataset = RunnerDataset(
+        filename=H2O_FILENAME, dtype=jnp.float64
     )
-    def test_mandatory_methods(
-        self,
-        dataset: RunnerDataset,
-    ) -> None:
-        getattr(dataset, "__len__")
-        getattr(dataset, "__getitem__")
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -95,10 +99,6 @@ class TestRunnerDataset:
                 h2o,
                 (2, Structure),
             ),
-            (
-                h2o_raw,
-                (2, dict),
-            ),
         ],
     )
     def test_general(
@@ -106,9 +106,30 @@ class TestRunnerDataset:
         dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
-        assert len(dataset) == expected[0]
-        for index in range(len(dataset)):
+        num_structures = len(dataset)
+        assert num_structures == expected[0]
+        for index in range(num_structures):
             assert isinstance(dataset[index], expected[1])
+
+    @pytest.mark.parametrize(
+        "dataset, expected",
+        [
+            (
+                h2o,
+                (_dtype.FLOATX,),
+            ),
+            (
+                h2o_float64,
+                (jnp.float64,),
+            ),
+        ],
+    )
+    def test_dtype(
+        self,
+        dataset: RunnerDataset,
+        expected: Tuple,
+    ) -> None:
+        assert dataset.dtype == expected[0]
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -128,13 +149,13 @@ class TestRunnerDataset:
         dataset: RunnerDataset,
         expected: Tuple,
     ) -> None:
-        assert len(dataset._cached_structures) == expected[0]
+        assert len(dataset._cache) == expected[0]
         dataset[0]
-        assert len(dataset._cached_structures) == expected[1]
+        assert len(dataset._cache) == expected[1]
         dataset[0]
-        assert len(dataset._cached_structures) == expected[2]
+        assert len(dataset._cache) == expected[2]
         dataset[1]
-        assert len(dataset._cached_structures) == expected[3]
+        assert len(dataset._cache) == expected[3]
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -156,8 +177,15 @@ class TestRunnerDataset:
         structure: Structure = dataset[1]
         for i, attr in enumerate(Structure._get_atom_attributes()):
             if attr == "positions":
-                assert jnp.allclose(
-                    structure.positions, structure.box.shift_inside_box(expected[i])
-                )
+                if structure.box is not None:
+                    assert jnp.allclose(
+                        structure.positions,
+                        structure.box.shift_inside_box(expected[i]),
+                    )
+                else:
+                    assert jnp.allclose(
+                        structure.positions,
+                        expected[i],
+                    )
             else:
                 assert jnp.allclose(getattr(structure, attr), expected[i])

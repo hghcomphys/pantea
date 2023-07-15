@@ -2,24 +2,27 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import DefaultDict, Dict, List, Optional, TextIO
+from typing import Dict, Iterator, List, Optional, TextIO
 
 from jaxip.atoms.structure import Structure
 from jaxip.datasets.dataset import DatasetInterface
-from jaxip.datasets.transformer import ToStructure, TransformerInterface
 from jaxip.logger import logger
+from jaxip.types import Dtype, _dtype
 from jaxip.utils.tokenize import tokenize
 
 
 class RunnerDataset(DatasetInterface):
     """
-    Dataset for `RuNNer`_ data file format.
 
-    The input structure file contains atom info and simulation box.
-    Each snapshot contains two per-atom and collective properties as follows:
+    The dataset used for the input data format of `RuNNer`_ consists of atomic attributes
+    and simulation box information. Within each snapshot, there are two types of
+    properties: `per-atom` properties and `collective` properties.
 
-    * `per-atom` properties include the element name, positions, energy, charge, force components, etc.
-    * `collective` properties such as lattice, total energy, and total charge.
+    The per-atom properties encompass various attributes like the element name,
+    positions, energy, charge, force components, and more.
+
+    On the other hand, the collective properties include attributes
+    such as lattice parameters, total energy, and total charge.
 
     .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
     """
@@ -28,64 +31,93 @@ class RunnerDataset(DatasetInterface):
         self,
         filename: Path,
         persist: bool = False,
-        transform: Optional[TransformerInterface] = None,
+        dtype: Optional[Dtype] = None,
     ) -> None:
         """
-        Initialize the `RuNNer`_ structure dataset.
+        Create a `RuNNer`_ structure dataset by initializing it from an input file.
 
-        :param filename: Path
-        :type filename: path to the RuNNer structure file
-        :param persist: Persist structure data in the memory, defaults to False
+        :param filename: input file name
+        :type filename: Path
+        :param persist: Persist any loaded structure data in the memory, defaults to False
         :type persist: bool, optional
-        :param transform: applied transformation on raw data, default is ToStructure.
+        :param dtype: floating point precision for the structure data, defaults to None
+        :type dtype: Optional[Dtype], optional
 
         .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
         """
         self.filename: Path = Path(filename)
         self.persist: bool = persist
-        self.transform: TransformerInterface = (
-            ToStructure() if transform is None else transform
-        )
-        self._cached_structures: Dict[int, Structure] = dict()
-        self._current_index: int = 0
+        self._cache: Dict[int, Structure] = dict()
+        self.dtype = dtype if dtype is not None else _dtype.FLOATX
 
     def __len__(self) -> int:
-        """Return number of structures."""
+        """Return number of available structures."""
         num_structures: int = 0
         with open(str(self.filename), "r") as file:
-            while self._ignore_next_structure(file):
+            while self._ignore_next(file):
                 num_structures += 1
         return num_structures
 
     def __getitem__(self, index: int) -> Structure:
         """
-        Return i-th structure data.
+        Return i-th structure.
 
         This is a lazy call which means that only required section
-        of data is loaded from the file into the memory.
+        of data is loaded into the memory.
         """
         return self._read_from_cache(index)
 
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}"
-            f"(filename='{str(self.filename)}', transform={self.transform})"
-        )
-
-    # ----------------------------------------------
-
-    def _read_next_structure(self, file: TextIO) -> Dict[str, List]:
+    def read_sequential(self) -> Iterator[Structure]:
         """
-        Read the next structure from the input file.
+        Read structures sequentially.
 
-        :param file: input structure file handler
-        :type file: TextIO
-        :return: a sample of thr dataset
-        :rtype: Dict
+        It must be noted that reading data in a consecutive manner is
+        faster compared to random indexing read.
+
+        :return: Structure
+        :rtype: Iterator[Structure]
         """
-        data: DefaultDict = defaultdict(list)
+        logger.debug("Read structures sequentially")
+        index: int = 0
+        with open(str(self.filename), "r") as file:
+            while True:
+                data = self._read_next(file)
+                if not data:
+                    break
+                structure = self._to_structure(data)
+                if self.persist:
+                    if index in self._cache:
+                        yield self._cache[index]
+                    else:
+                        self._cache[index] = structure
+                yield structure
+                index += 1
+
+    def preload(self) -> None:
+        """
+        Preload (cache) all structures into memory.
+
+        This ensures that any structure can be rapidly loaded from memory in subsequent operations.
+        """
+        self.persist = True
+        for _ in self.read_sequential():
+            pass
+
+    @classmethod
+    def _read_next(cls, file: TextIO) -> Dict[str, List]:
+        """Read next structure data between `begin` and `end` keywords."""
+        data = defaultdict(list)
+        read_block: bool = False
         while True:
-            line: str = file.readline()
+            line = file.readline()
+            if not line:
+                break
+            keyword, _ = tokenize(line)
+            if keyword == "begin":
+                read_block = True
+                break
+        while read_block:
+            line = file.readline()
             if not line:
                 break
             keyword, tokens = tokenize(line)
@@ -104,87 +136,49 @@ class RunnerDataset(DatasetInterface):
             elif keyword == "comment":
                 data["comment"].append(" ".join(line.split()[1:]))
             elif keyword == "end":
-                break
+                read_block = False
         return data
 
-    def _ignore_next_structure(self, file: TextIO) -> bool:
-        """
-        Ignore the next structure.
-
-        :param file: input structure file handler
-        :type file: TextIO
-        :return: whether the ignoring of next structure was successful or not
-        :rtype: bool
-        """
+    @classmethod
+    def _ignore_next(cls, file: TextIO) -> bool:
         while True:
             line = file.readline()
             if not line:
                 return False
-            keyword, tokens = tokenize(line)
+            keyword, _ = tokenize(line)
             if keyword == "end":
                 break
         return True
 
-    def _read_structure(self, index: int) -> Structure:
-        """
-        Read the i-th structure from the input file.
-
-        :param index: index for structures
-        :type index: int
-        :return: Structure
-        :rtype: Any
-        """
-        logger.debug(f"Reading structure[{index}]")
+    def _read(self, index: int) -> Structure:
+        logger.debug(f"load structure({index=})")
         with open(str(self.filename), "r") as file:
             for _ in range(index):
-                self._ignore_next_structure(file)
-            sample = self._read_next_structure(file)
-            if not sample:
-                raise IndexError(f"index {index} is out of bound with size {len(self)}")
-        return self.transform(sample)
+                self._ignore_next(file)
+            data = self._read_next(file)
+            if not data:
+                raise IndexError(
+                    f"The given index {index} is out of bound (len={len(self)})"
+                )
+        return self._to_structure(data)
+
+    def _to_structure(self, data: Dict[str, List]) -> Structure:
+        return Structure.from_dict(data, dtype=self.dtype)
 
     def _read_from_cache(self, index: int) -> Structure:
-        """
-        Read from the cached structures if the `persist` input flag is enabled.
-
-        :param index: index for structures
-        :type index: int
-        :return: Structure
-        :rtype: Any
-        """
+        """Read the desired structure from cache, if possible."""
         if not self.persist:
-            return self._read_structure(index)
-
-        sample: Structure
-        if index not in self._cached_structures:
-            sample = self._read_structure(index)
-            self._cached_structures[index] = sample
+            return self._read(index)
+        if index not in self._cache:
+            structure = self._read(index)
+            self._cache[index] = structure
+            return structure
         else:
-            sample = self._cached_structures[index]
+            return self._cache[index]
 
-        return sample
-
-    # ----------------------------------------------
-
-    def __next__(self) -> Structure:
-        """
-        Iterate directly over the dataset.
-
-        .. warning::
-            Due to its slow performance, lack of shuffling, and no parallel loading,
-            it is recommended to be only used for testing.
-
-        :raises StopIteration: stop iteration
-        :return: Return next structure
-        :rtype: Transformed structure
-        """
-        try:
-            sample: Structure = self.__getitem__(self._current_index)
-            self._current_index += 1
-            return sample
-        except IndexError:
-            self._current_index = 0
-            raise StopIteration
-
-    def __iter__(self) -> RunnerDataset:
-        return self
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(filename='{str(self.filename)}'"
+            f", persist={self.persist}, dtype={self.dtype.dtype})"
+        )

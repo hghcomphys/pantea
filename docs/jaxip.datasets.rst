@@ -20,14 +20,6 @@ jaxip.datasets.runner module
    :undoc-members:
    :show-inheritance:
 
-jaxip.datasets.transformer module
----------------------------------
-
-.. automodule:: jaxip.datasets.transformer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

@@ -425,7 +425,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     def remove_energy_offset(self, atom_energy: Dict[Element, float]) -> None:
         """
-        Remove the input reference energies to individual atoms and the total energy.
+        Remove the input reference energies from individual atoms and the total energy.
 
         :param atom_energy: atom reference energy
         :type atom_energy: Dict[Element, float]]

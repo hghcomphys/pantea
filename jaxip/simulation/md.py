@@ -35,13 +35,40 @@ def _get_temperature(velocities: Array, masses: Array) -> Array:
 
 
 @jax.jit
-def _get_virial_term(
+def _get_virial(
     velocities: Array,
     masses: Array,
     positions: Array,
     forces: Array,
 ) -> Array:
-    return 2 * _get_kinetic_energy(velocities, masses) + (positions * forces).sum()
+    return (
+        2 * _get_kinetic_energy(velocities, masses)
+        + (positions * forces).sum()
+    )
+
+
+@jax.jit
+def _get_verlet_new_positions(
+    positions: Array,
+    velocities: Array,
+    forces: Array,
+    time_step: Array,
+) -> Array:
+    return (
+        positions
+        + velocities * time_step
+        + 0.5 * forces * time_step * time_step
+    )
+
+
+@jax.jit
+def _get_verlet_new_velocities(
+    velocities: Array,
+    forces: Array,
+    new_forces: Array,
+    time_step: Array,
+) -> Array:
+    return velocities + 0.5 * (forces + new_forces) * time_step
 
 
 def _get_potential_energy(
@@ -123,7 +150,9 @@ class MDSimulator:
 
         if (self.thermostat is None) and (temperature is not None):
             logger.info(f"Initializing thermostat ({temperature:0.2f} K)")
-            logger.info("Setting default thermostat constant to 100x time step")
+            logger.info(
+                "Setting default thermostat constant to 100x time step"
+            )
             self.thermostat = BrendsenThermostat(
                 target_temperature=temperature,
                 time_constant=100 * self.time_step,
@@ -147,13 +176,14 @@ class MDSimulator:
 
     def verlet_integration(self) -> None:
         """Update atom positions and velocities based on Verlet algorithm."""
-        new_positions = (
-            self.positions
-            + self.velocities * self.time_step
-            + 0.5 * self.forces * self.time_step * self.time_step
+        arraylike_time_step = jnp.array(self.time_step)
+        new_positions = _get_verlet_new_positions(
+            self.positions, self.velocities, self.forces, arraylike_time_step
         )
         new_forces = _compute_forces(self.potential, self._structure)
-        self.velocities += 0.5 * (self.forces + new_forces) * self.time_step
+        self.velocities = _get_verlet_new_velocities(
+            self.velocities, self.forces, new_forces, arraylike_time_step
+        )
         self.forces = new_forces
         self._structure = replace(self._structure, positions=new_positions)
 
@@ -169,7 +199,9 @@ class MDSimulator:
         masses = masses.reshape(-1, 1)
         natoms = masses.shape[0]
         velocities = jax.random.normal(key, shape=(natoms, 3))
-        velocities *= jnp.sqrt(temperature / _get_temperature(velocities, masses))
+        velocities *= jnp.sqrt(
+            temperature / _get_temperature(velocities, masses)
+        )
         velocities -= _calculate_center_of_mass(velocities, masses)
         return velocities
 
@@ -209,7 +241,7 @@ class MDSimulator:
             self._structure.box
         ), "Calulating pressure... input structure must have PBC box"
         volume = self._structure.box.volume
-        virial = _get_virial_term(
+        virial = _get_virial(
             self.velocities,
             self.masses,
             self.positions,

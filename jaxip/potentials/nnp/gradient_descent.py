@@ -90,7 +90,9 @@ class GradientDescentUpdater:
         def generate_train_state():
             for element in self.potential.elements:
                 yield element, TrainState.create(
-                    apply_fn=self.potential.atomic_potential[element].model.apply,
+                    apply_fn=self.potential.atomic_potential[
+                        element
+                    ].model.apply,
                     params=self.potential.model_params[element],
                     tx=self.optimizer,  # [element]?
                 )
@@ -119,12 +121,18 @@ class GradientDescentUpdater:
 
             # Loop over batches
             for _ in tqdm(range(steps)):
-                structures: List[Structure] = random.choices(dataset, k=batch_size)
+                structures: List[Structure] = random.choices(
+                    dataset, k=batch_size
+                )
                 xbatch = tuple(
-                    structure.get_per_element_inputs() for structure in structures
+                    structure.get_per_element_inputs()
+                    for structure in structures
                 )
                 ybatch = tuple(
-                    (structure.total_energy, structure.get_per_element_forces())
+                    (
+                        structure.total_energy,
+                        structure.get_per_element_forces(),
+                    )
                     for structure in structures
                 )
 
@@ -170,9 +178,12 @@ class GradientDescentUpdater:
 
             for inputs, (true_energy, true_forces) in zip(xbatch, ybatch):
                 positions = {
-                    element: input.atom_position for element, input in inputs.items()
+                    element: input.atom_positions
+                    for element, input in inputs.items()
                 }
-                natoms: int = sum(array.shape[0] for array in positions.values())
+                natoms: int = sum(
+                    array.shape[0] for array in positions.values()
+                )
 
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
@@ -201,7 +212,8 @@ class GradientDescentUpdater:
                         inputs,
                     )
                     loss_energy = (
-                        self.criterion(logits=energy, targets=true_energy) / natoms
+                        self.criterion(logits=energy, targets=true_energy)
+                        / natoms
                     )
                     loss_energy_per_batch += loss_energy
 
@@ -209,7 +221,10 @@ class GradientDescentUpdater:
             loss_force_per_batch /= batch_size
             loss_per_batch = loss_energy_per_batch + loss_force_per_batch
 
-            return loss_per_batch, (loss_energy_per_batch, loss_force_per_batch)
+            return loss_per_batch, (
+                loss_energy_per_batch,
+                loss_force_per_batch,
+            )
 
         value_and_grad_fn = value_and_grad(loss_fn, has_aux=True)
 

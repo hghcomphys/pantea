@@ -5,6 +5,7 @@ History
 0.7.x (2023-07-10)
 -------------------
 * Refactored structure including design, documentation, and performance (JIT kernels)
+* Refactored RuNNer dataset
 
 0.6.x (2023-06-18)
 -------------------
