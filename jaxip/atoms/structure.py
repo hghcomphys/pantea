@@ -229,12 +229,12 @@ class Structure(BaseJaxPytreeDataClass):
     @classmethod
     def _init_box(
         cls,
-        lattice: List[List[float]],
+        lattice: List[float],
         dtype: Dtype,
     ) -> Optional[Box]:
         """Initialize simulation box from input lattice matrix."""
         if len(lattice) > 0:
-            return Box(lattice, dtype=dtype)
+            return Box.from_list(lattice, dtype=dtype)
         else:
             logger.debug("No lattice info were found")
 
