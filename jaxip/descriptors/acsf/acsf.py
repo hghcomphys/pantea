@@ -11,7 +11,10 @@ from jaxip.descriptors.acsf._acsf import (
 )
 from jaxip.descriptors.acsf.angular import AngularSymmetryFunction
 from jaxip.descriptors.acsf.radial import RadialSymmetryFunction
-from jaxip.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
+from jaxip.descriptors.acsf.symmetry import (
+    BaseSymmetryFunction,
+    EnvironmentElements,
+)
 from jaxip.descriptors.descriptor import DescriptorInterface
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
@@ -21,15 +24,18 @@ from jaxip.types import Array, Element
 @dataclass
 class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     """
-    Atom-centered Symmetry Function (`ACSF`_) descriptor.
+    Atom-centered Symmetry Function (`ACSF`_) descriptor captures
+    information about the distribution of neighboring
+    atoms around a central atom by considering both radial (two-body) and angular
+    (three-body) symmetry functions. Radial symmetry functions describe the distances
+    between the central atom and its neighbors, while angular symmetry functions capture
+    the angles formed by the central atom with pairs of neighboring atoms.
 
-    ACSF describes the local environment of an atom (neighbor distributions).
-    It usually contains multiple combinations of `radial` (two-body)
-    and `angular` (three-body) symmetry functions.
+    The ACSF descriptor is computed by summing the contributions of the `symmetry functions`
+    for all neighboring atoms within a specified cutoff distance. The values obtained from
+    these calculations represent a fingerprint of the local atomic environment and can
+    be used in various machine learning potentials.
 
-    .. note::
-        The ACSF is independent of input Structure
-        but it knows how to calculate the descriptor values for any given structures.
 
     Example
     -------
@@ -55,23 +61,20 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
 
         print(acsf)
 
-    This gives the following output:
+    Output:
 
     .. code-block:: bash
 
-        ACSF(element='O', num_symmetry_functions=4, r_cutoff=12.0)
+        ACSF(central_element='O', num_symmetry_functions=4, r_cutoff=12.0)
+
 
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
     """
 
-    element: str
+    central_element: str
     radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
     angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
-
-    def __hash__(self) -> int:
-        """Enforce to use the parent class's hash method (JIT)."""
-        return super().__hash__()
 
     def add(
         self,
@@ -83,7 +86,9 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         if isinstance(symmetry_function, RadialSymmetryFunction):
             self.radial_symmetry_functions = self.radial_symmetry_functions + (
                 (
-                    EnvironmentElements(self.element, neighbor_element_j),
+                    EnvironmentElements(
+                        self.central_element, neighbor_element_j
+                    ),
                     symmetry_function,
                 ),
             )  # type: ignore
@@ -91,14 +96,14 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             self.angular_symmetry_functions = self.angular_symmetry_functions + (
                 (
                     EnvironmentElements(
-                        self.element, neighbor_element_j, neighbor_element_k  # type: ignore
+                        self.central_element, neighbor_element_j, neighbor_element_k  # type: ignore
                     ),
                     symmetry_function,
                 ),
             )
         else:
             logger.error(
-                f"Unknown input symmetry function type {symmetry_function}",
+                f"Unknown symmetry function type {symmetry_function}",
                 exception=TypeError,
             )
 
@@ -120,23 +125,21 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         """
 
         if self.num_symmetry_functions == 0:
-            logger.warning(
-                f"No symmetry function defined yet:"
-                f" radial={self.num_radial_symmetry_functions}"
-                f", angular={self.num_angular_symmetry_functions}"
-            )
+            logger.warning("No symmetry function was found")
 
         if atom_indices is None:
-            atom_indices = structure.select(self.element)
+            atom_indices = structure.select(self.central_element)
         else:
             atom_indices = jnp.atleast_1d(atom_indices)  # type: ignore
             # Check aid atom type match the central element
             if not jnp.all(
-                structure.element_map.element_to_atom_type[self.element]
+                structure.element_map.element_to_atom_type[
+                    self.central_element
+                ]
                 == structure.atom_types[atom_indices]
             ):
                 logger.error(
-                    f"Inconsistent central element '{self.element}': "
+                    f"Inconsistent central element '{self.central_element}': "
                     f" input atom indices={atom_indices}"
                     f" (atom_types='{int(structure.atom_types[atom_indices])}')",
                     exception=ValueError,
@@ -194,7 +197,10 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     @property
     def num_symmetry_functions(self) -> int:
         """Return the total (`two-body` and `tree-body`) number of symmetry functions."""
-        return self.num_radial_symmetry_functions + self.num_angular_symmetry_functions
+        return (
+            self.num_radial_symmetry_functions
+            + self.num_angular_symmetry_functions
+        )
 
     @property
     def num_descriptors(self) -> int:
@@ -215,12 +221,14 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             ]
         )
 
+    def __hash__(self) -> int:
+        """Enforce to use the parent class's hash method (JIT)."""
+        return super().__hash__()
+
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(element='{self.element}'"
-            f", symmetry_functions={self.num_symmetry_functions}"
-            # f", r_cutoff={self.r_cutoff}"
-            ")"
+            f"{self.__class__.__name__}(central_element='{self.central_element}'"
+            f", symmetry_functions={self.num_symmetry_functions})"
         )
 
 

@@ -81,7 +81,7 @@ class BaseJaxPytreeDataClass:
         """Assert to ensure jit (static or dynamics) attributes are correctly identified."""
         if sorted(available) != sorted(expected):  # type: ignore
             logger.error(
-                f"Expecting JIT {tag} attributes: {expected} but got {available}",
+                f"JIT {tag} attributes: expected {expected} but got {available}",
                 exception=AssertionError,
             )
 
