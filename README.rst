@@ -64,9 +64,9 @@ on the documentation.
 Examples
 --------
 
------------------------------
-Defining an atomic descriptor
------------------------------
+---------------------------
+Defining an ACSF descriptor
+---------------------------
 This script demonstrates the process of evaluating an array of atomic-centered symmetry functions (`ACSF`_) 
 for a specific element, which can be utilized to evaluate the descriptor values for any structure. 
 The resulting values can then be used to construct a machine learning potential.
@@ -84,26 +84,36 @@ The resulting values can then be used to construct a machine learning potential.
         # Read atomic structure dataset (e.g. water molecules)
         structures = RunnerDataset('input.data')
         structure = structures[0]
+        print(structure)
+        # >> Structure(natoms=12, elements=('H', 'O'), dtype=float32) 
 
-        # Define ACSF descriptor for hydrogen element
-        descriptor = ACSF(element='H')
-
-        # Add radial and angular symmetry functions
-        cfn = CutoffFunction(r_cutoff=12.0, cutoff_type='tanh')
+        # Define an ACSF descriptor for hydrogen element
+        # It includes two radial (G2) and angular (G3) symmetry functions
+        descriptor = ACSF('H')
+        cfn = CutoffFunction.from_cutoff_type(r_cutoff=12.0, cutoff_type='tanh')
         descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
         print(descriptor)
+        # >> ACSF(central_element='H', symmetry_functions=2)
 
         values = descriptor(structure)
         print("Descriptor values:\n", values)
+        # >> Descriptor values:
+        # [[0.01952942 1.1310327 ]
+        # [0.01952756 1.0431229 ]
+        # ...
+        # [0.00228752 0.4144546 ]]
 
         gradient = descriptor.grad(structure, atom_index=0)
         print("Descriptor gradient:\n", gradient)
+        # >> Descriptor gradient:
+        # [[ 0.0464524  -0.05037863 -0.06146219]
+        # [-0.10481848 -0.01841717  0.04760207]]
 
 
--------------------------------------
-Training a machine learning potential
--------------------------------------
+-------------------------
+Training an NNP potential
+-------------------------
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
 The trained potential can then be used to evaluate the energy and force components for new structures.
@@ -116,27 +126,27 @@ The trained potential can then be used to evaluate the energy and force componen
         from jaxip.datasets import RunnerDataset
         from jaxip.potentials import NeuralNetworkPotential
 
-        # Read atomic data
+        # Read atomic data in RuNNer format
         structures = RunnerDataset("input.data")
         structure = structures[0]
 
-        # Instantiate potential from input settings file
         nnp = NeuralNetworkPotential.from_file("input.nn")
 
-        # Fit descriptor scaler and model weights
         nnp.fit_scaler(structures)
         nnp.fit_model(structures)
-        nnp.save()
+        # nnp.save()
+        # nnp.load()
 
-        # Or loading from files
-        #nnp.load()
+        total_energy = nnp(structure)
+        print(total_energy)
+        # >> -15.386198
 
-        # Total energy
-        nnp(structure)
-
-        # Force components
-        nnp.compute_forces(structure)
-
+        forces = nnp.compute_forces(structure)
+        print(forces)
+        # >> [[ 1.6445214e-02 -4.1671786e-03  7.6140024e-02]
+        # [-6.4949177e-02 -4.2048577e-02  5.6018140e-02]
+        # ...
+        # [ 7.6149488e-03 -9.5360324e-02 -9.2892153e-03]]
 
 
 Example files: `input.data`_ and `input.nn`_

@@ -1,6 +1,11 @@
 Welcome to Jaxip's documentation!
 ======================================
 
+An optimized Python library for developing machine learning interatomic potentials, based on Google `JAX`_. 
+
+
+.. _JAX: https://github.com/google/jax
+
 
 .. toctree::
    :maxdepth: 2
