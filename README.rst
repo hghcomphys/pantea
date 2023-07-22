@@ -22,15 +22,15 @@ JAXIP
 Description
 -----------
 Jaxip is an optimized Python library on basis of Google `JAX`_ that enables 
-development of emerging machine learning interatomic potentials 
-for use in computational physics, chemistry, and material science. 
+development of machine learning inter-atomic potentials 
+for use in computational physics and material science. 
 These potentials are necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 
 .. _JAX: https://github.com/google/jax
 
 
-See `documentation`_ for more information.
+See the `documentation`_ for more information.
 
 .. _documentation: https://jaxip.readthedocs.io/en/latest/readme.html
 
@@ -56,9 +56,9 @@ To install Jaxip, run this command in your terminal:
 
     $ pip install jaxip
 
-For machines with an NVIDIA **GPU** please follow the installation
-`instruction <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
-on the documentation. 
+For machines with an NVIDIA **GPU** please follow the
+`installation <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
+instruction on the documentation. 
 
 
 Examples
@@ -72,7 +72,6 @@ for a specific element, which can be utilized to evaluate the descriptor values 
 The resulting values can then be used to construct a machine learning potential.
 
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
-
 
 
 .. code-block:: python
@@ -158,6 +157,5 @@ Example files: `input.data`_ and `input.nn`_
 
 License
 -------
-
 This project is licensed under the GNU General Public License (GPL) version 3 - 
 see the `LICENSE <https://github.com/hghcomphys/jaxip/blob/main/LICENSE>`_ file for details.

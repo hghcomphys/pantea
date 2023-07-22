@@ -42,10 +42,10 @@ def _poly2(r: Array) -> Array:
     return ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
 
 
-def _wrapped_partial(kernel: Callable, **kwargs: Any) -> Callable:
-    partial_kernel = partial(kernel, **kwargs)
-    update_wrapper(partial_kernel, kernel)
-    return partial_kernel
+def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable:
+    partial_function = partial(function, **kwargs)
+    update_wrapper(partial_function, function)
+    return partial_function
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class CutoffFunction(BaseJaxPytreeDataClass):
     """
 
     r_cutoff: float
-    kernel: Callable
+    cutoff_function: Callable
 
     @classmethod
     def from_cutoff_type(
@@ -84,7 +84,7 @@ class CutoffFunction(BaseJaxPytreeDataClass):
         cutoff_type: str = "tanh",
     ) -> CutoffFunction:
         """Create cutoff function from the input cutoff type such as "tanh", "cos", and "tanh"."""
-        _cutoff_kernel_map: Mapping[str, Callable] = {
+        _cutoff_function_map: Mapping[str, Callable] = {
             "hard": _hard,
             "tanhu": _wrapped_partial(_tanhu, r_cutoff=r_cutoff),
             "tanh": _wrapped_partial(_tanh, r_cutoff=r_cutoff),
@@ -93,22 +93,24 @@ class CutoffFunction(BaseJaxPytreeDataClass):
             "poly1": _poly1,
             "poly2": _poly2,
         }
-        return cls(r_cutoff, _cutoff_kernel_map[cutoff_type])
+        return cls(r_cutoff, _cutoff_function_map[cutoff_type])
 
     def __post_init__(self) -> None:
         self._assert_jit_dynamic_attributes()
-        self._assert_jit_static_attributes(expected=("r_cutoff", "kernel"))
+        self._assert_jit_static_attributes(
+            expected=("r_cutoff", "cutoff_function")
+        )
 
     @jax.jit
     def __call__(self, r: Array) -> Array:
         return jnp.where(
             r < self.r_cutoff,
-            self.kernel(r),
+            self.cutoff_function(r),
             jnp.zeros_like(r),
         )
 
     def __hash__(self) -> int:
-        """Override the hash function from parent jax pytree class."""
+        """Override the hash function from the base jax pytree data class."""
         return super().__hash__()
 
     def __repr__(self) -> str:
