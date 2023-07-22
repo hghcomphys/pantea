@@ -11,7 +11,7 @@ JAXIP
 .. image:: https://img.shields.io/pypi/v/jaxip.svg
         :target: https://pypi.python.org/pypi/jaxip
 
-.. image:: https://github.com/hghcomphys/jaxip/actions/workflows/python-app.yml/badge.svg
+.. image:: https://github.com/hghcomphys/jaxip/actions/workflows/tests.yml/badge.svg
         :target: https://github.com/hghcomphys/jaxip/blob/main/.github/workflows/python-app.yml
 
 .. image:: https://readthedocs.org/projects/jaxip/badge/?version=latest
