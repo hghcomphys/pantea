@@ -1,5 +1,7 @@
-from dataclasses import InitVar, dataclass
-from typing import Optional
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
@@ -37,25 +39,23 @@ class Box(BaseJaxPytreeDataClass):
     """
 
     lattice: Array
-    dtype: InitVar[Optional[Dtype]] = None
 
-    def __post_init__(self, dtype: Optional[Dtype] = None) -> None:
+    def __post_init__(self) -> None:
         """Post initialize simulation box (super-cell)."""
         logger.debug(f"Initializing {self}")
-        if dtype is None:
-            dtype = _dtype.FLOATX
-        try:
-            self.lattice = jnp.array(self.lattice, dtype=dtype).reshape(3, 3)
-        except ValueError:
-            logger.error(
-                f"Unexpected lattice matrix: {self.lattice}",
-                exception=ValueError,
-            )
+        self._assert_jit_static_attributes()
         self._assert_jit_dynamic_attributes(expected=("lattice",))
 
-    def __hash__(self) -> int:
-        """Enforce to use the parent class's hash method (JIT)."""
-        return super().__hash__()
+    @classmethod
+    def from_list(
+        cls,
+        data: List[float],
+        dtype: Optional[Dtype] = None,
+    ) -> Box:
+        if dtype is None:
+            dtype = _dtype.FLOATX
+        lattice = jnp.array(data, dtype=dtype).reshape(3, 3)
+        return Box(lattice)
 
     @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
@@ -88,9 +88,6 @@ class Box(BaseJaxPytreeDataClass):
         logger.debug("Shift all atoms inside the simulation box")
         return _shift_inside_box(positions, self.lattice)
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(lattice={self.lattice})"
-
     @property
     def lx(self) -> Array:
         """Return length of cell in x-direction."""
@@ -115,6 +112,20 @@ class Box(BaseJaxPytreeDataClass):
     def volume(self) -> Array:
         """Return volume of the box."""
         return jnp.prod(self.length)
+
+    @property
+    def dtype(self) -> Dtype:
+        return self.lattice.dtype
+
+    def __hash__(self) -> int:
+        """Enforce to use the parent class's hash method (JIT)."""
+        return super().__hash__()
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(lattice={self.lattice}, dtype={self.dtype})"
+        )
 
 
 register_jax_pytree_node(Box)

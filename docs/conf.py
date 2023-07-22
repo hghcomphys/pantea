@@ -101,7 +101,12 @@ language = "English"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -126,6 +131,10 @@ html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     # "search_bar_position": "sidebar",
     "github_url": "https://github.com/hghcomphys/jaxip",
+}
+
+html_context = {
+    "display_github": True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -198,7 +207,7 @@ texinfo_documents = [
         "Jaxip Documentation",
         author,
         "jaxip",
-        "One line description of project.",
+        "An optimized Python library for developing machine learning interatomic potentials, based on Google JAX.",
         "Miscellaneous",
     ),
 ]
@@ -223,7 +232,7 @@ os.makedirs(notebooks_dir, exist_ok=True)
 
 for filename in (
     "getting_started.ipynb",
-    "training_potential.ipynb",
+    "potential_training.ipynb",
 ):
     shutil.copyfile(  # copytree(
         os.path.join(curdir, "..", "examples", filename),

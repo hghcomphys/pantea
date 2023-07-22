@@ -28,8 +28,3 @@ class DataType:
 
 
 _dtype = DataType()
-
-
-# def set_as_default(dtype: Dtype) -> None:
-#     global _dtype
-#     _dtype = dtype

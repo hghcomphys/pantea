@@ -17,7 +17,9 @@ from jaxip.types import Array
 def lj_acsf() -> ACSF:
     """Initialize using the `add` method."""
     acsf: ACSF = ACSF("Ne")
-    cfn: CutoffFunction = CutoffFunction(3.0, cutoff_type="tanhu")
+    cfn: CutoffFunction = CutoffFunction.from_cutoff_type(
+        r_cutoff=3.0, cutoff_type="tanhu"
+    )
     acsf.add(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
     acsf.add(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
     acsf.add(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
@@ -29,12 +31,12 @@ def lj_acsf() -> ACSF:
 def h2o_acsf() -> ACSF:
     """Initialize directly from the radial and angular terms."""
     return ACSF(
-        element="O",
+        central_element="O",
         radial_symmetry_functions=(
             (
                 EnvironmentElements(central="O", neighbor_j="H"),
                 G2(
-                    cfn=CutoffFunction(
+                    cfn=CutoffFunction.from_cutoff_type(
                         r_cutoff=5.9043202, cutoff_type="tanhu"
                     ),  # r_cutoff = box.length / 2
                     r_shift=0.0,
@@ -44,9 +46,11 @@ def h2o_acsf() -> ACSF:
         ),
         angular_symmetry_functions=(
             (
-                EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
+                EnvironmentElements(
+                    central="O", neighbor_j="H", neighbor_k="H"
+                ),
                 G3(
-                    cfn=CutoffFunction(
+                    cfn=CutoffFunction.from_cutoff_type(
                         r_cutoff=5.9043202, cutoff_type="tanhu"
                     ),  # r_cutoff = box.length / 2
                     eta=0.07,
@@ -62,7 +66,10 @@ def h2o_acsf() -> ACSF:
 class TestACSF:
     lj_structure: Structure = Structure.from_dict(
         {
-            "positions": [[0.0, 0.0, 0.0], [0.588897275, 0.588897275, 0.588897275]],
+            "positions": [
+                [0.0, 0.0, 0.0],
+                [0.588897275, 0.588897275, 0.588897275],
+            ],
             "elements": ["Ne", "Ne"],
         }
     )
@@ -87,7 +94,20 @@ class TestACSF:
                 [-2.3516507887, 0.9376745482, -4.0756290424],
                 [-1.7819663898, 4.1957022409, -4.0621741923],
             ],
-            "elements": ["O", "H", "H", "O", "H", "H", "O", "H", "H", "O", "H", "H"],
+            "elements": [
+                "O",
+                "H",
+                "H",
+                "O",
+                "H",
+                "H",
+                "O",
+                "H",
+                "H",
+                "O",
+                "H",
+                "H",
+            ],
         }
     )
 
@@ -105,7 +125,7 @@ class TestACSF:
         acsf: ACSF,
         expected: Tuple,
     ) -> None:
-        assert acsf.element == expected[0]
+        assert acsf.central_element == expected[0]
         assert acsf.num_radial_symmetry_functions == expected[1]
         assert acsf.num_angular_symmetry_functions == expected[2]
         assert acsf.num_symmetry_functions == expected[3]
@@ -161,4 +181,6 @@ class TestACSF:
         expected: Array,
     ) -> None:
         assert acsf(structure).shape == expected[0]
-        assert jnp.allclose(acsf(structure, atom_indices=jnp.asarray(0)), expected[1])
+        assert jnp.allclose(
+            acsf(structure, atom_indices=jnp.asarray(0)), expected[1]
+        )
