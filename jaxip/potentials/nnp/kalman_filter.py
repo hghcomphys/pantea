@@ -15,12 +15,13 @@ from jaxip.logger import logger
 from jaxip.potentials._energy import _compute_energy
 from jaxip.potentials._force import _compute_force
 from jaxip.potentials.atomic_potential import AtomicPotential
-from jaxip.potentials.nnp.nnp import \
-    NeuralNetworkPotentialInterface as PotentialInterface
-from jaxip.potentials.nnp.settings import \
-    NeuralNetworkPotentialSettings as PotentialSettings
-from jaxip.types import Array, Element
-from jaxip.types import _dtype
+from jaxip.potentials.nnp.nnp import (
+    NeuralNetworkPotentialInterface as PotentialInterface,
+)
+from jaxip.potentials.nnp.settings import (
+    NeuralNetworkPotentialSettings as PotentialSettings,
+)
+from jaxip.types import Array, Element, default_dtype
 
 
 def _tree_flatten(pytree: Dict) -> Array:
@@ -72,7 +73,7 @@ class KalmanFilterUpdater:
         self.num_states: int = self.W.shape[0]
         # Error covariance matrix
         self.P: Array = (1.0 / self.epsilon) * jnp.identity(
-            self.num_states, dtype=_dtype.FLOATX
+            self.num_states, dtype=default_dtype.FLOATX
         )
 
     def fit(
@@ -107,7 +108,9 @@ class KalmanFilterUpdater:
             )
             return (E_ref - E_pot)[0] / structure.natoms
 
-        def compute_force_error(state_vector: Array, structure: Structure) -> Array:
+        def compute_force_error(
+            state_vector: Array, structure: Structure
+        ) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
             F_ref: Array = _tree_flatten(structure.get_per_element_forces())
             F_pot: Array = _tree_flatten(
@@ -133,7 +136,9 @@ class KalmanFilterUpdater:
         def compute_force_error_jacobian(
             state_vector: Array, structure: Structure
         ) -> Array:
-            return jacob_force_error(state_vector[..., 0], structure).transpose()
+            return jacob_force_error(
+                state_vector[..., 0], structure
+            ).transpose()
 
         # ----------------------
 
@@ -162,12 +167,18 @@ class KalmanFilterUpdater:
                         self.W,
                         structure,
                     )
-                    loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
+                    loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[
+                        0, 0
+                    ]
                     num_force_updates_per_epoch += 1
                 else:
-                    Xi = compute_energy_error(model_params, structure).reshape(-1, 1)
+                    Xi = compute_energy_error(model_params, structure).reshape(
+                        -1, 1
+                    )
                     H = -compute_energy_error_gradient(model_params, structure)
-                    loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
+                    loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[
+                        0, 0
+                    ]
                     num_energy_updates_per_epoch += 1
 
                 num_observations: int = Xi.shape[0]
@@ -185,11 +196,11 @@ class KalmanFilterUpdater:
                 # Measurement noise
                 if self.kalman_type == 0:
                     A += (1.0 / self.eta) * jnp.identity(
-                        num_observations, dtype=_dtype.FLOATX
+                        num_observations, dtype=default_dtype.FLOATX
                     )
                 elif self.kalman_type == 1:
                     A += self.lambda0 * jnp.identity(
-                        num_observations, dtype=_dtype.FLOATX
+                        num_observations, dtype=default_dtype.FLOATX
                     )
 
                 # Kalman gain matrix
@@ -204,7 +215,7 @@ class KalmanFilterUpdater:
 
                 # Process noise.
                 self.P += self.q * jnp.identity(
-                    self.num_states, dtype=_dtype.FLOATX
+                    self.num_states, dtype=default_dtype.FLOATX
                 )
 
                 # Update state vector

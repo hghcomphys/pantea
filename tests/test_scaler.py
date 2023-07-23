@@ -9,8 +9,7 @@ import pytest
 from jax import random
 
 from jaxip.descriptors.scaler import Scaler
-from jaxip.types import Array
-from jaxip.types import _dtype
+from jaxip.types import Array, default_dtype
 from jaxip.utils.batch import create_batch
 
 key = random.PRNGKey(2023)
@@ -27,7 +26,7 @@ class TestStructure:
         [
             (
                 data_1,
-                (3, 50, _dtype.FLOATX),
+                (3, 50, default_dtype.FLOATX),
             ),
             (
                 data_2,
@@ -35,7 +34,7 @@ class TestStructure:
             ),
             (
                 data_3,
-                (5, 30, _dtype.FLOATX),
+                (5, 30, default_dtype.FLOATX),
             ),
         ],
     )
@@ -55,7 +54,9 @@ class TestStructure:
 
     def compare(self, scaler: Scaler, data: Array) -> None:
         for name in ("mean", "min", "max"):
-            assert jnp.allclose(getattr(data, name)(axis=0), getattr(scaler, name))
+            assert jnp.allclose(
+                getattr(data, name)(axis=0), getattr(scaler, name)
+            )
         assert jnp.allclose(data.std(axis=0), scaler.sigma)
 
     @pytest.mark.parametrize(

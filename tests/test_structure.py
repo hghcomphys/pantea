@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pytest
 
 from jaxip.atoms.structure import Structure
-from jaxip.types import _dtype
+from jaxip.types import default_dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
@@ -170,7 +170,7 @@ class TestStructure:
                     12,
                     ("H", "O"),
                     11.0,
-                    _dtype.FLOATX,
+                    default_dtype.FLOATX,
                     jnp.array(H2O_DATA["lattice"]),
                     jnp.array(H2O_DATA["masses"]),
                     tuple(H2O_DATA["elements"]),

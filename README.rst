@@ -30,7 +30,7 @@ dynamics simulations of complex materials with ab initio accuracy.
 .. _JAX: https://github.com/google/jax
 
 
-See the `documentation`_ for more information.
+See `documentation`_ for more information.
 
 .. _documentation: https://jaxip.readthedocs.io/en/latest/readme.html
 

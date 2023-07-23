@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Tuple
 
-from jaxip.types import _dtype
+from jaxip.types import default_dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
@@ -116,7 +116,7 @@ class TestRunnerDataset:
         [
             (
                 h2o,
-                (_dtype.FLOATX,),
+                (default_dtype.FLOATX,),
             ),
             (
                 h2o_float64,

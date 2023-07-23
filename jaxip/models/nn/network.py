@@ -9,7 +9,7 @@ from frozendict import frozendict
 from jaxip.logger import logger
 from jaxip.models.model import ModelInterface
 from jaxip.models.nn.activation import _activation_function_map
-from jaxip.types import Array, Dtype, _dtype
+from jaxip.types import Array, Dtype, default_dtype
 
 
 class NeuralNetworkModel(nn.Module, ModelInterface):
@@ -17,7 +17,7 @@ class NeuralNetworkModel(nn.Module, ModelInterface):
 
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "identity")
-    param_dtype: Dtype = field(default_factory=lambda: _dtype.FLOATX)
+    param_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
     # bias_initializer: Callable = nn.initializers.zeros
 

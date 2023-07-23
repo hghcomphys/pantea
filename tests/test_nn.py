@@ -11,7 +11,7 @@ from frozendict import frozendict
 
 from jaxip.models.nn.initializer import UniformInitializer
 from jaxip.models.nn.network import NeuralNetworkModel
-from jaxip.types import _dtype
+from jaxip.types import default_dtype
 
 
 class TestNeuralNetworkModel:
@@ -37,7 +37,7 @@ class TestNeuralNetworkModel:
                 (
                     ((2, "tanh"),),
                     (1, "identity"),
-                    _dtype.FLOATX,
+                    default_dtype.FLOATX,
                 ),
             ),
             (
@@ -53,7 +53,7 @@ class TestNeuralNetworkModel:
                 (
                     ((8, "tanh"), (16, "tanh")),
                     (1, "identity"),
-                    _dtype.FLOATX,
+                    default_dtype.FLOATX,
                 ),
             ),
         ],
