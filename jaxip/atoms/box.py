@@ -8,7 +8,7 @@ import jax.numpy as jnp
 
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from jaxip.types import Array, Dtype, _dtype
+from jaxip.types import Array, Dtype, default_dtype
 
 
 @jax.jit
@@ -53,7 +53,7 @@ class Box(BaseJaxPytreeDataClass):
         dtype: Optional[Dtype] = None,
     ) -> Box:
         if dtype is None:
-            dtype = _dtype.FLOATX
+            dtype = default_dtype.FLOATX
         lattice = jnp.array(data, dtype=dtype).reshape(3, 3)
         return Box(lattice)
 

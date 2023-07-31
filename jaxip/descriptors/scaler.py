@@ -6,8 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from jaxip.logger import logger
-from jaxip.types import Array, Dtype
-from jaxip.types import _dtype
+from jaxip.types import Array, Dtype, default_dtype
 
 
 class Scaler:
@@ -43,7 +42,9 @@ class Scaler:
         # Statistical parameters
         self.nsamples: int = 0  # number of samples
         self.dimension: int = 0  # dimension of each sample
-        self.mean: Array = jnp.asarray([])  # mean array of all fitted descriptor values
+        self.mean: Array = jnp.asarray(
+            []
+        )  # mean array of all fitted descriptor values
         self.sigma: Array = jnp.asarray([])  # standard deviation
         self.min: Array = jnp.asarray([])  # minimum
         self.max: Array = jnp.asarray([])  # maximum
@@ -167,14 +168,18 @@ class Scaler:
     def scale_center_sigma(self, array: Array) -> Array:
         return (
             self.scale_min
-            + (self.scale_max - self.scale_min) * (array - self.mean) / self.sigma
+            + (self.scale_max - self.scale_min)
+            * (array - self.mean)
+            / self.sigma
         )
 
     def save(self, filename: Path) -> None:
         """Save scaler parameters into file."""
         logger.debug(f"Saving scaler parameters into '{str(filename)}'")
         with open(str(filename), "w") as file:
-            file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
+            file.write(
+                f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n"
+            )
             for i in range(self.dimension):
                 file.write(
                     f"{self.min[i]:<23.15E} {self.max[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n"
@@ -184,7 +189,7 @@ class Scaler:
         """Load scaler parameters from file."""
         logger.debug(f"Loading scaler parameters from '{str(filename)}'")
         data = np.loadtxt(str(filename)).T
-        dtype = dtype if dtype is not None else _dtype.FLOATX
+        dtype = dtype if dtype is not None else default_dtype.FLOATX
         self.nsamples = 1
         self.dimension = data.shape[1]
         self.min = jnp.asarray(data[0], dtype=dtype)

@@ -7,7 +7,7 @@ from typing import Dict, Iterator, List, Optional, TextIO
 from jaxip.atoms.structure import Structure
 from jaxip.datasets.dataset import DatasetInterface
 from jaxip.logger import logger
-from jaxip.types import Dtype, _dtype
+from jaxip.types import Dtype, default_dtype
 from jaxip.utils.tokenize import tokenize
 
 
@@ -48,7 +48,7 @@ class RunnerDataset(DatasetInterface):
         self.filename: Path = Path(filename)
         self.persist: bool = persist
         self._cache: Dict[int, Structure] = dict()
-        self.dtype = dtype if dtype is not None else _dtype.FLOATX
+        self.dtype = dtype if dtype is not None else default_dtype.FLOATX
 
     def __len__(self) -> int:
         """Return number of available structures."""

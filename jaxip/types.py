@@ -27,4 +27,4 @@ class DataType:
     INDEX: Dtype = jnp.int32
 
 
-_dtype = DataType()
+default_dtype = DataType()

@@ -28,7 +28,7 @@ from jaxip.atoms.element import ElementMap
 from jaxip.atoms.neighbor import Neighbor
 from jaxip.logger import logger
 from jaxip.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from jaxip.types import Array, Dtype, Element, _dtype
+from jaxip.types import Array, Dtype, Element, default_dtype
 from jaxip.units import units
 
 
@@ -114,7 +114,7 @@ class Structure(BaseJaxPytreeDataClass):
         :return: the initialized Structure
         """
         if dtype is None:
-            dtype = _dtype.FLOATX
+            dtype = default_dtype.FLOATX
 
         input_data: DefaultDict[str, List] = defaultdict(list, data)
         inputs: Dict[str, Any] = dict()
@@ -153,7 +153,7 @@ class Structure(BaseJaxPytreeDataClass):
         .. _ASE: https://wiki.fysik.dtu.dk/ase/index.html
         """
         if dtype is None:
-            dtype = _dtype.FLOATX
+            dtype = default_dtype.FLOATX
 
         inputs: Dict[str, Any] = dict()
         data = {
@@ -211,7 +211,7 @@ class Structure(BaseJaxPytreeDataClass):
                 if atom_attr == "atom_types":
                     array = jnp.array(
                         [element_map(atom) for atom in data["elements"]],
-                        dtype=_dtype.INDEX,
+                        dtype=default_dtype.INDEX,
                     )
                 else:
                     array = jnp.array(data[atom_attr], dtype=dtype)
