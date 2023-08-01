@@ -1,7 +1,7 @@
-jaxip
-=====
+pantea
+======
 
 .. toctree::
    :maxdepth: 4
 
-   jaxip
+   pantea

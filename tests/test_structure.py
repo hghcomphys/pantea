@@ -3,9 +3,8 @@ from typing import Any, Dict, Tuple
 
 import jax.numpy as jnp
 import pytest
-
-from jaxip.atoms.structure import Structure
-from jaxip.types import default_dtype
+from pantea.atoms.structure import Structure
+from pantea.types import default_dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"

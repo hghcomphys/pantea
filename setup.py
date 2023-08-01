@@ -25,7 +25,7 @@ test_requirements = [
 ]
 
 _dict = {}
-with open("jaxip/_version.py") as f:
+with open("pantea/_version.py") as f:
     exec(f.read(), _dict)
 __version__ = _dict["__version__"]
 
@@ -39,25 +39,23 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
         "Programming Language :: Python :: 3.8",
-        # "Programming Language :: Python :: 3.9",
-        # "Programming Language :: Python :: 3.10",
     ],
     description="JAX-based Interatomic Potential",
     entry_points={
         "console_scripts": [
-            "jaxip=jaxip.cli:main",
+            "pantea=pantea.cli:main",
         ],
     },
     install_requires=requirements,
     license="GNU General Public License v3",
     long_description=readme,
     include_package_data=True,
-    keywords="jaxip",
-    name="jaxip",
-    packages=find_packages(include=["jaxip", "jaxip.*"]),
+    keywords="pantea",
+    name="pantea",
+    packages=find_packages(include=["pantea", "pantea.*"]),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/hghcomphys/jaxip",
+    url="https://github.com/hghcomphys/pantea",
     version=__version__,
     zip_safe=False,
 )

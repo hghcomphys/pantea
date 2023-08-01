@@ -2,14 +2,14 @@
 Usage
 =====
 
-To use Jaxip in a project:
+To use Pantea in a project:
 
 .. code:: python
 
-    import jaxip
+    import pantea
 
 
-Just-In-Time (JIT) compilation is a technique used by `Jaxip` to improve performance by compiling code at runtime. 
+Just-In-Time (JIT) compilation is a technique used by `Pantea` to improve performance by compiling code at runtime. 
 It's important to note that the first time the function is called, it can be significantly slower than subsequent calls.
 This is because `JAX` library under the hood needs to compile the function's 
 code and optimize it for the specific inputs it receives. 

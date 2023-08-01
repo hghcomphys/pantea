@@ -8,10 +8,9 @@ import jax
 import jax.numpy as jnp
 import pytest
 from frozendict import frozendict
-
-from jaxip.models.nn.initializer import UniformInitializer
-from jaxip.models.nn.network import NeuralNetworkModel
-from jaxip.types import default_dtype
+from pantea.models.nn.initializer import UniformInitializer
+from pantea.models.nn.network import NeuralNetworkModel
+from pantea.types import default_dtype
 
 
 class TestNeuralNetworkModel:

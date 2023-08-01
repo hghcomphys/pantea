@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = python -msphinx
-SPHINXPROJ    = jaxip
+SPHINXPROJ    = pantea
 SOURCEDIR     = .
 BUILDDIR      = _build
 

@@ -2,16 +2,15 @@ import os
 from pathlib import Path
 from typing import Tuple
 
-from jaxip.types import default_dtype
+from pantea.types import default_dtype
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
-
-from jaxip.atoms.structure import Structure
-from jaxip.datasets.runner import RunnerDataset
+from pantea.atoms.structure import Structure
+from pantea.datasets.runner import RunnerDataset
 
 H2O_FILENAME = Path("tests", "h2o.data")
 H2O_DATA = {

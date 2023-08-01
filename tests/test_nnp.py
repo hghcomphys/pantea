@@ -7,10 +7,9 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
-
-from jaxip.datasets import RunnerDataset
-from jaxip.potentials import NeuralNetworkPotential
-from jaxip.potentials.nnp.settings import (
+from pantea.datasets import RunnerDataset
+from pantea.potentials import NeuralNetworkPotential
+from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
 
@@ -20,7 +19,9 @@ potential_file = Path("tests", "h2o.json")
 
 class TestNeuralNetworkPotential:
     dataset = RunnerDataset(dataset_file)
-    nnp: NeuralNetworkPotential = NeuralNetworkPotential.from_file(potential_file)
+    nnp: NeuralNetworkPotential = NeuralNetworkPotential.from_file(
+        potential_file
+    )
 
     @pytest.mark.parametrize(
         "nnp, expected",

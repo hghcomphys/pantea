@@ -1,4 +1,4 @@
-Welcome to Jaxip's documentation!
+Welcome to Pantea's documentation!
 ======================================
 
 An optimized Python library for developing machine learning interatomic potentials, based on Google `JAX`_. 
