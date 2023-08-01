@@ -6,7 +6,7 @@
 Pantea
 =====
 
-**JAX-based Interatomic Potential**
+**An optimized Python package for developing machine learning interatomic potentials**
 
 .. image:: https://img.shields.io/pypi/v/pantea.svg
         :target: https://pypi.python.org/pypi/pantea
@@ -23,7 +23,7 @@ Description
 -----------
 Pantea is an optimized Python library on basis of Google `JAX`_ that enables 
 development of machine learning inter-atomic potentials 
-for use in computational physics and material science. 
+for use in computational physics, chemistry, and material science. 
 These potentials are necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 

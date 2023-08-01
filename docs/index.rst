@@ -1,7 +1,7 @@
 Welcome to Pantea's documentation!
 ======================================
 
-An optimized Python library for developing machine learning interatomic potentials, based on Google `JAX`_. 
+An optimized Python library for developing machine learning interatomic potentials.
 
 
 .. _JAX: https://github.com/google/jax
