@@ -1,6 +1,8 @@
 GNU GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 
+
+    An optimized Python package for developing machine learning interatomic potentials.
     JAX-based Interatomic Potential
     Copyright (C) 2022  Hossein Ghorbanfekr
 

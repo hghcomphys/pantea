@@ -43,7 +43,7 @@ This enables ML model to learn the complex relationships between atomic
 properties and their interactions in a more efficient and accurate way 
 than traditional interatomic potential models.
 
-.. image:: https://github.com/hghcomphys/jaxip/raw/main/docs/images/flowchart.drawio.png
+.. image:: https://github.com/hghcomphys/pantea/raw/main/docs/images/flowchart.drawio.png
     :alt: workflow
     :class: with-shadow
     :name: An illustration of ML-potential workflow in training and prediction modes.

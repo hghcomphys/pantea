@@ -6,11 +6,10 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
-
-from jaxip.atoms.structure import Structure
-from jaxip.descriptors.acsf import ACSF, G2, G3, CutoffFunction
-from jaxip.descriptors.acsf.symmetry import EnvironmentElements
-from jaxip.types import Array
+from pantea.atoms.structure import Structure
+from pantea.descriptors.acsf import ACSF, G2, G3, CutoffFunction
+from pantea.descriptors.acsf.symmetry import EnvironmentElements
+from pantea.types import Array
 
 
 # @pytest.fixture

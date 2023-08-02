@@ -1,1 +1,1 @@
-"""Unit test package for jaxip."""
+"""Unit test package for pantea."""

@@ -4,11 +4,10 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 from ase import Atoms
-
-from jaxip.atoms.structure import Structure
-from jaxip.simulation.lj import LJPotential
-from jaxip.simulation.md import MDSimulator
-from jaxip.units import units
+from pantea.atoms.structure import Structure
+from pantea.simulation.lj import LJPotential
+from pantea.simulation.md import MDSimulator
+from pantea.units import units
 
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"

@@ -7,10 +7,9 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 import jax.numpy as jnp
 import pytest
 from jax import random
-
-from jaxip.descriptors.scaler import Scaler
-from jaxip.types import Array, default_dtype
-from jaxip.utils.batch import create_batch
+from pantea.descriptors.scaler import Scaler
+from pantea.types import Array, default_dtype
+from pantea.utils.batch import create_batch
 
 key = random.PRNGKey(2023)
 key, subkey = random.split(key, 2)

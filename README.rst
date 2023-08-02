@@ -2,28 +2,29 @@
 .. .. image:: docs/images/logo.png
 ..         :alt: logo
         
-=====
-JAXIP
-=====
+======
+Pantea
+======
 
-**JAX-based Interatomic Potential**
+**An optimized Python package for developing machine learning interatomic potentials**
 
-.. image:: https://img.shields.io/pypi/v/jaxip.svg
-        :target: https://pypi.python.org/pypi/jaxip
 
-.. image:: https://github.com/hghcomphys/jaxip/actions/workflows/tests.yml/badge.svg
-        :target: https://github.com/hghcomphys/jaxip/blob/main/.github/workflows/python-app.yml
+.. image:: https://img.shields.io/pypi/v/pantea.svg
+        :target: https://pypi.python.org/pypi/pantea
 
-.. image:: https://readthedocs.org/projects/jaxip/badge/?version=latest
-        :target: https://jaxip.readthedocs.io/en/latest/?version=latest
+.. image:: https://github.com/hghcomphys/pantea/actions/workflows/tests.yml/badge.svg
+        :target: https://github.com/hghcomphys/pantea/blob/main/.github/workflows/python-app.yml
+
+.. image:: https://readthedocs.org/projects/pantea/badge/?version=latest
+        :target: https://pantea.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 
 Description
 -----------
-Jaxip is an optimized Python library on basis of Google `JAX`_ that enables 
+Pantea is an optimized Python library on basis of Google `JAX`_ that enables 
 development of machine learning inter-atomic potentials 
-for use in computational physics and material science. 
+for use in computational physics, chemistry, and material science. 
 These potentials are necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 
@@ -32,14 +33,14 @@ dynamics simulations of complex materials with ab initio accuracy.
 
 See `documentation`_ for more information.
 
-.. _documentation: https://jaxip.readthedocs.io/en/latest/readme.html
+.. _documentation: https://pantea.readthedocs.io/en/latest/readme.html
 
 
 Features
 --------
-* The design of Jaxip is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
+* The design of Pantea is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
 * It uses `automatic differentiation` to make defining new descriptors straightforward.
-* Jaxip is written purely in Python and optimized with `just-in-time` (JIT) compilation.
+* Pantea is written purely in Python and optimized with `just-in-time` (JIT) compilation.
 * It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
 
 .. warning::
@@ -50,14 +51,14 @@ Features
 
 Installation
 ------------
-To install Jaxip, run this command in your terminal:
+To install Pantea, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install jaxip
+    $ pip install pantea
 
 For machines with an NVIDIA **GPU** please follow the
-`installation <https://jaxip.readthedocs.io/en/latest/installation.html>`_ 
+`installation <https://pantea.readthedocs.io/en/latest/installation.html>`_ 
 instruction on the documentation. 
 
 
@@ -76,9 +77,9 @@ The resulting values can then be used to construct a machine learning potential.
 
 .. code-block:: python
 
-        from jaxip.datasets import RunnerDataset
-        from jaxip.descriptors import ACSF
-        from jaxip.descriptors.acsf import CutoffFunction, G2, G3
+        from pantea.datasets import RunnerDataset
+        from pantea.descriptors import ACSF
+        from pantea.descriptors.acsf import CutoffFunction, G2, G3
 
         # Read atomic structure dataset (e.g. water molecules)
         structures = RunnerDataset('input.data')
@@ -122,8 +123,8 @@ The trained potential can then be used to evaluate the energy and force componen
 
 .. code-block:: python
 
-        from jaxip.datasets import RunnerDataset
-        from jaxip.potentials import NeuralNetworkPotential
+        from pantea.datasets import RunnerDataset
+        from pantea.potentials import NeuralNetworkPotential
 
         # Read atomic data in RuNNer format
         structures = RunnerDataset("input.data")
@@ -158,4 +159,4 @@ Example files: `input.data`_ and `input.nn`_
 License
 -------
 This project is licensed under the GNU General Public License (GPL) version 3 - 
-see the `LICENSE <https://github.com/hghcomphys/jaxip/blob/main/LICENSE>`_ file for details.
+see the `LICENSE <https://github.com/hghcomphys/pantea/blob/main/LICENSE>`_ file for details.
