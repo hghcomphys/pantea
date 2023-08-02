@@ -2,11 +2,12 @@
 .. .. image:: docs/images/logo.png
 ..         :alt: logo
         
-=====
+======
 Pantea
-=====
+======
 
 **An optimized Python package for developing machine learning interatomic potentials**
+
 
 .. image:: https://img.shields.io/pypi/v/pantea.svg
         :target: https://pypi.python.org/pypi/pantea
