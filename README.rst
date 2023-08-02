@@ -6,14 +6,14 @@
 Pantea
 ======
 
-**An optimized Python package for developing machine learning interatomic potentials**
+**A Python package for developing machine learning interatomic potentials, based on JAX**
 
 
 .. image:: https://img.shields.io/pypi/v/pantea.svg
         :target: https://pypi.python.org/pypi/pantea
 
 .. image:: https://github.com/hghcomphys/pantea/actions/workflows/tests.yml/badge.svg
-        :target: https://github.com/hghcomphys/pantea/blob/main/.github/workflows/python-app.yml
+        :target: https://github.com/hghcomphys/pantea/blob/main/.github/workflows/tests.yml
 
 .. image:: https://readthedocs.org/projects/pantea/badge/?version=latest
         :target: https://pantea.readthedocs.io/en/latest/?version=latest
