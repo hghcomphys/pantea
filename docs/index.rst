@@ -7,9 +7,9 @@ Welcome to Pantea's documentation!
    :caption: Contents:
 
    readme
-   theory
    installation
    usage
+   theory
    examples
    modules
    contributing

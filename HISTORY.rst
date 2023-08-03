@@ -13,7 +13,8 @@ History
 
 0.6.x
 -------------------
-* Implemented Molecular dynamics (MD) and Monte-Carlo (MC) simulators
+* Implemented Molecular dynamics (MD) simulator
+* Added Monte-Carlo (MC) simulator
 
 0.5.x
 -------------------

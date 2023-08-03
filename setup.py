@@ -40,7 +40,7 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3.8",
     ],
-    description="An optimized Python package for developing machine learning interatomic potentials",
+    description="A Python package for developing machine learning interatomic potentials, based on JAX.",
     entry_points={
         "console_scripts": [
             "pantea=pantea.cli:main",
