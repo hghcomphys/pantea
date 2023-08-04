@@ -27,6 +27,16 @@ Please refer to the `JAX Install Guide`_ for full installation instructions.
 .. _`JAX Install Guide`: https://github.com/google/jax#installation
 
 
+For atom visualization in Jupyter Notebooks, it is also recommended to
+install `nglview`_ using conda as follows:
+
+.. code-block:: python
+
+    $ conda install -c conda-forge nglview
+
+.. _nglview: https://github.com/nglviewer/nglview
+
+
 Stable release
 --------------
 
