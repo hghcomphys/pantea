@@ -22,10 +22,21 @@ via `Conda` using the following command (only Linux users):
 
 Please refer to the `JAX Install Guide`_ for full installation instructions.
 
+.. note::
+    Installation with `conda` sometime takes too much time, 
+    an alternative option is of course to use `mamba`_ instead.
+    If you don't have `mamba` installed, you can do it using `conda` itself by running.
+
+    .. code-block:: bash
+        
+        conda install -c conda-forge mamba
+
+    You can use now `mamba` to install, update, and manage packages just like `conda`.
+
 
 .. _JAX: https://github.com/google/jax
 .. _`JAX Install Guide`: https://github.com/google/jax#installation
-
+.. _mamba: https://github.com/mamba-org/mamba
 
 For atom visualization in Jupyter Notebooks, it is also recommended to
 install `nglview`_ using conda as follows:
