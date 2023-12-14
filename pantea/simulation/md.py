@@ -3,6 +3,7 @@ from typing import Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from pantea.atoms import Structure
 from pantea.atoms._structure import _calculate_center_of_mass
 from pantea.logger import logger
@@ -40,10 +41,7 @@ def _get_virial(
     positions: Array,
     forces: Array,
 ) -> Array:
-    return (
-        2 * _get_kinetic_energy(velocities, masses)
-        + (positions * forces).sum()
-    )
+    return 2 * _get_kinetic_energy(velocities, masses) + (positions * forces).sum()
 
 
 @jax.jit
@@ -53,11 +51,7 @@ def _get_verlet_new_positions(
     forces: Array,
     time_step: Array,
 ) -> Array:
-    return (
-        positions
-        + velocities * time_step
-        + 0.5 * forces * time_step * time_step
-    )
+    return positions + velocities * time_step + 0.5 * forces * time_step * time_step
 
 
 @jax.jit
@@ -149,9 +143,7 @@ class MDSimulator:
 
         if (self.thermostat is None) and (temperature is not None):
             logger.info(f"Initializing thermostat ({temperature:0.2f} K)")
-            logger.info(
-                "Setting default thermostat constant to 100x time step"
-            )
+            logger.info("Setting default thermostat constant to 100x time step")
             self.thermostat = BrendsenThermostat(
                 target_temperature=temperature,
                 time_constant=100 * self.time_step,
@@ -179,12 +171,12 @@ class MDSimulator:
         new_positions = _get_verlet_new_positions(
             self.positions, self.velocities, self.forces, arraylike_time_step
         )
+        self._structure = replace(self._structure, positions=new_positions)
         new_forces = _compute_forces(self.potential, self._structure)
         self.velocities = _get_verlet_new_velocities(
             self.velocities, self.forces, new_forces, arraylike_time_step
         )
         self.forces = new_forces
-        self._structure = replace(self._structure, positions=new_positions)
 
     @classmethod
     def generate_random_velocities(
@@ -198,9 +190,7 @@ class MDSimulator:
         masses = masses.reshape(-1, 1)
         natoms = masses.shape[0]
         velocities = jax.random.normal(key, shape=(natoms, 3))
-        velocities *= jnp.sqrt(
-            temperature / _get_temperature(velocities, masses)
-        )
+        velocities *= jnp.sqrt(temperature / _get_temperature(velocities, masses))
         velocities -= _calculate_center_of_mass(velocities, masses)
         return velocities
 
