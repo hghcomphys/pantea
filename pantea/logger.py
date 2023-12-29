@@ -43,8 +43,8 @@ class Logger:
         """
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setFormatter(
-            logging.Formatter("%(levelname)s %(message)s")
-        )  # logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+            logging.Formatter("%(levelname)s | %(message)s")
+        ) 
         console_handler.setLevel(self.level)
         self.handlers.append(console_handler)
 
@@ -56,12 +56,10 @@ class Logger:
         :type filename: Path
         """
         # File handler is also useful for multi-process logging.
-        file_handler = RotatingFileHandler(
-            str(Path(filename)), "a", 1_000_000, 3
-        )
+        file_handler = RotatingFileHandler(str(Path(filename)), "a", 1_000_000, 3)
         file_handler.setFormatter(
             logging.Formatter(
-                "%(levelname)-8s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"
+                "%(levelname)-8s | %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p"
             )
         )
         file_handler.setLevel(logging.DEBUG)

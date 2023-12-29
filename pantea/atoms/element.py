@@ -5,7 +5,7 @@ from pantea.types import Element
 from pantea.units import units
 
 # fmt: off
-_KNOWN_ELEMENTS_LIST: Tuple = (
+_KNOWN_ELEMENTS_LIST: Tuple[str, ...] = (
     "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
     "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca",
     "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
@@ -19,7 +19,7 @@ _KNOWN_ELEMENTS_LIST: Tuple = (
     "Md",
 )
 
-_KNOWN_ELEMENTS_DICT_MASS = {
+_KNOWN_ELEMENTS_DICT_MASS: Dict[str, float] = {
     'H': 1.008, 'He': 4.003, 'Li': 6.941, 'Be': 9.012,
     'B': 10.811, 'C': 12.011, 'N': 14.007, 'O': 15.999,
     'F': 18.998, 'Ne': 20.180, 'Na': 22.990, 'Mg': 24.305,
@@ -75,19 +75,15 @@ class ElementMap:
         self._element_to_atom_type: Dict[Element, int] = dict()
         self._atom_type_to_element: Dict[int, Element] = dict()
         self._create_mapping_dicts()
-        logger.debug(f"Initialized {self.__class__.__name__}")
 
     def __call__(self, item: Union[Element, int]) -> Union[int, Element]:
         """Map an element to the atom type and vice versa."""
-        result: Union[int, Element]
         if isinstance(item, int):
             return self._atom_type_to_element[item]
         elif isinstance(item, Element):
             return self._element_to_atom_type[item]
         else:
-            logger.error(
-                f"Unknown item type '{type(item)}'", exception=TypeError
-            )
+            logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
             return  # type: ignore
 
     def _create_mapping_dicts(self) -> None:
@@ -109,9 +105,11 @@ class ElementMap:
             )
         }
         self._atom_type_to_element = {
-            atom_type: elem
-            for elem, atom_type in self._element_to_atom_type.items()
+            atom_type: elem for elem, atom_type in self._element_to_atom_type.items()
         }
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(element_to_atom_type={self.element_to_atom_type})"
 
     @classmethod
     def get_atomic_number(cls, element: Element) -> int:
