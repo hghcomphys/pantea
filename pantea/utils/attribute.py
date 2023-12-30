@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
 import jax.numpy as jnp
+
 from pantea.logger import logger
 from pantea.types import Array, Dtype, default_dtype
 
@@ -23,9 +24,7 @@ def set_as_attribute(
     :param postfix: _description_, defaults to ""
     :type postfix: str, optional
     """
-    logger.debug(
-        f"Setting {len(items)} items as {obj.__class__.__name__} attributes:"
-    )
+    logger.debug(f"Setting {len(items)} items as {obj.__class__.__name__} attributes:")
     for name, item in items.items():
         attr_name: str = f"{prefix}{name}{postfix}"
         logger.debug(f"-> {obj.__class__.__name__}.{attr_name}")
@@ -45,4 +44,4 @@ def asarray(data: Any, dtype: Optional[Dtype] = None) -> Array:
     """
     if dtype is None:
         dtype = default_dtype.FLOATX
-    return jnp.asarray(data, dtype=dtype)
+    return jnp.array(data, dtype=dtype)

@@ -5,7 +5,6 @@ import jax
 import jax.numpy as jnp
 
 from pantea.atoms import Structure
-from pantea.atoms._structure import _calculate_center_of_mass
 from pantea.logger import logger
 from pantea.simulation.thermostat import BrendsenThermostat
 from pantea.types import Array, Element
@@ -41,7 +40,7 @@ def _get_virial(
     positions: Array,
     forces: Array,
 ) -> Array:
-    return 2 * _get_kinetic_energy(velocities, masses) + (positions * forces).sum()
+    return 2 * _get_kinetic_energy(velocities, masses) + jnp.sum(positions * forces)
 
 
 @jax.jit
@@ -62,6 +61,11 @@ def _get_verlet_new_velocities(
     time_step: Array,
 ) -> Array:
     return velocities + 0.5 * (forces + new_forces) * time_step
+
+
+@jax.jit
+def _calculate_center_of_mass(array: Array, masses: Array) -> Array:
+    return jnp.sum(masses * array, axis=0) / jnp.sum(masses)
 
 
 def _get_potential_energy(
@@ -215,7 +219,7 @@ class MDSimulator:
     def natoms(self) -> int:
         return self._structure.natoms
 
-    def get_elements(self) -> Tuple[Element]:
+    def get_elements(self) -> Tuple[Element, ...]:
         return self._structure.get_elements()
 
     def get_structure(self) -> Structure:

@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
-from pantea.atoms._structure import _calculate_distances_per_atom
+from pantea.atoms.distance import _calculate_distances_per_atom
 from pantea.atoms.neighbor import _calculate_masks_per_atom
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
 from pantea.descriptors.acsf.radial import RadialSymmetryFunction
@@ -23,11 +23,9 @@ def _calculate_radial_acsf_per_atom(
     elements: EnvironmentElements = [k for k in radial.keys()][0]
 
     mask_cutoff_i = _calculate_masks_per_atom(
-        dist_i, jnp.asarray(radial[elements].r_cutoff)
+        dist_i, jnp.array(radial[elements].r_cutoff)
     )
-    mask_cutoff_and_atype_ij = mask_cutoff_i & (
-        atype == emap[elements.neighbor_j]
-    )
+    mask_cutoff_and_atype_ij = mask_cutoff_i & (atype == emap[elements.neighbor_j])
 
     return jnp.sum(
         radial[elements](dist_i),
@@ -49,7 +47,7 @@ def _calculate_angular_acsf_per_atom(
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_masks_per_atom(
-        dist_i, jnp.asarray(angular[elements].r_cutoff)
+        dist_i, jnp.array(angular[elements].r_cutoff)
     )
     # mask for neighboring element j
     at_j = emap[elements.neighbor_j]
@@ -161,9 +159,7 @@ def _calculate_descriptor_per_atom(
     # Loop over the radial terms
     for index, (elements, radial) in enumerate(acsf.radial_symmetry_functions):
         result = result.at[index].set(
-            _calculate_radial_acsf_per_atom(
-                {elements: radial}, atype, dist_i, emap
-            )
+            _calculate_radial_acsf_per_atom({elements: radial}, atype, dist_i, emap)
         )
 
     # Loop over the angular terms

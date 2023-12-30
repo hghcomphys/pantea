@@ -74,7 +74,7 @@ class ElementMap:
         self._element_to_atomic_number: Dict[Element, int] = dict()
         self._element_to_atom_type: Dict[Element, int] = dict()
         self._atom_type_to_element: Dict[int, Element] = dict()
-        self._create_mapping_dicts()
+        self._set_mapping_dicts()
 
     def __call__(self, item: Union[Element, int]) -> Union[int, Element]:
         """Map an element to the atom type and vice versa."""
@@ -86,7 +86,7 @@ class ElementMap:
             logger.error(f"Unknown item type '{type(item)}'", exception=TypeError)
             return  # type: ignore
 
-    def _create_mapping_dicts(self) -> None:
+    def _set_mapping_dicts(self) -> None:
         """
         Create dictionary to map elements, atom types, and atomic numbers.
         The atom types are sorted based on elements' atomic number.

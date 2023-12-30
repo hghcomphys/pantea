@@ -6,7 +6,7 @@ from typing import Callable, Optional, Protocol, Tuple
 import jax
 import jax.numpy as jnp
 
-from pantea.atoms._structure import _calculate_distances
+from pantea.atoms.distance import _calculate_distances
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
@@ -79,9 +79,7 @@ class Neighbor(BaseJaxPytreeDataClass):
 
     @classmethod
     def from_structure(cls, structure, r_cutoff: float) -> Neighbor:
-        results = _calculate_masks_and_distances(
-            structure, jnp.atleast_1d(r_cutoff)
-        )
+        results = _calculate_masks_and_distances(structure, jnp.atleast_1d(r_cutoff))
         return cls(r_cutoff, *results)
 
     # @jax.jit

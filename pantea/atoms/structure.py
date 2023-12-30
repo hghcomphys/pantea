@@ -11,8 +11,8 @@ import numpy as np
 from ase import Atoms as AseAtoms
 from jax import tree_util
 
-from pantea.atoms._structure import _calculate_center_of_mass, _calculate_distances
 from pantea.atoms.box import Box
+from pantea.atoms.distance import _calculate_distances
 from pantea.atoms.element import ElementMap
 from pantea.atoms.neighbor import Neighbor
 from pantea.logger import logger
@@ -342,7 +342,7 @@ class Structure(BaseJaxPytreeDataClass):
         :rtype: Tuple[Array, ...]
         """
         if atom_indices is not None:
-            atom_positions = self.positions[jnp.asarray([atom_indices])].reshape(-1, 3)
+            atom_positions = self.positions[jnp.array([atom_indices])].reshape(-1, 3)
         else:
             atom_positions = self.positions
 
@@ -424,10 +424,6 @@ class Structure(BaseJaxPytreeDataClass):
         energy_offset = self._get_energy_offset(atom_energy)
         self.energies += energy_offset
         self.total_energy += energy_offset.sum()
-
-    def get_center_of_mass_position(self) -> Array:
-        """Get center of mass position."""
-        return _calculate_center_of_mass(self.positions, self.get_masses())
 
     def _get_per_element_inputs(self) -> Iterator[Tuple[Element, Inputs]]:
         for element in self.get_unique_elements():

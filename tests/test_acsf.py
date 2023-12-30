@@ -6,6 +6,7 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
+
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf import ACSF, G2, G3, CutoffFunction
 from pantea.descriptors.acsf.symmetry import EnvironmentElements
@@ -45,9 +46,7 @@ def h2o_acsf() -> ACSF:
         ),
         angular_symmetry_functions=(
             (
-                EnvironmentElements(
-                    central="O", neighbor_j="H", neighbor_k="H"
-                ),
+                EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
                 G3(
                     cfn=CutoffFunction.from_cutoff_type(
                         r_cutoff=5.9043202, cutoff_type="tanhu"
@@ -137,7 +136,7 @@ class TestACSF:
                 lj_acsf(),
                 lj_structure,
                 jnp.tile(
-                    jnp.asarray(
+                    jnp.array(
                         [
                             0.0683537673,
                             0.1069323809,
@@ -168,7 +167,7 @@ class TestACSF:
                 h2o_structure,
                 (
                     (4, 2),
-                    jnp.asarray([[0.3333029149, 0.0002204830]]),
+                    jnp.array([[0.3333029149, 0.0002204830]]),
                 ),
             ),
         ],
@@ -180,6 +179,4 @@ class TestACSF:
         expected: Array,
     ) -> None:
         assert acsf(structure).shape == expected[0]
-        assert jnp.allclose(
-            acsf(structure, atom_indices=jnp.asarray(0)), expected[1]
-        )
+        assert jnp.allclose(acsf(structure, atom_indices=jnp.array(0)), expected[1])
