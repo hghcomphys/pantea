@@ -4,9 +4,10 @@ from typing import Dict, Protocol
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import jit
+
 from pantea.atoms.structure import Inputs
 from pantea.descriptors import Scaler
-from pantea.descriptors.acsf._acsf import _calculate_descriptor
+from pantea.descriptors.acsf.acsf import _calculate_descriptor
 from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.models import NeuralNetworkModel
 from pantea.types import Array, Element

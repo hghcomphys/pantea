@@ -12,9 +12,9 @@ from tqdm import tqdm
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import DatasetInterface
 from pantea.logger import logger
-from pantea.potentials._energy import _compute_energy
-from pantea.potentials._force import _compute_force
 from pantea.potentials.atomic_potential import AtomicPotential
+from pantea.potentials.energy import _compute_energy
+from pantea.potentials.force import _compute_force
 from pantea.potentials.nnp.nnp import (
     NeuralNetworkPotentialInterface as PotentialInterface,
 )

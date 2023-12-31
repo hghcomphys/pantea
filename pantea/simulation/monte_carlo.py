@@ -115,7 +115,7 @@ class MCSimulator:
     def natoms(self) -> int:
         return self._structure.natoms
 
-    def get_elements(self) -> Tuple[Element]:
+    def get_elements(self) -> Tuple[Element, ...]:
         return self._structure.get_elements()
 
     def get_structure(self) -> Structure:

@@ -6,7 +6,7 @@ from pantea.atoms.structure import Structure
 from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.descriptors.scaler import Scaler
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials._energy import _compute_atomic_energy
+from pantea.potentials.energy import _compute_atomic_energy
 from pantea.types import Array, Element
 
 
