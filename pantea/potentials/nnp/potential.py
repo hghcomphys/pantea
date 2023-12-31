@@ -8,6 +8,8 @@ from typing import Dict, Optional, Protocol, Tuple
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import random
+from tqdm import tqdm
+
 from pantea.atoms.element import ElementMap
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import DatasetInterface
@@ -20,16 +22,15 @@ from pantea.descriptors.scaler import Scaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials._energy import _compute_energy
-from pantea.potentials._force import _compute_force
 from pantea.potentials.atomic_potential import AtomicPotential
+from pantea.potentials.energy import _compute_energy
+from pantea.potentials.force import _compute_force
 from pantea.potentials.nnp.gradient_descent import GradientDescentUpdater
 from pantea.potentials.nnp.kalman_filter import KalmanFilterUpdater
 from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
 from pantea.types import Array, Element
-from tqdm import tqdm
 
 
 class UpdaterInterface(Protocol):
@@ -76,9 +77,7 @@ class NeuralNetworkPotential:
     model_params: Dict[Element, frozendict] = field(
         default_factory=dict, repr=False, init=False
     )
-    updater: Optional[UpdaterInterface] = field(
-        default=None, repr=False, init=False
-    )
+    updater: Optional[UpdaterInterface] = field(default=None, repr=False, init=False)
 
     @classmethod
     def from_file(cls, filename: Path) -> NeuralNetworkPotential:
@@ -114,9 +113,7 @@ class NeuralNetworkPotential:
 
         logger.info(f"Number of elements: {self.num_elements}")
         for element in self.elements:
-            logger.info(
-                f"Element: {element} ({ElementMap.get_atomic_number(element)})"
-            )
+            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
 
         if not self.atomic_potential:
             self._init_atomic_potential()
@@ -344,9 +341,7 @@ class NeuralNetworkPotential:
                 structure: Structure = dataset[index]
                 elements: Tuple[Element, ...] = structure.get_unique_elements()
                 for element in elements:
-                    x: Array = self.atomic_potential[element].descriptor(
-                        structure
-                    )
+                    x: Array = self.atomic_potential[element].descriptor(structure)
                     self.atomic_potential[element].scaler.fit(x)
         except KeyboardInterrupt:
             print("Keyboard Interrupt")
@@ -449,18 +444,16 @@ class NeuralNetworkPotential:
             logger.info(
                 f"Loading model weights for element ({element}): {model_file.name}"
             )
-            self.model_params[element] = self.atomic_potential[
-                element
-            ].model.load(model_file)
+            self.model_params[element] = self.atomic_potential[element].model.load(
+                model_file
+            )
 
     def load(self) -> None:
         """Load element scaler and model from their corresponding files."""
         self.load_scaler()
         self.load_model()
 
-    def set_extrapolation_warnings(
-        self, threshold: Optional[int] = None
-    ) -> None:
+    def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
         """
         shows warning whenever a descriptor value is out of bounds defined by
         minimum/maximum values in the scaler.
@@ -484,23 +477,17 @@ class NeuralNetworkPotential:
     @property
     def r_cutoff(self) -> float:
         """Return the maximum cutoff radius found between all descriptors."""
-        return max(
-            [pot.descriptor.r_cutoff for pot in self.atomic_potential.values()]
-        )
+        return max([pot.descriptor.r_cutoff for pot in self.atomic_potential.values()])
 
     @property
     def descriptor(self) -> Dict:
         """Return descriptor for each element."""
-        return {
-            elem: pot.descriptor for elem, pot in self.atomic_potential.items()
-        }
+        return {elem: pot.descriptor for elem, pot in self.atomic_potential.items()}
 
     @property
     def scaler(self) -> Dict:
         """Return scaler for each element."""
-        return {
-            elem: pot.scaler for elem, pot in self.atomic_potential.items()
-        }
+        return {elem: pot.scaler for elem, pot in self.atomic_potential.items()}
 
     @property
     def model(self) -> Dict:

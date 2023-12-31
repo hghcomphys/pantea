@@ -12,11 +12,13 @@ from flax.training.train_state import TrainState
 from frozendict import frozendict
 from jax import value_and_grad
 from optax import GradientTransformation
+from tqdm import tqdm
+
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import DatasetInterface
 from pantea.logger import logger
-from pantea.potentials._energy import _energy_fn
-from pantea.potentials._force import _compute_force
+from pantea.potentials.energy import _energy_fn
+from pantea.potentials.force import _compute_force
 from pantea.potentials.nnp.metrics import ErrorMetric
 from pantea.potentials.nnp.nnp import (
     NeuralNetworkPotentialInterface as PotentialInterface,
@@ -25,7 +27,6 @@ from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
 from pantea.types import Array, Element
-from tqdm import tqdm
 
 
 def _mse_loss(*, logits: Array, targets: Array) -> Array:
@@ -89,9 +90,7 @@ class GradientDescentUpdater:
         def generate_train_state():
             for element in self.potential.elements:
                 yield element, TrainState.create(
-                    apply_fn=self.potential.atomic_potential[
-                        element
-                    ].model.apply,
+                    apply_fn=self.potential.atomic_potential[element].model.apply,
                     params=self.potential.model_params[element],
                     tx=self.optimizer,  # [element]?
                 )
@@ -120,12 +119,9 @@ class GradientDescentUpdater:
 
             # Loop over batches
             for _ in tqdm(range(steps)):
-                structures: List[Structure] = random.choices(
-                    dataset, k=batch_size
-                )
+                structures: List[Structure] = random.choices(dataset, k=batch_size)
                 xbatch = tuple(
-                    structure.get_per_element_inputs()
-                    for structure in structures
+                    structure.get_per_element_inputs() for structure in structures
                 )
                 ybatch = tuple(
                     (
@@ -177,12 +173,9 @@ class GradientDescentUpdater:
 
             for inputs, (true_energy, true_forces) in zip(xbatch, ybatch):
                 positions = {
-                    element: input.atom_positions
-                    for element, input in inputs.items()
+                    element: input.atom_positions for element, input in inputs.items()
                 }
-                natoms: int = sum(
-                    array.shape[0] for array in positions.values()
-                )
+                natoms: int = sum(array.shape[0] for array in positions.values())
 
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
@@ -211,8 +204,7 @@ class GradientDescentUpdater:
                         inputs,
                     )
                     loss_energy = (
-                        self.criterion(logits=energy, targets=true_energy)
-                        / natoms
+                        self.criterion(logits=energy, targets=true_energy) / natoms
                     )
                     loss_energy_per_batch += loss_energy
 

@@ -3,6 +3,7 @@ from typing import Optional, Protocol, Tuple
 
 import jax.numpy as jnp
 import numpy as np
+
 from pantea.atoms.structure import Structure
 from pantea.logger import logger
 from pantea.types import Array, Element
@@ -83,9 +84,7 @@ class MCSimulator:
         atom_indices = np.random.randint(
             low=0, high=self.natoms, size=(self.movements_per_step,)
         )
-        new_position = self._structure.positions.at[atom_indices].add(
-            displacements
-        )
+        new_position = self._structure.positions.at[atom_indices].add(displacements)
         new_structure = replace(self._structure, positions=new_position)
         new_energy = self.potential(new_structure)
 
@@ -93,9 +92,7 @@ class MCSimulator:
         if new_energy <= self.energy:
             accept = True
         else:
-            prob = jnp.exp(
-                -(new_energy - self.energy) / (KB * self.temperature)
-            )
+            prob = jnp.exp(-(new_energy - self.energy) / (KB * self.temperature))
             accept = True if prob >= np.random.uniform(0.0, 1.0) else False
 
         if accept:
@@ -118,7 +115,7 @@ class MCSimulator:
     def natoms(self) -> int:
         return self._structure.natoms
 
-    def get_elements(self) -> Tuple[Element]:
+    def get_elements(self) -> Tuple[Element, ...]:
         return self._structure.get_elements()
 
     def get_structure(self) -> Structure:

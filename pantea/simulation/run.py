@@ -3,6 +3,7 @@ from typing import Optional, Protocol
 
 import ase
 import ase.io
+
 from pantea.atoms.structure import Structure
 from pantea.logger import logger
 
@@ -73,6 +74,7 @@ def run_simulation(
                     atoms = simulator.get_structure().to_ase()
                     ase.io.write(str(filename), atoms, append=True)
             simulator.update()
+
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     if is_output:

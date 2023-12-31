@@ -2,8 +2,9 @@ from typing import Dict
 
 from frozendict import frozendict
 from jax import grad, jit
+
 from pantea.atoms.structure import Inputs
-from pantea.potentials._energy import AtomicPotentialInterface, _energy_fn
+from pantea.potentials.energy import AtomicPotentialInterface, _energy_fn
 from pantea.types import Array, Element
 
 _grad_energy_fn = jit(
@@ -26,6 +27,5 @@ def _compute_force(
         inputs,
     )
     return {
-        element: -1.0 * grad_energy
-        for element, grad_energy in grad_energies.items()
+        element: -1.0 * grad_energy for element, grad_energy in grad_energies.items()
     }

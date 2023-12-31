@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
+
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Dtype, default_dtype
@@ -41,7 +42,6 @@ class Box(BaseJaxPytreeDataClass):
 
     def __post_init__(self) -> None:
         """Post initialize simulation box (super-cell)."""
-        logger.debug(f"Initializing {self}")
         self._assert_jit_static_attributes()
         self._assert_jit_dynamic_attributes(expected=("lattice",))
 
@@ -51,6 +51,7 @@ class Box(BaseJaxPytreeDataClass):
         data: List[float],
         dtype: Optional[Dtype] = None,
     ) -> Box:
+        logger.debug(f"Initializing {cls.__name__} from list")
         if dtype is None:
             dtype = default_dtype.FLOATX
         lattice = jnp.array(data, dtype=dtype).reshape(3, 3)
@@ -121,10 +122,7 @@ class Box(BaseJaxPytreeDataClass):
         return super().__hash__()
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}"
-            f"(lattice={self.lattice}, dtype={self.dtype})"
-        )
+        return f"{self.__class__.__name__}(lattice={self.lattice}, dtype={self.dtype})"
 
 
 register_jax_pytree_node(Box)

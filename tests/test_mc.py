@@ -4,9 +4,9 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 from ase import Atoms
+
 from pantea.atoms.structure import Structure
-from pantea.simulation.lj import LJPotential
-from pantea.simulation.mc import MCSimulator
+from pantea.simulation import LJPotential, MCSimulator
 from pantea.units import units
 
 os.environ["JAX_ENABLE_X64"] = "1"
