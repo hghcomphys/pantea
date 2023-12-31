@@ -9,6 +9,7 @@ os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
+
 from pantea.atoms.structure import Structure
 from pantea.datasets.runner import RunnerDataset
 
@@ -84,12 +85,8 @@ H2O_DATA = {
 
 class TestRunnerDataset:
     h2o: RunnerDataset = RunnerDataset(filename=H2O_FILENAME)
-    h2o_persist: RunnerDataset = RunnerDataset(
-        filename=H2O_FILENAME, persist=True
-    )
-    h2o_float64: RunnerDataset = RunnerDataset(
-        filename=H2O_FILENAME, dtype=jnp.float64
-    )
+    h2o_persist: RunnerDataset = RunnerDataset(filename=H2O_FILENAME, persist=True)
+    h2o_float64: RunnerDataset = RunnerDataset(filename=H2O_FILENAME, dtype=jnp.float64)
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -162,7 +159,7 @@ class TestRunnerDataset:
             (
                 h2o,
                 tuple(
-                    jnp.asarray(H2O_DATA[attr])
+                    jnp.array(H2O_DATA[attr])
                     for attr in Structure._get_atom_attributes()
                 ),
             ),

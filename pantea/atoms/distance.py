@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 from typing import Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+
 from pantea.atoms.box import _apply_pbc
 from pantea.types import Array
 
 
-# @jax.jit
+@jax.jit
 def _calculate_distances_per_atom(
     atom_positions: Array,
     neighbor_positions: Array,
@@ -22,7 +21,7 @@ def _calculate_distances_per_atom(
     # see https://github.com/google/jax/issues/3058
     is_zero = dx.sum(axis=1, keepdims=True) == 0.0
     dx_ = jnp.where(is_zero, jnp.ones_like(dx), dx)
-    dist = jnp.linalg.norm(dx_, ord=2, axis=1)
+    dist = jnp.linalg.norm(dx_, ord=2, axis=1)  # type: ignore
     dist = jnp.where(jnp.squeeze(is_zero), 0.0, dist)
     return dist, dx
 
@@ -41,11 +40,4 @@ def _calculate_distances(
 ) -> Tuple[Array, Array]:
     """Calculate an array of distances between multiple atoms
     and the neighbors (using `jax.vmap`)."""
-    return _vmap_calculate_distances(
-        atom_positions, neighbor_positions, lattice
-    )
-
-
-@jax.jit
-def _calculate_center_of_mass(array: Array, masses: Array) -> Array:
-    return jnp.sum(masses * array, axis=0) / jnp.sum(masses)
+    return _vmap_calculate_distances(atom_positions, neighbor_positions, lattice)

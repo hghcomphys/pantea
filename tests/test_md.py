@@ -4,9 +4,9 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 from ase import Atoms
+
 from pantea.atoms.structure import Structure
-from pantea.simulation.lj import LJPotential
-from pantea.simulation.md import MDSimulator
+from pantea.simulation import LJPotential, MDSimulator
 from pantea.units import units
 
 os.environ["JAX_ENABLE_X64"] = "1"
@@ -46,7 +46,7 @@ class TestMDSimulator:
                     262.15531167,
                     5.70328776e-07,
                     0.00995778,
-                    jnp.asarray([11.33835602, 11.33835602, 11.33835602]),
+                    jnp.array([11.33835602, 11.33835602, 11.33835602]),
                 ),
             ),
         ],
@@ -92,7 +92,7 @@ class TestMDSimulator:
                     261.23330876,
                     5.68325481e-07,
                     0.00992273,
-                    jnp.asarray([11.33835602, 11.33835602, 11.33835602]),
+                    jnp.array([11.33835602, 11.33835602, 11.33835602]),
                 ),
             ),
         ],

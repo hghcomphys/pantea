@@ -7,12 +7,14 @@ import jax.numpy as jnp
 import numpy as np
 from frozendict import frozendict
 from jax import flatten_util
+from tqdm import tqdm
+
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import DatasetInterface
 from pantea.logger import logger
-from pantea.potentials._energy import _compute_energy
-from pantea.potentials._force import _compute_force
 from pantea.potentials.atomic_potential import AtomicPotential
+from pantea.potentials.energy import _compute_energy
+from pantea.potentials.force import _compute_force
 from pantea.potentials.nnp.nnp import (
     NeuralNetworkPotentialInterface as PotentialInterface,
 )
@@ -20,7 +22,6 @@ from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
 from pantea.types import Array, Element, default_dtype
-from tqdm import tqdm
 
 
 def _tree_flatten(pytree: Dict) -> Array:
@@ -107,9 +108,7 @@ class KalmanFilterUpdater:
             )
             return (E_ref - E_pot)[0] / structure.natoms
 
-        def compute_force_error(
-            state_vector: Array, structure: Structure
-        ) -> Array:
+        def compute_force_error(state_vector: Array, structure: Structure) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
             F_ref: Array = _tree_flatten(structure.get_per_element_forces())
             F_pot: Array = _tree_flatten(
@@ -135,9 +134,7 @@ class KalmanFilterUpdater:
         def compute_force_error_jacobian(
             state_vector: Array, structure: Structure
         ) -> Array:
-            return jacob_force_error(
-                state_vector[..., 0], structure
-            ).transpose()
+            return jacob_force_error(state_vector[..., 0], structure).transpose()
 
         # ----------------------
 
@@ -148,8 +145,8 @@ class KalmanFilterUpdater:
             print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
 
-            loss_energy_per_epoch: Array = jnp.asarray(0.0)
-            loss_force_per_epoch: Array = jnp.asarray(0.0)
+            loss_energy_per_epoch: Array = jnp.array(0.0)
+            loss_force_per_epoch: Array = jnp.array(0.0)
             num_energy_updates_per_epoch: int = 0
             num_force_updates_per_epoch: int = 0
 
@@ -166,18 +163,12 @@ class KalmanFilterUpdater:
                         self.W,
                         structure,
                     )
-                    loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[
-                        0, 0
-                    ]
+                    loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_force_updates_per_epoch += 1
                 else:
-                    Xi = compute_energy_error(model_params, structure).reshape(
-                        -1, 1
-                    )
+                    Xi = compute_energy_error(model_params, structure).reshape(-1, 1)
                     H = -compute_energy_error_gradient(model_params, structure)
-                    loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[
-                        0, 0
-                    ]
+                    loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_energy_updates_per_epoch += 1
 
                 num_observations: int = Xi.shape[0]
