@@ -1,13 +1,14 @@
 import os
-from typing import Tuple
 
-os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import pytest
 from frozendict import frozendict
+
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.network import NeuralNetworkModel
 from pantea.types import default_dtype

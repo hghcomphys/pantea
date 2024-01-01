@@ -1,12 +1,13 @@
 import os
-from typing import Tuple
 
-os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
+from typing import Tuple
 
 import jax.numpy as jnp
 import pytest
 from jax import random
+
 from pantea.descriptors.scaler import Scaler
 from pantea.types import Array, default_dtype
 from pantea.utils.batch import create_batch
@@ -53,9 +54,7 @@ class TestStructure:
 
     def compare(self, scaler: Scaler, data: Array) -> None:
         for name in ("mean", "min", "max"):
-            assert jnp.allclose(
-                getattr(data, name)(axis=0), getattr(scaler, name)
-            )
+            assert jnp.allclose(getattr(data, name)(axis=0), getattr(scaler, name))
         assert jnp.allclose(data.std(axis=0), scaler.sigma)
 
     @pytest.mark.parametrize(
