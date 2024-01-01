@@ -1,4 +1,7 @@
 import os
+
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
 from typing import Tuple
 
 import jax.numpy as jnp
@@ -8,9 +11,6 @@ from ase import Atoms
 from pantea.atoms.structure import Structure
 from pantea.simulation import LJPotential, MDSimulator
 from pantea.units import units
-
-os.environ["JAX_ENABLE_X64"] = "1"
-os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 
 def get_structure() -> Structure:

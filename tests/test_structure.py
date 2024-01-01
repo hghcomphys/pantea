@@ -1,14 +1,14 @@
 import os
+
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
 from typing import Any, Dict, Tuple
 
 import jax.numpy as jnp
 import pytest
+
 from pantea.atoms.structure import Structure
 from pantea.types import default_dtype
-
-os.environ["JAX_ENABLE_X64"] = "1"
-os.environ["JAX_PLATFORM_NAME"] = "cpu"
-
 
 LJ_DATA: Dict[str, Any] = {
     "positions": [[0.0, 0.0, 0.0], [0.583123772, 0.583123772, 0.583123772]],
@@ -20,9 +20,7 @@ LJ_DATA: Dict[str, Any] = {
         [11.4260918, 11.4260918, 11.4260918],
     ],
     "total_energy": [-0.21838404],
-    "comment": [
-        "r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"
-    ],
+    "comment": ["r = 1.01000000E+00, E = -2.18384040E-01, dEdr = -1.97905715E+01"],
     "total_charge": [],
     "lattice": [],
     "atom_types": [1, 1],

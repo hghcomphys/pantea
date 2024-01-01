@@ -21,7 +21,7 @@ class DataType:
     or double (float64).
     """
 
-    FLOATX: Dtype = jnp.float32
+    FLOATX: Dtype = jnp.float64
     INT: Dtype = jnp.int32
     UINT: Dtype = jnp.uint32
     INDEX: Dtype = jnp.int32

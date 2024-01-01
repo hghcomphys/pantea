@@ -1,9 +1,9 @@
 import os
+
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+
 from pathlib import Path
 from typing import Tuple
-
-os.environ["JAX_ENABLE_X64"] = "1"
-os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 import jax.numpy as jnp
 import pytest
@@ -13,9 +13,11 @@ from pantea.potentials import NeuralNetworkPotential
 from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
+from pantea.types import default_dtype
 
 dataset_file = Path("tests", "h2o.data")
 potential_file = Path("tests", "h2o.json")
+default_dtype.FLOATX = jnp.float32
 
 
 class TestNeuralNetworkPotential:
