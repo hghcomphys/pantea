@@ -6,7 +6,7 @@ from typing import Callable, Optional, Protocol, Tuple
 import jax
 import jax.numpy as jnp
 
-from pantea.atoms.distance import _calculate_distances
+from pantea.atoms.distance import _calculate_distances_with_aux
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
@@ -47,7 +47,7 @@ def _calculate_masks_and_distances(
     r_cutoff: Array,
 ) -> Tuple[Array, Array, Array]:
     """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
-    rij, Rij = _calculate_distances(
+    rij, Rij = _calculate_distances_with_aux(
         atom_positions=structure.positions,
         neighbor_positions=structure.positions,
         lattice=structure.lattice,

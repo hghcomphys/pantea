@@ -12,7 +12,6 @@ from ase import Atoms as AseAtoms
 from jax import tree_util
 
 from pantea.atoms.box import Box
-from pantea.atoms.distance import _calculate_distances
 from pantea.atoms.element import ElementMap
 from pantea.atoms.neighbor import Neighbor
 from pantea.logger import logger
@@ -316,47 +315,6 @@ class Structure(BaseJaxPytreeDataClass):
         return jnp.nonzero(
             self.atom_types == self.element_map.element_to_atom_type[element]
         )[0]
-
-    @jax.jit
-    def calculate_distances(
-        self,
-        atom_indices: Optional[Array] = None,
-        neighbor_indices: Optional[Array] = None,
-    ) -> Tuple[Array, Array]:
-        """
-        Calculate distances between specific atoms (given by atom indices)
-        and the neighboring atoms in the structure.
-        This method optionally also returns the corresponding position differences.
-
-        If atom indices are not specified, all atoms in the structure will be taken into account.
-        Similarly, if neighbor indices are not provided, all neighboring atoms will be considered.
-
-        :param atom_indices: array of atom indices (zero-based index)
-        :type atom_indices: Optional[Array], optional
-        :param neighbor_indices: indices of neighbor atoms, defaults to None
-        :type neighbor_indices: Optional[Array], optional
-        :type neighbor_indices: bool, optional
-        :param return_position_differences: whether returning position differences, defaults to False
-        :type return_position_differences: bool, optional
-        :return:  distances between atoms
-        :rtype: Tuple[Array, ...]
-        """
-        if atom_indices is not None:
-            atom_positions = self.positions[jnp.array([atom_indices])].reshape(-1, 3)
-        else:
-            atom_positions = self.positions
-
-        if neighbor_indices is not None:
-            neighbor_positions = self.positions[jnp.atleast_1d(neighbor_indices)]
-        else:
-            neighbor_positions = self.positions
-
-        distances, position_differences = _calculate_distances(
-            atom_positions,
-            neighbor_positions,
-            self.lattice,
-        )
-        return jnp.squeeze(distances), jnp.squeeze(position_differences)
 
     def to_dict(self) -> Dict[str, np.ndarray]:
         """
