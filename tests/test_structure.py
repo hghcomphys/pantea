@@ -1,5 +1,6 @@
 import os
 
+os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 from typing import Any, Dict, Tuple
@@ -192,3 +193,15 @@ class TestStructure:
             assert jnp.allclose(structure.lattice, expected[4])
         assert jnp.allclose(structure.get_masses(), expected[5])
         assert structure.get_elements() == expected[6]
+
+    @pytest.mark.parametrize(
+        "structure",
+        [lj, h2o],
+    )
+    def test_dict_conversion(
+        self,
+        structure: Structure,
+    ) -> None:
+        another_structure = Structure.from_dict(structure.to_dict())
+        # for attr in st1._get_atom_attributes():
+        #     assert jnp.allclose(getattr(st1, attr), getattr(st2, attr))
