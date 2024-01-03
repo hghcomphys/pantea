@@ -1,10 +1,11 @@
 import os
 from functools import partial
-from typing import Tuple, cast
+from typing import Protocol
 
 import jax
 import jax.numpy as jnp
-from pantea.atoms.neighbor import Neighbor
+
+from pantea.atoms.neighbor import _calculate_masks_with_aux_from_structure
 from pantea.atoms.structure import Structure
 from pantea.types import Array
 
@@ -12,29 +13,24 @@ os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
 
-# @partial(jax.jit, static_argnums=0)
-def _compute_pair_energies(obj, r: Array) -> Array:
-    term = obj.sigma / r
-    term6 = term**6
-    return 4.0 * obj.epsilon * term6 * (term6 - 1.0)
+class LJPotentialParams(Protocol):
+    epsilon: float
+    sigma: float
 
 
 # @partial(jax.jit, static_argnums=0)
-def _compute_pair_forces(obj, r: Array, R: Array) -> Array:
-    term = obj.sigma / r
+def _compute_pair_energies(params: LJPotentialParams, r: Array) -> Array:
+    term = params.sigma / r
     term6 = term**6
-    force_factor = -24.0 * obj.epsilon / (r * r) * term6 * (2.0 * term6 - 1.0)
+    return 4.0 * params.epsilon * term6 * (term6 - 1.0)
+
+
+# @partial(jax.jit, static_argnums=0)
+def _compute_pair_forces(params: LJPotentialParams, r: Array, R: Array) -> Array:
+    term = params.sigma / r
+    term6 = term**6
+    force_factor = -24.0 * params.epsilon / (r * r) * term6 * (2.0 * term6 - 1.0)
     return jnp.expand_dims(force_factor, axis=-1) * R
-
-
-def _get_neighbor_data(
-    structure: Structure,
-    r_cutoff: float,
-) -> Tuple[Array, Array, Array]:
-    if structure.neighbor is None:
-        structure.update_neighbor(r_cutoff)
-    neighbor = cast(Neighbor, structure.neighbor)
-    return (neighbor.masks, neighbor.rij, neighbor.Rij)
 
 
 class LJPotential:
@@ -53,14 +49,18 @@ class LJPotential:
     @partial(jax.jit, static_argnums=0)
     def __call__(self, structure: Structure) -> Array:
         """Compute total energy."""
-        masks, rij, _ = _get_neighbor_data(structure, self.r_cutoff)
+        masks, (rij, _) = _calculate_masks_with_aux_from_structure(
+            structure.positions, self.r_cutoff, structure.lattice
+        )
         pair_energies = _compute_pair_energies(self, rij)
         return 0.5 * jnp.where(masks, pair_energies, 0.0).sum()  # type: ignore
 
     @partial(jax.jit, static_argnums=0)
     def compute_forces(self, structure: Structure) -> Array:
         """Compute force component for each atoms."""
-        masks, rij, Rij = _get_neighbor_data(structure, self.r_cutoff)
+        masks, (rij, Rij) = _calculate_masks_with_aux_from_structure(
+            structure.positions, self.r_cutoff, structure.lattice
+        )
         pair_forces = jnp.where(
             jnp.expand_dims(masks, axis=-1),
             _compute_pair_forces(self, rij, Rij),
