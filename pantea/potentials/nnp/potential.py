@@ -113,7 +113,9 @@ class NeuralNetworkPotential:
 
         logger.info(f"Number of elements: {self.num_elements}")
         for element in self.elements:
-            logger.info(f"Element: {element} ({ElementMap.get_atomic_number(element)})")
+            logger.info(
+                f"Element: {element} ({ElementMap.get_atomic_number_from_element(element)})"
+            )
 
         if not self.atomic_potential:
             self._init_atomic_potential()
@@ -382,7 +384,7 @@ class NeuralNetworkPotential:
         """
         # Save scaler parameters for each element separately
         for element in self.settings.elements:
-            atomic_number: int = ElementMap.get_atomic_number(element)
+            atomic_number: int = ElementMap.get_atomic_number_from_element(element)
             scaler_file = Path(
                 self.output_dir,
                 self.settings.scaler_save_naming_format.format(atomic_number),
@@ -397,7 +399,7 @@ class NeuralNetworkPotential:
         Save model weights separately for all elements.
         """
         for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number(element)
+            atomic_number = ElementMap.get_atomic_number_from_element(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),
@@ -421,7 +423,7 @@ class NeuralNetworkPotential:
         """
         # Load scaler parameters for each element separately
         for element in self.elements:
-            atomic_number: int = ElementMap.get_atomic_number(element)
+            atomic_number = ElementMap.get_atomic_number_from_element(element)
             scaler_file = Path(
                 self.output_dir,
                 self.settings.scaler_save_naming_format.format(atomic_number),
@@ -436,7 +438,7 @@ class NeuralNetworkPotential:
         Load model weights separately for all elements.
         """
         for element in self.elements:
-            atomic_number: int = ElementMap.get_atomic_number(element)
+            atomic_number = ElementMap.get_atomic_number_from_element(element)
             model_file = Path(
                 self.output_dir,
                 self.settings.model_save_naming_format.format(atomic_number),

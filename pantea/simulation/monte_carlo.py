@@ -4,6 +4,7 @@ from typing import Optional, Protocol, Tuple
 import jax.numpy as jnp
 import numpy as np
 
+from pantea.atoms.element import ElementMap
 from pantea.atoms.structure import Structure
 from pantea.logger import logger
 from pantea.types import Array, Element
@@ -61,8 +62,10 @@ class MCSimulator:
         if atomic_masses is not None:
             self.masses = atomic_masses.reshape(-1, 1)
         else:
-            logger.info("Extracting atomc masses from input structure")
-            self.masses = initial_structure.get_masses().reshape(-1, 1)
+            logger.info("Extracting atomic masses from input structure")
+            self.masses = ElementMap.get_masses_from_structure(
+                initial_structure
+            ).reshape(-1, 1)
 
         self.step: int = 0
         self.energy = self.potential(initial_structure)

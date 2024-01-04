@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import pytest
 from ase import Atoms
 
+from pantea.atoms.element import ElementMap
 from pantea.atoms.structure import Structure
 from pantea.simulation import LJPotential, MCSimulator
 from pantea.units import units
@@ -75,7 +76,7 @@ class TestMCSimulator:
         structure: Structure,
     ) -> None:
         assert jnp.allclose(mc.positions, structure.positions)
-        assert jnp.allclose(mc.masses, structure.get_masses())
+        assert jnp.allclose(mc.masses, ElementMap.get_masses_from_structure(structure))
 
     @pytest.mark.parametrize(
         "mc, expected",
