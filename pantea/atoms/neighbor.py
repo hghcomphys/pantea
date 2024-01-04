@@ -65,7 +65,12 @@ class Neighbor(BaseJaxPytreeDataClass):
     """
     Finding neighboring atoms.
 
-    This class relies on cutoff masks, which is different from conventional
+    This is useful for efficiently determining the neighboring atoms within
+    a specified cutoff radius. The neighbor list allows for faster calculations
+    properties that depend on nearby atoms, such as computing forces, energies,
+    or evaluating interatomic distances.
+
+    The current implementation relies on cutoff masks, which is different from conventional
     methods used to update the neighbor list (such as defining neighbor indices).
     The rationale behind this approach is that JAX executes efficiently on
     vectorized variables, offering faster performance compared to simple Python loops.

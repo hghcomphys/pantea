@@ -3,17 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import (
-    Any,
-    DefaultDict,
-    Dict,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    cast,
-)
+from typing import Any, DefaultDict, Dict, Iterator, List, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -23,7 +13,6 @@ from jax import tree_util
 
 from pantea.atoms.box import Box, _shift_inside_box
 from pantea.atoms.element import ElementMap
-from pantea.atoms.neighbor import Neighbor
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Dtype, Element, default_dtype
@@ -71,7 +60,6 @@ class Structure(BaseJaxPytreeDataClass):
     atom_types: Array
     element_map: ElementMap
     box: Optional[Box] = None
-    neighbor: Optional[Neighbor] = None
 
     def __post_init__(self) -> None:
         self._assert_jit_dynamic_attributes(
@@ -89,46 +77,10 @@ class Structure(BaseJaxPytreeDataClass):
             expected=(
                 "element_map",
                 "box",
-                "neighbor",
             )
         )
         if self.box is not None:
             self.positions = _shift_inside_box(self.positions, self.lattice)
-
-    @classmethod
-    def from_dict(
-        cls,
-        data: Dict[str, Any],
-        dtype: Optional[Dtype] = None,
-    ) -> Structure:
-        """
-        Instantiate a structure object using an input data dictionary that contains
-        distinct lists of positions, forces, elements, lattice, etc.
-
-        :param data: input data
-        :param dtype: data type for arrays, defaults to None
-        :return: the initialized Structure
-        """
-        logging.debug(f"Initializing {cls.__name__} from data dictionary")
-
-        if dtype is None:
-            dtype = default_dtype.FLOATX
-
-        input_data: DefaultDict[str, List] = defaultdict(list, data)
-        kwargs: Dict[str, Any] = dict()
-        try:
-            element_map: ElementMap = ElementMap(input_data["elements"])
-            kwargs.update(
-                cls._init_arrays(input_data, element_map=element_map, dtype=dtype),
-            )
-            kwargs["element_map"] = element_map
-            kwargs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
-        except KeyError:
-            logger.error(
-                "Cannot find at least one of the expected keyword in the input data.",
-                exception=KeyError,
-            )
-        return cls(**kwargs)
 
     @classmethod
     def from_ase(
@@ -150,10 +102,10 @@ class Structure(BaseJaxPytreeDataClass):
         if dtype is None:
             dtype = default_dtype.FLOATX
 
-        kwargs: Dict[str, Any] = dict()
+        kwargs = dict()
         data = {
             "elements": [
-                ElementMap.atomic_number_to_element(n)
+                ElementMap.get_element_from_atomic_number(n)
                 for n in atoms.get_atomic_numbers()
             ],
             "lattice": np.array(atoms.get_cell() * units.FROM_ANGSTROM, dtype=dtype),
@@ -171,9 +123,9 @@ class Structure(BaseJaxPytreeDataClass):
             if attr in data:
                 data[f"total_{attr}"] = sum(data[attr])
 
-        input_data: DefaultDict[str, List] = defaultdict(list, data)
+        input_data = defaultdict(list, data)
         try:
-            element_map: ElementMap = ElementMap(input_data["elements"])
+            element_map: ElementMap = ElementMap.from_list(input_data["elements"])
             kwargs.update(
                 cls._init_arrays(input_data, element_map=element_map, dtype=dtype),
             )
@@ -187,14 +139,48 @@ class Structure(BaseJaxPytreeDataClass):
         return cls(**kwargs)
 
     @classmethod
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+        dtype: Optional[Dtype] = None,
+    ) -> Structure:
+        """
+        Instantiate a structure object using an input data dictionary that contains
+        distinct lists of positions, forces, elements, lattice, etc.
+
+        :param data: input data
+        :param dtype: data type for arrays, defaults to None
+        :return: the initialized Structure
+        """
+        logging.debug(f"Initializing {cls.__name__} from an input dictionary")
+
+        if dtype is None:
+            dtype = default_dtype.FLOATX
+
+        input_data: DefaultDict[str, List] = defaultdict(list, data)
+        kwargs: Dict[str, Any] = dict()
+        try:
+            element_map = ElementMap.from_list(input_data["elements"])
+            kwargs.update(
+                cls._init_arrays(input_data, element_map=element_map, dtype=dtype),
+            )
+            kwargs["element_map"] = element_map
+            kwargs["box"] = cls._init_box(input_data["lattice"], dtype=dtype)
+        except KeyError:
+            logger.error(
+                "Cannot find at least one of the expected keyword in the input data dictionary.",
+                exception=KeyError,
+            )
+        return cls(**kwargs)
+
+    @classmethod
     def _init_arrays(
         cls,
         data: Dict[str, Any],
         element_map: ElementMap,
         dtype: Dtype,
     ) -> Dict[str, Array]:
-        """Initialize array atomic attributes from the input data dictionary."""
-
+        """Initialize atom attribute arrays from the input data dictionary."""
         logger.debug(f"{cls.__name__}: allocating arrays as follows:")
         arrays: Dict[str, Array] = dict()
         for atom_attr in Structure._get_atom_attributes():
@@ -202,7 +188,10 @@ class Structure(BaseJaxPytreeDataClass):
                 array: Array
                 if atom_attr == "atom_types":
                     array = jnp.array(
-                        [element_map(atom) for atom in data["elements"]],
+                        [
+                            element_map.get_atom_type_from_element(name)
+                            for name in data["elements"]
+                        ],
                         dtype=default_dtype.INDEX,
                     )
                 else:
@@ -218,28 +207,12 @@ class Structure(BaseJaxPytreeDataClass):
                 )
         return arrays
 
-    def update_neighbor(self, r_cutoff: float) -> None:
-        """
-        Update the neighbor list, building it if required.
-
-        This is useful for efficiently determining the neighboring atoms within
-        a specified cutoff radius. The neighbor list allows for faster calculations
-        properties that depend on nearby atoms, such as computing forces, energies,
-        or evaluating interatomic distances.
-
-        There are various scenarios that may necessitate updating the neighbor list,
-        including changes in the positions of atoms within the structure,
-        modifications to the cutoff radius, or both.
-        """
-        self.neighbor = cast(Neighbor, Neighbor.from_structure(self, r_cutoff))
-
     @classmethod
     def _init_box(
         cls,
         lattice: List[float],
         dtype: Dtype,
     ) -> Optional[Box]:
-        """Initialize simulation box from input lattice matrix."""
         if len(lattice) > 0:
             return Box.from_list(lattice, dtype=dtype)
         else:
@@ -265,41 +238,19 @@ class Structure(BaseJaxPytreeDataClass):
         return self.positions.dtype
 
     @property
-    def r_cutoff(self) -> Optional[float]:
-        """Return cutoff radius for neighboring atoms."""
-        if self.neighbor is not None:
-            return self.neighbor.r_cutoff
-
-    @property
     def lattice(self) -> Optional[Array]:
         """Cell 3x3 matrix."""
         if self.box is not None:
             return self.box.lattice
 
     def get_unique_elements(self) -> Tuple[Element, ...]:
-        return tuple(sorted(set(self.get_elements())))
+        return self.element_map.unique_elements
 
     def get_elements(self) -> Tuple[Element, ...]:
         """Get array of elements."""
         to_element = self.element_map.atom_type_to_element
         atom_types_host = jax.device_get(self.atom_types)
-        return tuple(str(to_element[int(at)]) for at in atom_types_host)
-
-    def get_masses(self) -> Array:
-        """Get array of atomic masses."""
-        to_element = self.element_map.atom_type_to_element
-        elements = (to_element[int(at)] for at in self.atom_types)
-        return jnp.array(
-            tuple(ElementMap.element_to_atomic_mass(element) for element in elements)
-        )
-
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}"
-            f"(natoms={self.natoms}, "
-            f"elements={self.get_unique_elements()}, "
-            f"dtype={self.dtype})"
-        )
+        return tuple(str(to_element[at]) for at in atom_types_host)
 
     def select(self, element: Element) -> Array:
         """
@@ -326,7 +277,7 @@ class Structure(BaseJaxPytreeDataClass):
             data[atom_attr] = np.asarray(array)
         data["lattice"] = self.box.lattice if self.box else []
         data["elements"] = [
-            self.element_map.to_element(at) for at in data["atom_types"]
+            self.element_map.get_element_from_atom_type(n) for n in data["atom_types"]
         ]
         return data
 
@@ -385,6 +336,16 @@ class Structure(BaseJaxPytreeDataClass):
         energy_offset = self._get_energy_offset(atom_energy)
         self.energies += energy_offset
         self.total_energy += energy_offset.sum()
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(natoms={self.natoms}, "
+            f"elements={self.get_unique_elements()}, "
+            f"dtype={self.dtype})"
+        )
+
+    # ---
 
     def _get_per_element_inputs(self) -> Iterator[Tuple[Element, Inputs]]:
         for element in self.get_unique_elements():

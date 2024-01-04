@@ -1,5 +1,7 @@
 import os
 
+from pantea.atoms.element import ElementMap
+
 os.environ["JAX_ENABLE_X64"] = "1"
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
@@ -181,17 +183,16 @@ class TestStructure:
         structure: Structure,
         expected: Tuple,
     ) -> None:
-        if expected[2] is not None:
-            structure.update_neighbor(expected[2])
         assert structure.natoms == expected[0]
         assert structure.get_unique_elements() == expected[1]
-        assert structure.r_cutoff == expected[2]
         assert structure.dtype == expected[3]
         if structure.lattice is None:
             assert structure.lattice is expected[4]
         else:
             assert jnp.allclose(structure.lattice, expected[4])
-        assert jnp.allclose(structure.get_masses(), expected[5])
+        assert jnp.allclose(
+            ElementMap.get_masses_from_structure(structure), expected[5]
+        )
         assert structure.get_elements() == expected[6]
 
     @pytest.mark.parametrize(
@@ -203,5 +204,8 @@ class TestStructure:
         structure: Structure,
     ) -> None:
         another_structure = Structure.from_dict(structure.to_dict())
-        # for attr in st1._get_atom_attributes():
-        #     assert jnp.allclose(getattr(st1, attr), getattr(st2, attr))
+        for attr in structure._get_atom_attributes():
+            assert jnp.allclose(
+                getattr(structure, attr),
+                getattr(another_structure, attr),
+            )
