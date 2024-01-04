@@ -12,6 +12,14 @@ pantea.atoms.box module
    :undoc-members:
    :show-inheritance:
 
+pantea.atoms.distance module
+----------------------------
+
+.. automodule:: pantea.atoms.distance
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pantea.atoms.element module
 ---------------------------
 

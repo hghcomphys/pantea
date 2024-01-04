@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from pantea.atoms import Structure
+from pantea.atoms.element import ElementMap
 from pantea.logger import logger
 from pantea.simulation.thermostat import BrendsenThermostat
 from pantea.types import Array, Element
@@ -130,8 +131,10 @@ class MDSimulator:
         if atomic_masses is not None:
             self.masses = atomic_masses.reshape(-1, 1)
         else:
-            logger.info("Extracting atomc masses from input structure")
-            self.masses = initial_structure.get_masses().reshape(-1, 1)
+            logger.info("Extracting atomic masses from input structure")
+            self.masses = ElementMap.get_masses_from_structure(
+                initial_structure
+            ).reshape(-1, 1)
 
         self.velocities: Array
         if initial_velocities is not None:

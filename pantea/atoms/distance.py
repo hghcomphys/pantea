@@ -20,6 +20,7 @@ def _calculate_distances_with_aux_per_atom(
     # see https://github.com/google/jax/issues/3058
     is_zero = jnp.prod(dx == 0.0, axis=1, keepdims=True, dtype=bool)
     dx_masked = jnp.where(is_zero, 1.0, dx)
+    # TODO: replace where with lax.cond to avoid calculating norm for all items
     distances = jnp.linalg.norm(dx_masked, ord=2, axis=1)  # type: ignore
     distances = jnp.where(is_zero[..., 1], 0.0, distances)
     return distances, dx
@@ -56,7 +57,7 @@ def _calculate_distances(
     atom_positions: Array,
     neighbor_positions: Array,
     lattice: Optional[Array] = None,
-) -> Tuple[Array, Array]:
+) -> Array:
     return _vmap_calculate_distances(atom_positions, neighbor_positions, lattice)
 
 

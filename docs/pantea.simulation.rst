@@ -4,26 +4,26 @@ pantea.simulation package
 Submodules
 ----------
 
-pantea.simulation.lj module
----------------------------
+pantea.simulation.lennard\_jones module
+---------------------------------------
 
-.. automodule:: pantea.simulation.lj
+.. automodule:: pantea.simulation.lennard_jones
    :members:
    :undoc-members:
    :show-inheritance:
 
-pantea.simulation.mc module
----------------------------
+pantea.simulation.molecular\_dynamics module
+--------------------------------------------
 
-.. automodule:: pantea.simulation.mc
+.. automodule:: pantea.simulation.molecular_dynamics
    :members:
    :undoc-members:
    :show-inheritance:
 
-pantea.simulation.md module
----------------------------
+pantea.simulation.monte\_carlo module
+-------------------------------------
 
-.. automodule:: pantea.simulation.md
+.. automodule:: pantea.simulation.monte_carlo
    :members:
    :undoc-members:
    :show-inheritance:
