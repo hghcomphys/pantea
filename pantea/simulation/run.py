@@ -8,20 +8,23 @@ from pantea.atoms.structure import Structure
 from pantea.logger import logger
 
 
-class SimulatorInterface(Protocol):
-    step: int
-
-    def repr_physical_params(self) -> None:
-        ...
-
+class MDSystemInterface(Protocol):
     def get_structure(self) -> Structure:
         ...
 
-    def update(self) -> None:
+
+class SimulatorInterface(Protocol):
+    step: int
+
+    def repr_physical_params(self, system: MDSystemInterface) -> None:
+        ...
+
+    def simulate_one_step(self, system: MDSystemInterface) -> None:
         ...
 
 
 def run_simulation(
+    system: MDSystemInterface,
     simulator: SimulatorInterface,
     num_steps: int = 1,
     output_freq: Optional[int] = None,
@@ -29,8 +32,10 @@ def run_simulation(
     append: bool = False,
 ) -> None:
     """
-    Run an input simulator for a given number of steps.
+    Simulate input system for a given number of steps.
 
+    :param system: a system of particles and the interacting potential.
+    :type system: MDSystemInterface
     :param simulator: either a molecular dynamics (MD) or monte carlo (MC) simulator
     :type simulator: SimulatorInterface
     :param num_steps: number of steps, defaults to 1
@@ -42,13 +47,10 @@ def run_simulation(
     :param append: whether append to the exiting configuration file or not, defaults to False
     :type append: bool, optional
 
-
-    The input simulator, for example, can be molecular dynamics (MD) or
-    monte carlo (MC).
     """
 
     cls_name = simulator.__class__.__name__
-    logger.info(f"Running {cls_name} for {num_steps} steps")
+    logger.info(f"MD Simulating {cls_name} for {num_steps} steps")
 
     if output_freq is None:
         output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)
@@ -69,13 +71,13 @@ def run_simulation(
     try:
         for _ in range(num_steps):
             if is_output and ((simulator.step - init_step) % output_freq == 0):
-                print(simulator.repr_physical_params())
+                print(simulator.repr_physical_params(system))
                 if filename is not None:
-                    atoms = simulator.get_structure().to_ase()
+                    atoms = system.get_structure().to_ase()
                     ase.io.write(str(filename), atoms, append=True)
-            simulator.update()
+            simulator.simulate_one_step(system)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     if is_output:
-        print(simulator.repr_physical_params())
+        print(simulator.repr_physical_params(system))

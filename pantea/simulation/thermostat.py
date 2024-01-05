@@ -1,13 +1,19 @@
 from typing import Protocol
 
 import jax.numpy as jnp
+
 from pantea.types import Array
 
 
 class MDSimulatorInterface(Protocol):
-    temperature: float
     time_step: float
+
+
+class MDSystemInterface(Protocol):
     velocities: Array
+
+    def get_temperature(self) -> Array:
+        ...
 
 
 class BrendsenThermostat:
@@ -24,10 +30,11 @@ class BrendsenThermostat:
     def get_rescaled_velocities(
         self,
         simulator: MDSimulatorInterface,
+        system: MDSystemInterface,
     ) -> Array:
         scaling_factor = jnp.sqrt(
             1.0
             + (simulator.time_step / self.time_constant)
-            * (simulator.temperature / self.target_temperature - 1.0)
+            * (system.get_temperature() / self.target_temperature - 1.0)
         )
-        return simulator.velocities / scaling_factor
+        return system.velocities / scaling_factor
