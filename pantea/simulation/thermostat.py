@@ -9,7 +9,7 @@ class MDSimulatorInterface(Protocol):
     time_step: float
 
 
-class MDSystemInterface(Protocol):
+class SystemInterface(Protocol):
     velocities: Array
 
     def get_temperature(self) -> Array:
@@ -30,7 +30,7 @@ class BrendsenThermostat:
     def get_rescaled_velocities(
         self,
         simulator: MDSimulatorInterface,
-        system: MDSystemInterface,
+        system: SystemInterface,
     ) -> Array:
         scaling_factor = jnp.sqrt(
             1.0

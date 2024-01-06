@@ -6,11 +6,20 @@ import ase.io
 
 from pantea.atoms.structure import Structure
 from pantea.logger import logger
+from pantea.types import Array
+
+
+class PotentialInterface(Protocol):
+    def __call__(self, structure: Structure) -> Array:
+        ...
+
+    def compute_forces(self, structure: Structure) -> Array:
+        ...
 
 
 class MDSystemInterface(Protocol):
-    def get_structure(self) -> Structure:
-        ...
+    potential: PotentialInterface
+    structure: Structure
 
 
 class SimulatorInterface(Protocol):
@@ -23,7 +32,7 @@ class SimulatorInterface(Protocol):
         ...
 
 
-def run_simulation(
+def simulate(
     system: MDSystemInterface,
     simulator: SimulatorInterface,
     num_steps: int = 1,
@@ -32,7 +41,7 @@ def run_simulation(
     append: bool = False,
 ) -> None:
     """
-    Simulate input system for a given number of steps.
+    Simulate system for a given number of steps.
 
     :param system: a system of particles and the interacting potential.
     :type system: MDSystemInterface
@@ -46,7 +55,6 @@ def run_simulation(
     :type filename: Optional[Path], optional
     :param append: whether append to the exiting configuration file or not, defaults to False
     :type append: bool, optional
-
     """
 
     cls_name = simulator.__class__.__name__
@@ -67,13 +75,14 @@ def run_simulation(
             with open(str(filename), "w"):
                 pass
 
+    # system.structure.forces = system.potential.compute_forces(system.structure)
     init_step: int = simulator.step
     try:
         for _ in range(num_steps):
             if is_output and ((simulator.step - init_step) % output_freq == 0):
                 print(simulator.repr_physical_params(system))
                 if filename is not None:
-                    atoms = system.get_structure().to_ase()
+                    atoms = system.structure.to_ase()
                     ase.io.write(str(filename), atoms, append=True)
             simulator.simulate_one_step(system)
 
