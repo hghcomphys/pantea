@@ -28,10 +28,18 @@ pantea.simulation.monte\_carlo module
    :undoc-members:
    :show-inheritance:
 
-pantea.simulation.run module
-----------------------------
+pantea.simulation.simulate module
+---------------------------------
 
-.. automodule:: pantea.simulation.run
+.. automodule:: pantea.simulation.simulate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pantea.simulation.system module
+-------------------------------
+
+.. automodule:: pantea.simulation.system
    :members:
    :undoc-members:
    :show-inheritance:

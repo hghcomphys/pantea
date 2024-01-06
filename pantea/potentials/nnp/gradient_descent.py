@@ -121,12 +121,12 @@ class GradientDescentUpdater:
             for _ in tqdm(range(steps)):
                 structures: List[Structure] = random.choices(dataset, k=batch_size)
                 xbatch = tuple(
-                    structure.get_per_element_inputs() for structure in structures
+                    structure.get_inputs_per_element() for structure in structures
                 )
                 ybatch = tuple(
                     (
                         structure.total_energy,
-                        structure.get_per_element_forces(),
+                        structure.get_forces_per_element(),
                     )
                     for structure in structures
                 )

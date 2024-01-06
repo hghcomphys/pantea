@@ -347,7 +347,7 @@ class Structure(BaseJaxPytreeDataClass):
 
     # ---
 
-    def _get_per_element_inputs(self) -> Iterator[Tuple[Element, Inputs]]:
+    def _get_inputs_per_element(self) -> Iterator[Tuple[Element, Inputs]]:
         for element in self.get_unique_elements():
             atom_indices: Array = self.select(element)
             yield element, Inputs(
@@ -361,29 +361,29 @@ class Structure(BaseJaxPytreeDataClass):
                 ),
             )
 
-    def get_per_element_inputs(self) -> Dict[Element, Inputs]:
+    def get_inputs_per_element(self) -> Dict[Element, Inputs]:
         """Get required info per element for training and evaluating a potential."""
-        return {element: input for element, input in self._get_per_element_inputs()}
+        return {element: input for element, input in self._get_inputs_per_element()}
 
-    def _get_per_element_positions(self) -> Iterator[Tuple[Element, Array]]:
+    def _get_positions_per_element(self) -> Iterator[Tuple[Element, Array]]:
         for element in self.get_unique_elements():
             atom_indices = self.select(element)
             yield element, self.positions[atom_indices]
 
-    def get_per_element_positions(self) -> Dict[Element, Array]:
+    def get_positions_per_element(self) -> Dict[Element, Array]:
         """Get position of atoms per element."""
         return {
-            element: position for element, position in self._get_per_element_positions()
+            element: position for element, position in self._get_positions_per_element()
         }
 
-    def _get_per_element_forces(self) -> Iterator[Tuple[Element, Array]]:
+    def _get_forces_per_element(self) -> Iterator[Tuple[Element, Array]]:
         for element in self.get_unique_elements():
             atom_indices = self.select(element)
             yield element, self.forces[atom_indices]
 
-    def get_per_element_forces(self) -> Dict[Element, Array]:
+    def get_forces_per_element(self) -> Dict[Element, Array]:
         """Get force components per element."""
-        return {element: force for element, force in self._get_per_element_forces()}
+        return {element: force for element, force in self._get_forces_per_element()}
 
 
 class Inputs(NamedTuple):

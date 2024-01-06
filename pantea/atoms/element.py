@@ -92,7 +92,7 @@ class ElementMap:
         The atom types are sorted based on elements' atomic number.
         """
         logger.debug("Creating element map from list of elements")
-        unique_elements: Tuple[Element, ...] = tuple(set(elements))
+        unique_elements: Tuple[Element, ...] = tuple(sorted(set(elements)))
         element_to_atomic_number = {
             elem: _KNOWN_ELEMENTS_DICT[elem] for elem in unique_elements
         }

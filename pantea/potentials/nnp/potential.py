@@ -304,9 +304,9 @@ class NeuralNetworkPotential:
 
         return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
-            structure.get_per_element_positions(),
+            structure.get_positions_per_element(),
             self.model_params,
-            structure.get_per_element_inputs(),
+            structure.get_inputs_per_element(),
         )
 
     def compute_forces(self, structure: Structure) -> Array:
@@ -318,9 +318,9 @@ class NeuralNetworkPotential:
         """
         force_dict: Dict[Element, Array] = _compute_force(
             frozendict(self.atomic_potential),  # must be hashable
-            structure.get_per_element_positions(),
+            structure.get_positions_per_element(),
             self.model_params,
-            structure.get_per_element_inputs(),
+            structure.get_inputs_per_element(),
         )
         force: Array = jnp.empty_like(structure.forces)
         for element in structure.get_unique_elements():

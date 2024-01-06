@@ -45,7 +45,7 @@ class AtomicPotential:
             self,
             structure.positions[aid],
             params,
-            structure.get_per_element_inputs()[element],
+            structure.get_inputs_per_element()[element],
         )
 
     @property
