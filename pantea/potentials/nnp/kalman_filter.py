@@ -102,21 +102,21 @@ class KalmanFilterUpdater:
             E_ref: Array = structure.total_energy
             E_pot: Array = _compute_energy(
                 frozendict(atomic_potential),
-                structure.get_per_element_positions(),
+                structure.get_positions_per_element(),
                 model_params,
-                structure.get_per_element_inputs(),
+                structure.get_inputs_per_element(),
             )
             return (E_ref - E_pot)[0] / structure.natoms
 
         def compute_force_error(state_vector: Array, structure: Structure) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
-            F_ref: Array = _tree_flatten(structure.get_per_element_forces())
+            F_ref: Array = _tree_flatten(structure.get_forces_per_element())
             F_pot: Array = _tree_flatten(
                 _compute_force(
                     frozendict(atomic_potential),
-                    structure.get_per_element_positions(),
+                    structure.get_positions_per_element(),
                     model_params,
-                    structure.get_per_element_inputs(),
+                    structure.get_inputs_per_element(),
                 )
             )
             return (F_ref - F_pot)[..., 0]

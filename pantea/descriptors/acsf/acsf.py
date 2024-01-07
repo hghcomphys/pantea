@@ -7,7 +7,10 @@ import jax
 import jax.numpy as jnp
 from jax import jit, lax, vmap
 
-from pantea.atoms.distance import _calculate_distances_per_atom
+from pantea.atoms.distance import (
+    _calculate_distances_per_atom,
+    _calculate_distances_with_aux_per_atom,
+)
 from pantea.atoms.neighbor import _calculate_masks_per_atom
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
@@ -118,7 +121,7 @@ def _inner_loop_over_angular_acsf_terms(
 
     rjk = jnp.where(  # diff_jk = diff_ji - diff_ik
         mask_ik,
-        _calculate_distances_per_atom(Rij, diff_i, lattice)[0],
+        _calculate_distances_per_atom(Rij, diff_i, lattice),
         0.0,
     )  # second tuple output for Rjk
 
@@ -158,7 +161,7 @@ def _calculate_descriptor_per_atom(
     dtype = single_atom_position.dtype
     result: Array = jnp.empty(acsf.num_symmetry_functions, dtype=dtype)
 
-    dist_i, diff_i = _calculate_distances_per_atom(
+    dist_i, diff_i = _calculate_distances_with_aux_per_atom(
         single_atom_position, neighbor_positions, lattice
     )
 

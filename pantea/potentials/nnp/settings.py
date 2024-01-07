@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
+from pydantic import Field, ValidationError, validator
+
 from pantea.atoms.element import ElementMap
 from pantea.config import _CFG
 from pantea.logger import logger
 from pantea.types import Element
 from pantea.utils.tokenize import tokenize
-from pydantic import Field, ValidationError, validator
 
 
 class RadialSymFuncArgs(NamedTuple):
@@ -160,7 +161,8 @@ class NeuralNetworkPotentialSettings(_CFG):
                 kwargs[keyword] = tokens[0]
             elif keyword == "elements":
                 kwargs[keyword] = sorted(
-                    set([t for t in tokens]), key=ElementMap.get_atomic_number
+                    set([t for t in tokens]),
+                    key=ElementMap.get_atomic_number_from_element,
                 )
             elif keyword == "atom_energy":
                 kwargs[keyword].update({tokens[0]: tokens[1]})
@@ -287,9 +289,7 @@ class NeuralNetworkPotentialSettings(_CFG):
                 keyword, tokens = tokenize(line, comment="#")  # type: ignore
                 if keyword is not None:
                     if keyword not in cls.__annotations__:
-                        logger.debug(
-                            f"Unknown keyword (line {n_line}):'{keyword}'"
-                        )
+                        logger.debug(f"Unknown keyword (line {n_line}):'{keyword}'")
                     else:
                         logger.debug(f"keyword:'{keyword}', tokens:{tokens}")
                         dict_[f"line{n_line:04d}_{keyword}"] = tokens
@@ -297,10 +297,7 @@ class NeuralNetworkPotentialSettings(_CFG):
 
     @validator("elements")
     def number_of_elements_match(cls, v, values) -> Any:
-        if (
-            "number_of_elements" in values
-            and len(v) != values["number_of_elements"]
-        ):
+        if "number_of_elements" in values and len(v) != values["number_of_elements"]:
             raise ValueError("number of elements is not consistent")
         return v
 
