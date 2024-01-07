@@ -73,7 +73,9 @@ class MCSimulator:
             low=0, high=system.natoms, size=(self.movements_per_step,)
         )
         new_positions = system.positions.at[atom_indices].add(displacements)
-        new_structure = replace(system.structure, positions=new_positions)
+        new_structure = replace(
+            system.structure, positions=new_positions
+        )  # shallow copy
         new_energy = system.potential(new_structure)
 
         energy = system.structure.total_energy

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional, Protocol, Tuple
 
@@ -66,14 +67,14 @@ class System:
         structure: Structure,
         potential: PotentialInterface,
         temperature: float = 300.0,
-        seed: int = 2023,
+        seed: int = 2024,
     ) -> System:
         logger.debug(f"Creating {cls.__name__} from Structure")
         masses = ElementMap.get_masses_from_structure(structure).reshape(-1, 1)
         velocities = cls.generate_random_velocities(
             jnp.array(temperature), masses, seed
         )
-        return cls(potential, structure, velocities, masses)
+        return cls(potential, deepcopy(structure), velocities, masses)
 
     def __post_init__(self) -> None:
         self.update_forces_from_positions()

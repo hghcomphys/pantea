@@ -18,14 +18,14 @@ class LJPotentialParams(Protocol):
     sigma: float
 
 
-# @partial(jax.jit, static_argnums=0)
+@partial(jax.jit, static_argnums=0)
 def _compute_pair_energies(params: LJPotentialParams, r: Array) -> Array:
     term = params.sigma / r
     term6 = term**6
     return 4.0 * params.epsilon * term6 * (term6 - 1.0)
 
 
-# @partial(jax.jit, static_argnums=0)
+@partial(jax.jit, static_argnums=0)
 def _compute_pair_forces(params: LJPotentialParams, r: Array, R: Array) -> Array:
     term = params.sigma / r
     term6 = term**6
@@ -46,7 +46,7 @@ class LJPotential:
         self.epsilon = epsilon
         self.r_cutoff = r_cutoff
 
-    @partial(jax.jit, static_argnums=0)
+    # @partial(jax.jit, static_argnums=0)
     def __call__(self, structure: Structure) -> Array:
         """Compute total energy."""
         masks, (rij, _) = _calculate_masks_with_aux_from_structure(
@@ -55,7 +55,7 @@ class LJPotential:
         pair_energies = _compute_pair_energies(self, rij)
         return 0.5 * jnp.where(masks, pair_energies, 0.0).sum()  # type: ignore
 
-    @partial(jax.jit, static_argnums=0)
+    # @partial(jax.jit, static_argnums=0)
     def compute_forces(self, structure: Structure) -> Array:
         """Compute force component for each atoms."""
         masks, (rij, Rij) = _calculate_masks_with_aux_from_structure(

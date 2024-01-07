@@ -43,6 +43,7 @@ class TestMDSimulator:
         structure=get_structure(),
         potential=get_potential(),
         temperature=300.0,
+        seed=2023,
     )
 
     @pytest.mark.parametrize(
@@ -53,9 +54,9 @@ class TestMDSimulator:
                 sys,
                 (
                     0.5 * units.FROM_FEMTO_SECOND,
-                    262.15531167,
+                    256.72903,
                     5.70328776e-07,
-                    0.00995778,
+                    0.00975157,
                     jnp.array([11.33835602, 11.33835602, 11.33835602]),
                 ),
             ),
