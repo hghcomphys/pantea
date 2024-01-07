@@ -83,12 +83,13 @@ The resulting values can then be used to construct a machine learning potential.
         structures = RunnerDataset('input.data')
         structure = structures[0]
         print(structure)
-        # >> Structure(natoms=12, elements=('H', 'O'), dtype=float32) 
+        # >> Structure(natoms=12, elements=('H', 'O'), dtype=float32)
 
         # Define an ACSF descriptor for hydrogen element
         # It includes two radial (G2) and angular (G3) symmetry functions
         descriptor = ACSF('H')
         cfn = CutoffFunction.from_cutoff_type(r_cutoff=12.0, cutoff_type='tanh')
+        for _ in range(1):
         descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
         print(descriptor)
@@ -97,16 +98,16 @@ The resulting values can then be used to construct a machine learning potential.
         values = descriptor(structure)
         print("Descriptor values:\n", values)
         # >> Descriptor values:
-        # [[0.01952942 1.1310327 ]
-        # [0.01952756 1.0431229 ]
+        # [[0.01952943 1.13103234]
+        #  [0.01952756 1.04312263]
         # ...
-        # [0.00228752 0.4144546 ]]
+        #  [0.00228752 0.41445455]]
 
         gradient = descriptor.grad(structure, atom_index=0)
         print("Descriptor gradient:\n", gradient)
         # >> Descriptor gradient:
-        # [[ 0.0464524  -0.05037863 -0.06146219]
-        # [-0.10481848 -0.01841717  0.04760207]]
+        # [[ 0.04645236 -0.05037861 -0.06146214]
+        # [-0.10481855 -0.01841708  0.04760214]]
 
 
 -------------------------

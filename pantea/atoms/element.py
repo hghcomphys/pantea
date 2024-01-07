@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Protocol, Tuple
+from typing import Dict, Mapping, Protocol, Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -86,7 +86,7 @@ class ElementMap:
     atom_type_to_element: Dict[int, Element]
 
     @classmethod
-    def from_list(cls, elements: List[Element]) -> ElementMap:
+    def from_list(cls, elements: Sequence[Element]) -> ElementMap:
         """
         Create dictionary to map elements, atom types, and atomic numbers.
         The atom types are sorted based on elements' atomic number.

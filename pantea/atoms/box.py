@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional, Sequence
 
 import jax
 import jax.numpy as jnp
@@ -48,7 +48,7 @@ class Box(BaseJaxPytreeDataClass):
     @classmethod
     def from_list(
         cls,
-        data: List[float],
+        data: Sequence[float],
         dtype: Optional[Dtype] = None,
     ) -> Box:
         logger.debug(f"Initializing {cls.__name__} from list")
