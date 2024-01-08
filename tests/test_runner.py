@@ -8,8 +8,8 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 
-from pantea.atoms.structure import Structure
-from pantea.datasets.runner import RunnerDataset
+from pantea.atoms import Structure
+from pantea.datasets import Dataset
 from pantea.types import default_dtype
 
 H2O_FILENAME = Path("tests", "h2o.data")
@@ -83,9 +83,9 @@ H2O_DATA = {
 
 
 class TestRunnerDataset:
-    h2o: RunnerDataset = RunnerDataset(filename=H2O_FILENAME)
-    h2o_persist: RunnerDataset = RunnerDataset(filename=H2O_FILENAME, persist=True)
-    h2o_float64: RunnerDataset = RunnerDataset(filename=H2O_FILENAME, dtype=jnp.float64)
+    h2o: Dataset = Dataset.from_runner(filename=H2O_FILENAME)
+    h2o_persist: Dataset = Dataset.from_runner(filename=H2O_FILENAME, persist=True)
+    h2o_float64: Dataset = Dataset.from_runner(filename=H2O_FILENAME, dtype=jnp.float64)
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -98,7 +98,7 @@ class TestRunnerDataset:
     )
     def test_general(
         self,
-        dataset: RunnerDataset,
+        dataset: Dataset,
         expected: Tuple,
     ) -> None:
         num_structures = len(dataset)
@@ -121,10 +121,10 @@ class TestRunnerDataset:
     )
     def test_dtype(
         self,
-        dataset: RunnerDataset,
+        dataset: Dataset,
         expected: Tuple,
     ) -> None:
-        assert dataset.dtype == expected[0]
+        assert dataset.data.dtype == expected[0]
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -141,16 +141,16 @@ class TestRunnerDataset:
     )
     def test_caching(
         self,
-        dataset: RunnerDataset,
+        dataset: Dataset,
         expected: Tuple,
     ) -> None:
-        assert len(dataset._cache) == expected[0]
+        assert len(dataset.cache) == expected[0]
         dataset[0]
-        assert len(dataset._cache) == expected[1]
+        assert len(dataset.cache) == expected[1]
         dataset[0]
-        assert len(dataset._cache) == expected[2]
+        assert len(dataset.cache) == expected[2]
         dataset[1]
-        assert len(dataset._cache) == expected[3]
+        assert len(dataset.cache) == expected[3]
 
     @pytest.mark.parametrize(
         "dataset, expected",
@@ -166,7 +166,7 @@ class TestRunnerDataset:
     )
     def test_loading_structure(
         self,
-        dataset: RunnerDataset,
+        dataset: Dataset,
         expected: Tuple,
     ) -> None:
         structure: Structure = dataset[1]

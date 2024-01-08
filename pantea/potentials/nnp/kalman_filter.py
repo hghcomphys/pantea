@@ -10,7 +10,7 @@ from jax import flatten_util
 from tqdm import tqdm
 
 from pantea.atoms.structure import Structure
-from pantea.datasets.dataset import DatasetInterface
+from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
 from pantea.potentials.atomic_potential import AtomicPotential
 from pantea.potentials.energy import _compute_energy
@@ -78,7 +78,7 @@ class KalmanFilterUpdater:
 
     def fit(
         self,
-        dataset: DatasetInterface,
+        dataset: Dataset,
     ) -> defaultdict:
         """
         Fit potential weights.

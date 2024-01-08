@@ -15,7 +15,7 @@ from optax import GradientTransformation
 from tqdm import tqdm
 
 from pantea.atoms.structure import Structure
-from pantea.datasets.dataset import DatasetInterface
+from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
 from pantea.potentials.energy import _energy_fn
 from pantea.potentials.force import _compute_force
@@ -99,7 +99,7 @@ class GradientDescentUpdater:
 
     # ------------------------------------------------------------------------
 
-    def fit(self, dataset: DatasetInterface, **kwargs):
+    def fit(self, dataset: Dataset, **kwargs):
         """Train potential."""
         batch_size: int = kwargs.get("batch_size", 1)
         steps: int = kwargs.get("steps", math.ceil(len(dataset) / batch_size))
