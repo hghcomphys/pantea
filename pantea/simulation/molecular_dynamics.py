@@ -49,7 +49,7 @@ class MDSimulator:
         """
 
         logger.debug(f"Initializing {self.__class__.__name__}")
-        self.time_step = time_step
+        self.time_step: Array = jnp.array(time_step)
         self.thermostat = thermostat
         self.step: int = 0
         self.elapsed_time: float = 0.0
@@ -58,22 +58,21 @@ class MDSimulator:
         """Update parameters for next time step."""
         self.verlet_integration(system)
         self.step += 1
-        self.elapsed_time += self.time_step
+        self.elapsed_time += float(self.time_step)
         if self.thermostat is not None:
             system.velocities = self.thermostat.get_rescaled_velocities(self, system)
 
     def verlet_integration(self, system: System) -> None:
         """Update atom positions, velocities, and forces based on Verlet algorithm."""
-        time_step = jnp.array(self.time_step)
         new_positions = _get_verlet_new_positions(
-            system.positions, system.velocities, system.forces, time_step
+            system.positions, system.velocities, system.forces, self.time_step
         )
         if system.box is not None:
             new_positions = _shift_inside_box(new_positions, system.box.lattice)
         system.structure.positions = new_positions
         new_forces = system.potential.compute_forces(system.structure)
         system.velocities = _get_verlet_new_velocities(
-            system.velocities, system.forces, new_forces, time_step
+            system.velocities, system.forces, new_forces, self.time_step
         )
         system.structure.forces = new_forces
 
