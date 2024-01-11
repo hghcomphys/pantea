@@ -75,15 +75,15 @@ The resulting values can then be used to construct a machine learning potential.
 
 .. code-block:: python
 
-        from pantea.datasets import RunnerDataset
+        from pantea.datasets import Dataset
         from pantea.descriptors import ACSF
         from pantea.descriptors.acsf import CutoffFunction, G2, G3
 
         # Read atomic structure dataset (e.g. water molecules)
-        structures = RunnerDataset('input.data')
+        structures = Dataset.from_runner('input.data')
         structure = structures[0]
         print(structure)
-        # >> Structure(natoms=12, elements=('H', 'O'), dtype=float32)
+        # >> Structure(natoms=12, elements=('H', 'O'), dtype=float64)
 
         # Define an ACSF descriptor for hydrogen element
         # It includes two radial (G2) and angular (G3) symmetry functions
