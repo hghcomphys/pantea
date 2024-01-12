@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Protocol
+from typing import Dict, Iterator, Optional, Protocol
 
 from pantea.atoms.structure import Structure
 from pantea.datasets.runner import RunnerDataSource
@@ -15,12 +17,15 @@ class DataSourceInterface(Protocol):
     def __getitem__(self, index: int) -> Structure:
         ...
 
+    def read_structures(self) -> Iterator[Structure]:
+        ...
+
 
 @dataclass
 class Dataset:
     """A container for Structure data with caching support."""
 
-    data: DataSourceInterface
+    datasource: DataSourceInterface
     persist: bool
     cache: Dict[int, Structure] = field(default_factory=dict, repr=False)
 
@@ -30,12 +35,12 @@ class Dataset:
         filename: Path,
         persist: bool = False,
         dtype: Optional[Dtype] = None,
-    ):
+    ) -> Dataset:
         dataset = RunnerDataSource(filename, dtype)
         return cls(dataset, persist)
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.datasource)
 
     def __getitem__(self, index: int) -> Structure:
         """Read the desired structure, if possible from cache."""
@@ -43,18 +48,23 @@ class Dataset:
             return self.cache[index]
         else:
             logger.debug(f"loading structure({index=})")
-            structure = self.data[index]
+            structure = self.datasource[index]
             if self.persist:
                 self.cache[index] = structure
             return structure
 
     def preload(self) -> None:
         """
-        Preload (cache) all structures into memory.
+        Preload (cache) all the dataset structures into the memory.
 
         This ensures that any structure can be rapidly loaded from memory in subsequent operations.
         """
         logger.info("Preloading (caching) all structures")
         self.persist = True
-        for index in range(len(self)):
-            self.cache[index] = self.data[index]
+        try:
+            structures: Iterator[Structure] = self.datasource.read_structures()
+            for index, structure in enumerate(structures):
+                self.cache[index] = structure
+        except AttributeError:
+            for index in range(len(self)):
+                self.cache[index] = self.datasource[index]

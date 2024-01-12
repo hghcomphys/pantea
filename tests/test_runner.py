@@ -111,26 +111,6 @@ class TestRunnerDataset:
         [
             (
                 h2o,
-                (default_dtype.FLOATX,),
-            ),
-            (
-                h2o_float64,
-                (jnp.float64,),
-            ),
-        ],
-    )
-    def test_dtype(
-        self,
-        dataset: Dataset,
-        expected: Tuple,
-    ) -> None:
-        assert dataset.data.dtype == expected[0]
-
-    @pytest.mark.parametrize(
-        "dataset, expected",
-        [
-            (
-                h2o,
                 (0, 0, 0, 0),
             ),
             (

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, TextIO
+from typing import Dict, Iterator, List, Optional, TextIO
 
 from pantea.atoms.structure import Structure
 from pantea.types import Dtype, default_dtype
@@ -40,7 +40,7 @@ class RunnerDataSource:
 
         .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
         """
-        self.filename: Path = Path(filename)
+        self.filename = Path(filename)
         self.dtype = dtype if dtype is not None else default_dtype.FLOATX
 
     def __len__(self) -> int:
@@ -67,6 +67,24 @@ class RunnerDataSource:
                     f"The given index {index} is out of bound (len={len(self)})"
                 )
         return self._to_structure(data)
+
+    def read_structures(self) -> Iterator[Structure]:
+        """
+        Read structures consecutively.
+
+        It must be noted that reading data in a consecutive manner from file is
+        faster compared to indexing read. This can be used for performant preloading
+        of structures into the memory, if needed.
+
+        :return: Structure
+        :rtype: Iterator[Structure]
+        """
+        with open(str(self.filename), "r") as file:
+            while True:
+                data = self._read_next_structure(file)
+                if not data:
+                    break
+                yield self._to_structure(data)
 
     @classmethod
     def _read_next_structure(cls, file: TextIO) -> Dict[str, List]:
