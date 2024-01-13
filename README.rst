@@ -85,11 +85,10 @@ The resulting values can then be used to construct a machine learning potential.
         print(structure)
         # >> Structure(natoms=12, elements=('H', 'O'), dtype=float64)
 
-        # Define an ACSF descriptor for hydrogen element
+        # Define an ACSF descriptor for hydrogen
         # It includes two radial (G2) and angular (G3) symmetry functions
         descriptor = ACSF('H')
         cfn = CutoffFunction.from_cutoff_type(r_cutoff=12.0, cutoff_type='tanh')
-        for _ in range(1):
         descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
         descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
         print(descriptor)
@@ -122,30 +121,22 @@ The trained potential can then be used to evaluate the energy and force componen
 
 .. code-block:: python
 
-        from pantea.datasets import RunnerDataset
+        from pantea.datasets import Dataset
         from pantea.potentials import NeuralNetworkPotential
 
-        # Read atomic data in RuNNer format
-        structures = RunnerDataset("input.data")
+        structures = Dataset.from_runner("input.data")
         structure = structures[0]
 
         nnp = NeuralNetworkPotential.from_file("input.nn")
 
         nnp.fit_scaler(structures)
         nnp.fit_model(structures)
-        # nnp.save()
-        # nnp.load()
 
         total_energy = nnp(structure)
         print(total_energy)
-        # >> -15.386198
 
         forces = nnp.compute_forces(structure)
         print(forces)
-        # >> [[ 1.6445214e-02 -4.1671786e-03  7.6140024e-02]
-        # [-6.4949177e-02 -4.2048577e-02  5.6018140e-02]
-        # ...
-        # [ 7.6149488e-03 -9.5360324e-02 -9.2892153e-03]]
 
 
 Example files: `input.data`_ and `input.nn`_
