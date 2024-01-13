@@ -12,8 +12,7 @@ from tqdm import tqdm
 
 from pantea.atoms.element import ElementMap
 from pantea.atoms.structure import Structure
-from pantea.datasets.dataset import DatasetInterface
-from pantea.datasets.runner import RunnerDataset
+from pantea.datasets.dataset import Dataset
 from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.acsf.angular import G3, G9
 from pantea.descriptors.acsf.cutoff import CutoffFunction
@@ -36,7 +35,7 @@ from pantea.types import Array, Element
 class UpdaterInterface(Protocol):
     """Interface for potential weight updaters."""
 
-    def fit(self, dataset: DatasetInterface) -> Dict:
+    def fit(self, dataset: Dataset) -> Dict:
         ...
 
 
@@ -331,7 +330,7 @@ class NeuralNetworkPotential:
 
     # ------------------------------------------------------------------------
 
-    def fit_scaler(self, dataset: RunnerDataset) -> None:
+    def fit_scaler(self, dataset: Dataset) -> None:
         """
         Fit scaler parameters for each element using the input structure data.
         No gradient history is required here.
@@ -350,7 +349,7 @@ class NeuralNetworkPotential:
         else:
             print("Done.")
 
-    def fit_model(self, dataset: RunnerDataset) -> Dict:
+    def fit_model(self, dataset: Dataset) -> Dict:
         """
         Fit energy model for all elements using the input structure loader.
         """

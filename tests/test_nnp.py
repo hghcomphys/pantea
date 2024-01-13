@@ -8,7 +8,7 @@ from typing import Tuple
 import jax.numpy as jnp
 import pytest
 
-from pantea.datasets import RunnerDataset
+from pantea.datasets import Dataset
 from pantea.potentials import NeuralNetworkPotential
 from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
@@ -21,7 +21,7 @@ default_dtype.FLOATX = jnp.float32
 
 
 class TestNeuralNetworkPotential:
-    dataset = RunnerDataset(dataset_file)
+    dataset = Dataset.from_runner(dataset_file)
     nnp: NeuralNetworkPotential = NeuralNetworkPotential.from_file(potential_file)
 
     @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ class TestNeuralNetworkPotential:
     def test_outputs(
         self,
         nnp: NeuralNetworkPotential,
-        dataset: RunnerDataset,
+        dataset: Dataset,
         expected: Tuple,
     ) -> None:
         nnp.fit_scaler(dataset)
@@ -96,7 +96,7 @@ class TestNeuralNetworkPotential:
     def test_save_and_load(
         self,
         nnp: NeuralNetworkPotential,
-        dataset: RunnerDataset,
+        dataset: Dataset,
     ) -> None:
         structure = dataset[0]
         nnp.output_dir = potential_file.parent

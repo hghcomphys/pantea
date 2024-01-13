@@ -5,16 +5,14 @@ from pathlib import Path
 from typing import Dict, Iterator, List, Optional, TextIO
 
 from pantea.atoms.structure import Structure
-from pantea.datasets.dataset import DatasetInterface
-from pantea.logger import logger
 from pantea.types import Dtype, default_dtype
 from pantea.utils.tokenize import tokenize
 
 
-class RunnerDataset(DatasetInterface):
+class RunnerDataSource:
     """
 
-    The dataset used for the input data format of `RuNNer`_ consists of atomic attributes
+    The class is intended for the input data format of `RuNNer`_ consists of atomic attributes
     and simulation box information. Within each snapshot, there are two types of
     properties: `per-atom` properties and `collective` properties.
 
@@ -30,31 +28,26 @@ class RunnerDataset(DatasetInterface):
     def __init__(
         self,
         filename: Path,
-        persist: bool = False,
         dtype: Optional[Dtype] = None,
     ) -> None:
         """
-        Create a `RuNNer`_ structure dataset by initializing it from an input file.
+        Create a `RuNNer`_ structure data by initializing it from an input file.
 
         :param filename: input file name
         :type filename: Path
-        :param persist: Persist any loaded structure data in the memory, defaults to False
-        :type persist: bool, optional
-        :param dtype: floating point precision for the structure data, defaults to None
+        :param dtype: precision for the structure data, defaults to None
         :type dtype: Optional[Dtype], optional
 
         .. _RuNNer: https://www.uni-goettingen.de/de/560580.html
         """
-        self.filename: Path = Path(filename)
-        self.persist: bool = persist
-        self._cache: Dict[int, Structure] = dict()
+        self.filename = Path(filename)
         self.dtype = dtype if dtype is not None else default_dtype.FLOATX
 
     def __len__(self) -> int:
         """Return number of available structures."""
         num_structures: int = 0
         with open(str(self.filename), "r") as file:
-            while self._ignore_next(file):
+            while self._ignore_next_structure(file):
                 num_structures += 1
         return num_structures
 
@@ -65,47 +58,37 @@ class RunnerDataset(DatasetInterface):
         This is a lazy call which means that only required section
         of data is loaded into the memory.
         """
-        return self._read_from_cache(index)
+        with open(str(self.filename), "r") as file:
+            for _ in range(index):
+                self._ignore_next_structure(file)
+            data = self._read_next_structure(file)
+            if not data:
+                raise IndexError(
+                    f"The given index {index} is out of bound (len={len(self)})"
+                )
+        return self._to_structure(data)
 
-    def read_sequential(self) -> Iterator[Structure]:
+    def read_structures(self) -> Iterator[Structure]:
         """
-        Read structures sequentially.
+        Read structures consecutively.
 
-        It must be noted that reading data in a consecutive manner is
-        faster compared to random indexing read.
+        It must be noted that reading data in a consecutive manner from file is
+        faster compared to indexing read. This can be used for performant preloading
+        of structures into the memory, if needed.
 
         :return: Structure
         :rtype: Iterator[Structure]
         """
-        logger.debug("Read structures sequentially")
-        index: int = 0
         with open(str(self.filename), "r") as file:
             while True:
-                data = self._read_next(file)
+                data = self._read_next_structure(file)
                 if not data:
                     break
-                structure = self._to_structure(data)
-                if self.persist:
-                    if index in self._cache:
-                        yield self._cache[index]
-                    else:
-                        self._cache[index] = structure
-                yield structure
-                index += 1
-
-    def preload(self) -> None:
-        """
-        Preload (cache) all structures into memory.
-
-        This ensures that any structure can be rapidly loaded from memory in subsequent operations.
-        """
-        self.persist = True
-        for _ in self.read_sequential():
-            pass
+                yield self._to_structure(data)
 
     @classmethod
-    def _read_next(cls, file: TextIO) -> Dict[str, List]:
-        """Read next structure data between `begin` and `end` keywords."""
+    def _read_next_structure(cls, file: TextIO) -> Dict[str, List]:
+        """Read next structure."""
         data = defaultdict(list)
         read_block: bool = False
         while True:
@@ -140,7 +123,7 @@ class RunnerDataset(DatasetInterface):
         return data
 
     @classmethod
-    def _ignore_next(cls, file: TextIO) -> bool:
+    def _ignore_next_structure(cls, file: TextIO) -> bool:
         while True:
             line = file.readline()
             if not line:
@@ -150,35 +133,8 @@ class RunnerDataset(DatasetInterface):
                 break
         return True
 
-    def _read(self, index: int) -> Structure:
-        logger.debug(f"load structure({index=})")
-        with open(str(self.filename), "r") as file:
-            for _ in range(index):
-                self._ignore_next(file)
-            data = self._read_next(file)
-            if not data:
-                raise IndexError(
-                    f"The given index {index} is out of bound (len={len(self)})"
-                )
-        return self._to_structure(data)
-
     def _to_structure(self, data: Dict[str, List]) -> Structure:
         return Structure.from_dict(data, dtype=self.dtype)
 
-    def _read_from_cache(self, index: int) -> Structure:
-        """Read the desired structure from cache, if possible."""
-        if not self.persist:
-            return self._read(index)
-        if index not in self._cache:
-            structure = self._read(index)
-            self._cache[index] = structure
-            return structure
-        else:
-            return self._cache[index]
-
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}"
-            f"(filename='{str(self.filename)}'"
-            f", persist={self.persist}, dtype={self.dtype.dtype})"
-        )
+        return f"{self.__class__.__name__}(filename='{str(self.filename)}', dtype={self.dtype.dtype})"
