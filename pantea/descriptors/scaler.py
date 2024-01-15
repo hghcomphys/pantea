@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -9,19 +9,65 @@ from pantea.logger import logger
 from pantea.types import Array, Dtype, default_dtype
 
 
-class Scaler:
+def _to_jax_int(n: int) -> Array:
+    return jnp.array(n, dtype=default_dtype.INT)
+
+
+class ScalerParams(NamedTuple):
+    """Scaler statistical parameters"""
+
+    nsamples: Array = _to_jax_int(0)
+    mean: Array = jnp.array([])
+    sigma: Array = jnp.array([])
+    minval: Array = jnp.array([])
+    maxval: Array = jnp.array([])
+
+
+@jax.jit
+def _init_params_from(data: Array) -> ScalerParams:
+    return ScalerParams(
+        nsamples=_to_jax_int(data.shape[0]),
+        mean=jnp.mean(data, axis=0),
+        sigma=jnp.std(data, axis=0),
+        maxval=jnp.max(data, axis=0),
+        minval=jnp.min(data, axis=0),
+    )
+
+
+@jax.jit
+def _fit_scaler(params: ScalerParams, data: Array) -> ScalerParams:
+    # Calculate statistical parameters for a new batch of data
+    new_mean: Array = jnp.mean(data, axis=0)
+    new_sigma: Array = jnp.std(data, axis=0)
+    new_min: Array = jnp.min(data, axis=0)
+    new_max: Array = jnp.max(data, axis=0)
+    m, n = params.nsamples, data.shape[0]
+    # Calculate scaler new params for the entire data
+    mean = m / (m + n) * params.mean + n / (m + n) * new_mean
+    sigma = jnp.sqrt(
+        m / (m + n) * params.sigma**2
+        + n / (m + n) * new_sigma**2
+        + m * n / (m + n) ** 2 * (params.mean - new_mean) ** 2
+    )
+    maxval = jnp.maximum(params.maxval, new_max)
+    minval = jnp.minimum(params.minval, new_min)
+    nsamples = params.nsamples + n
+    return ScalerParams(nsamples, mean, sigma, minval, maxval)
+
+
+class DescriptorScaler:
     """
     Scale descriptor values.
 
     Scaling parameters are calculated by fitting over the samples in the dataset.
     Available scaler information are as follows:
 
-    * minimum
-    * maximum
     * mean
     * sigma (standard deviation)
+    * maxval
+    * minval
 
-    Scaler is also used to warn when setting out-of-distribution samples base
+    This descriptor scaler is also used to warn when setting out-of-distribution samples base
     on the fitted scaler parameters.
     """
 
@@ -36,21 +82,15 @@ class Scaler:
 
         # Set min/max range for scaler
         self.scale_type: str = scale_type
-        self.scale_min: float = scale_min
-        self.scale_max: float = scale_max
+        self.scale_min: Array = jnp.array(scale_min)
+        self.scale_max: Array = jnp.array(scale_max)
 
         # Statistical parameters
-        self.nsamples: int = 0  # number of samples
-        self.dimension: int = 0  # dimension of each sample
-        self.mean: Array = jnp.array([])  # mean array of all fitted descriptor values
-        self.sigma: Array = jnp.array([])  # standard deviation
-        self.min: Array = jnp.array([])  # minimum
-        self.max: Array = jnp.array([])  # maximum
+        self.dimension: int = 0
+        self.params = ScalerParams()
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: Optional[int] = None
-
-        logger.debug(f"Initializing {self}")
 
         # Set scaler type function
         self._transform = getattr(self, f"{self.scale_type}")
@@ -64,40 +104,16 @@ class Scaler:
         """
         data = jnp.atleast_2d(data)  # type: ignore
 
-        if self.nsamples == 0:
-            self.nsamples = data.shape[0]
+        if self.params.nsamples == 0:
             self.dimension = data.shape[1]
-            self.mean = jnp.mean(data, axis=0)
-            self.sigma = jnp.std(data, axis=0)
-            self.max = jnp.max(data, axis=0)
-            self.min = jnp.min(data, axis=0)
+            self.params = _init_params_from(data)
         else:
             if data.shape[1] != self.dimension:
                 logger.error(
                     f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
                     exception=ValueError,
                 )
-
-            # New data (batch)
-            new_mean: Array = jnp.mean(data, axis=0)
-            new_sigma: Array = jnp.std(data, axis=0)
-            new_min: Array = jnp.min(data, axis=0)
-            new_max: Array = jnp.max(data, axis=0)
-            m, n = self.nsamples, data.shape[0]
-
-            # Calculate quantities for entire data
-            mean = self.mean  # immutable
-            self.mean = (
-                m / (m + n) * mean + n / (m + n) * new_mean
-            )  # self.mean is now a new array and different from the above mean variable
-            self.sigma = jnp.sqrt(
-                m / (m + n) * self.sigma**2
-                + n / (m + n) * new_sigma**2
-                + m * n / (m + n) ** 2 * (mean - new_mean) ** 2
-            )
-            self.max = jnp.maximum(self.max, new_max)
-            self.min = jnp.minimum(self.min, new_min)
-            self.nsamples += n
+            self.params = _fit_scaler(self.params, data)
 
     def __call__(self, array: Array, warnings: bool = False) -> Array:
         """
@@ -134,11 +150,11 @@ class Scaler:
         gt: Array
         lt: Array
         if array.ndim == 2:
-            gt = jax.lax.gt(array, self.max[None, :])
-            lt = jax.lax.gt(self.min[None, :], array)
+            gt = jax.lax.gt(array, self.maxval[None, :])
+            lt = jax.lax.gt(self.minval[None, :], array)
         else:
-            gt = jax.lax.gt(array, self.max)
-            lt = jax.lax.gt(self.min, array)
+            gt = jax.lax.gt(array, self.maxval)
+            lt = jax.lax.gt(self.minval, array)
 
         self.number_of_warnings += int(
             jnp.any(jnp.logical_or(gt, lt))
@@ -155,13 +171,13 @@ class Scaler:
 
     def scale(self, array: Array) -> Array:
         return self.scale_min + (self.scale_max - self.scale_min) * (
-            array - self.min
-        ) / (self.max - self.min)
+            array - self.minval
+        ) / (self.maxval - self.minval)
 
     def scale_center(self, array: Array) -> Array:
         return self.scale_min + (self.scale_max - self.scale_min) * (
             array - self.mean
-        ) / (self.max - self.min)
+        ) / (self.maxval - self.minval)
 
     def scale_center_sigma(self, array: Array) -> Array:
         return (
@@ -176,7 +192,7 @@ class Scaler:
             file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
             for i in range(self.dimension):
                 file.write(
-                    f"{self.min[i]:<23.15E} {self.max[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n"
+                    f"{self.minval[i]:<23.15E} {self.maxval[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n"
                 )
 
     def load(self, filename: Path, dtype: Optional[Dtype] = None) -> None:
@@ -184,12 +200,14 @@ class Scaler:
         logger.debug(f"Loading scaler parameters from '{str(filename)}'")
         data = np.loadtxt(str(filename)).T
         dtype = dtype if dtype is not None else default_dtype.FLOATX
-        self.nsamples = 1
         self.dimension = data.shape[1]
-        self.min = jnp.array(data[0], dtype=dtype)
-        self.max = jnp.array(data[1], dtype=dtype)
-        self.mean = jnp.array(data[2], dtype=dtype)
-        self.sigma = jnp.array(data[3], dtype=dtype)
+        self.params = ScalerParams(
+            nsamples=_to_jax_int(1),
+            mean=jnp.array(data[2], dtype=dtype),
+            sigma=jnp.array(data[3], dtype=dtype),
+            minval=jnp.array(data[0], dtype=dtype),
+            maxval=jnp.array(data[1], dtype=dtype),
+        )
 
     def __repr__(self) -> str:
         return (
@@ -199,3 +217,23 @@ class Scaler:
 
     def __bool__(self) -> bool:
         return False if len(self.mean) == 0 else True
+
+    @property
+    def mean(self) -> Array:
+        return self.params.mean
+
+    @property
+    def sigma(self) -> Array:
+        return self.params.sigma
+
+    @property
+    def minval(self) -> Array:
+        return self.params.minval
+
+    @property
+    def maxval(self) -> Array:
+        return self.params.maxval
+
+    @property
+    def nsamples(self) -> int:
+        return self.params.nsamples

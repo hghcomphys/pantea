@@ -6,7 +6,7 @@ from frozendict import frozendict
 from jax import jit
 
 from pantea.atoms.structure import Inputs
-from pantea.descriptors import Scaler
+from pantea.descriptors import DescriptorScaler
 from pantea.descriptors.acsf.acsf import _calculate_descriptor
 from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.models import NeuralNetworkModel
@@ -17,7 +17,7 @@ class AtomicPotentialInterface(Protocol):
     """An interface for AtomicPotential."""
 
     descriptor: DescriptorInterface
-    scaler: Scaler
+    scaler: DescriptorScaler
     model: NeuralNetworkModel
 
 
