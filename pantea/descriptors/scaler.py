@@ -13,8 +13,8 @@ def _to_jax_int(n: int) -> Array:
     return jnp.array(n, dtype=default_dtype.INT)
 
 
-class ScalerParams(NamedTuple):
-    """Scaler statistical parameters"""
+class ScalerStats(NamedTuple):
+    """Scaler statistical quantities."""
 
     nsamples: Array = _to_jax_int(0)
     mean: Array = jnp.array([])
@@ -23,9 +23,16 @@ class ScalerParams(NamedTuple):
     maxval: Array = jnp.array([])
 
 
+class ScalerParams(NamedTuple):
+    """Scaler parameters."""
+
+    scale_min: Array
+    scale_max: Array
+
+
 @jax.jit
-def _init_params_from(data: Array) -> ScalerParams:
-    return ScalerParams(
+def _init_scaler_stats_from(data: Array) -> ScalerStats:
+    return ScalerStats(
         nsamples=_to_jax_int(data.shape[0]),
         mean=jnp.mean(data, axis=0),
         sigma=jnp.std(data, axis=0),
@@ -35,24 +42,53 @@ def _init_params_from(data: Array) -> ScalerParams:
 
 
 @jax.jit
-def _fit_scaler(params: ScalerParams, data: Array) -> ScalerParams:
-    # Calculate statistical parameters for a new batch of data
+def _update_scaler(stats: ScalerStats, data: Array) -> ScalerStats:
+    # Calculate stats for a new batch of data
     new_mean: Array = jnp.mean(data, axis=0)
     new_sigma: Array = jnp.std(data, axis=0)
     new_min: Array = jnp.min(data, axis=0)
     new_max: Array = jnp.max(data, axis=0)
-    m, n = params.nsamples, data.shape[0]
-    # Calculate scaler new params for the entire data
-    mean = m / (m + n) * params.mean + n / (m + n) * new_mean
+    m, n = stats.nsamples, data.shape[0]
+    # Calculate scaler new stats for the entire data
+    mean = m / (m + n) * stats.mean + n / (m + n) * new_mean
     sigma = jnp.sqrt(
-        m / (m + n) * params.sigma**2
+        m / (m + n) * stats.sigma**2
         + n / (m + n) * new_sigma**2
-        + m * n / (m + n) ** 2 * (params.mean - new_mean) ** 2
+        + m * n / (m + n) ** 2 * (stats.mean - new_mean) ** 2
     )
-    maxval = jnp.maximum(params.maxval, new_max)
-    minval = jnp.minimum(params.minval, new_min)
-    nsamples = params.nsamples + n
-    return ScalerParams(nsamples, mean, sigma, minval, maxval)
+    maxval = jnp.maximum(stats.maxval, new_max)
+    minval = jnp.minimum(stats.minval, new_min)
+    nsamples = stats.nsamples + n
+    return ScalerStats(nsamples, mean, sigma, minval, maxval)
+
+
+@jax.jit
+def _center(stats: ScalerStats, array: Array) -> Array:
+    return array - stats.mean
+
+
+@jax.jit
+def _scale(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.minval
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.mean
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center_sigma(
+    params: ScalerParams, stats: ScalerStats, array: Array
+) -> Array:
+    return (
+        params.scale_min
+        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
+    )
 
 
 class DescriptorScaler:
@@ -82,12 +118,14 @@ class DescriptorScaler:
 
         # Set min/max range for scaler
         self.scale_type: str = scale_type
-        self.scale_min: Array = jnp.array(scale_min)
-        self.scale_max: Array = jnp.array(scale_max)
+        self.params = ScalerParams(
+            scale_min=jnp.array(scale_min),
+            scale_max=jnp.array(scale_max),
+        )
 
         # Statistical parameters
         self.dimension: int = 0
-        self.params = ScalerParams()
+        self.stats = ScalerStats()
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: Optional[int] = None
@@ -104,16 +142,16 @@ class DescriptorScaler:
         """
         data = jnp.atleast_2d(data)  # type: ignore
 
-        if self.params.nsamples == 0:
+        if self.stats.nsamples == 0:
             self.dimension = data.shape[1]
-            self.params = _init_params_from(data)
+            self.stats = _init_scaler_stats_from(data)
         else:
             if data.shape[1] != self.dimension:
                 logger.error(
                     f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
                     exception=ValueError,
                 )
-            self.params = _fit_scaler(self.params, data)
+            self.stats = _update_scaler(self.stats, data)
 
     def __call__(self, array: Array, warnings: bool = False) -> Array:
         """
@@ -150,11 +188,11 @@ class DescriptorScaler:
         gt: Array
         lt: Array
         if array.ndim == 2:
-            gt = jax.lax.gt(array, self.maxval[None, :])
-            lt = jax.lax.gt(self.minval[None, :], array)
+            gt = jax.lax.gt(array, self.stats.maxval[None, :])
+            lt = jax.lax.gt(self.stats.minval[None, :], array)
         else:
-            gt = jax.lax.gt(array, self.maxval)
-            lt = jax.lax.gt(self.minval, array)
+            gt = jax.lax.gt(array, self.stats.maxval)
+            lt = jax.lax.gt(self.stats.minval, array)
 
         self.number_of_warnings += int(
             jnp.any(jnp.logical_or(gt, lt))
@@ -167,23 +205,16 @@ class DescriptorScaler:
             )
 
     def center(self, array: Array) -> Array:
-        return array - self.mean
+        return _center(self.stats, array)
 
     def scale(self, array: Array) -> Array:
-        return self.scale_min + (self.scale_max - self.scale_min) * (
-            array - self.minval
-        ) / (self.maxval - self.minval)
+        return _scale(self.params, self.stats, array)
 
     def scale_center(self, array: Array) -> Array:
-        return self.scale_min + (self.scale_max - self.scale_min) * (
-            array - self.mean
-        ) / (self.maxval - self.minval)
+        return _scale_center(self.params, self.stats, array)
 
     def scale_center_sigma(self, array: Array) -> Array:
-        return (
-            self.scale_min
-            + (self.scale_max - self.scale_min) * (array - self.mean) / self.sigma
-        )
+        return _scale_center_sigma(self.params, self.stats, array)
 
     def save(self, filename: Path) -> None:
         """Save scaler parameters into file."""
@@ -192,7 +223,10 @@ class DescriptorScaler:
             file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
             for i in range(self.dimension):
                 file.write(
-                    f"{self.minval[i]:<23.15E} {self.maxval[i]:<23.15E} {self.mean[i]:<23.15E} {self.sigma[i]:<23.15E}\n"
+                    f"{self.stats.minval[i]:<23.15E}"
+                    f"{self.stats.maxval[i]:<23.15E}"
+                    f"{self.stats.mean[i]:<23.15E}"
+                    f"{self.stats.sigma[i]:<23.15E}\n"
                 )
 
     def load(self, filename: Path, dtype: Optional[Dtype] = None) -> None:
@@ -201,7 +235,7 @@ class DescriptorScaler:
         data = np.loadtxt(str(filename)).T
         dtype = dtype if dtype is not None else default_dtype.FLOATX
         self.dimension = data.shape[1]
-        self.params = ScalerParams(
+        self.stats = ScalerStats(
             nsamples=_to_jax_int(1),
             mean=jnp.array(data[2], dtype=dtype),
             sigma=jnp.array(data[3], dtype=dtype),
@@ -212,28 +246,8 @@ class DescriptorScaler:
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(scale_type='{self.scale_type}', "
-            f"scale_min={self.scale_min}, scale_max={self.scale_max})"
+            f"scale_min={self.params.scale_min}, scale_max={self.params.scale_max})"
         )
 
     def __bool__(self) -> bool:
-        return False if len(self.mean) == 0 else True
-
-    @property
-    def mean(self) -> Array:
-        return self.params.mean
-
-    @property
-    def sigma(self) -> Array:
-        return self.params.sigma
-
-    @property
-    def minval(self) -> Array:
-        return self.params.minval
-
-    @property
-    def maxval(self) -> Array:
-        return self.params.maxval
-
-    @property
-    def nsamples(self) -> int:
-        return self.params.nsamples
+        return False if len(self.stats.mean) == 0 else True
