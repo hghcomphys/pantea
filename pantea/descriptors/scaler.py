@@ -13,7 +13,7 @@ def _to_jax_int(n: int) -> Array:
     return jnp.array(n, dtype=default_dtype.INT)
 
 
-class ScalerStats(NamedTuple):
+class DescriptorScalerStats(NamedTuple):
     """Scaler statistical quantities."""
 
     nsamples: Array = _to_jax_int(0)
@@ -23,7 +23,7 @@ class ScalerStats(NamedTuple):
     maxval: Array = jnp.array([])
 
 
-class ScalerParams(NamedTuple):
+class DescriptorScalerParams(NamedTuple):
     """Scaler parameters."""
 
     scale_min: Array
@@ -31,8 +31,8 @@ class ScalerParams(NamedTuple):
 
 
 @jax.jit
-def _init_scaler_stats_from(data: Array) -> ScalerStats:
-    return ScalerStats(
+def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
+    return DescriptorScalerStats(
         nsamples=_to_jax_int(data.shape[0]),
         mean=jnp.mean(data, axis=0),
         sigma=jnp.std(data, axis=0),
@@ -42,7 +42,7 @@ def _init_scaler_stats_from(data: Array) -> ScalerStats:
 
 
 @jax.jit
-def _update_scaler(stats: ScalerStats, data: Array) -> ScalerStats:
+def _fit_scaler(stats: DescriptorScalerStats, data: Array) -> DescriptorScalerStats:
     # Calculate stats for a new batch of data
     new_mean: Array = jnp.mean(data, axis=0)
     new_sigma: Array = jnp.std(data, axis=0)
@@ -59,23 +59,27 @@ def _update_scaler(stats: ScalerStats, data: Array) -> ScalerStats:
     maxval = jnp.maximum(stats.maxval, new_max)
     minval = jnp.minimum(stats.minval, new_min)
     nsamples = stats.nsamples + n
-    return ScalerStats(nsamples, mean, sigma, minval, maxval)
+    return DescriptorScalerStats(nsamples, mean, sigma, minval, maxval)
 
 
 @jax.jit
-def _center(stats: ScalerStats, array: Array) -> Array:
+def _center(stats: DescriptorScalerStats, array: Array) -> Array:
     return array - stats.mean
 
 
 @jax.jit
-def _scale(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
+def _scale(
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+) -> Array:
     return params.scale_min + (params.scale_max - params.scale_min) * (
         array - stats.minval
     ) / (stats.maxval - stats.minval)
 
 
 @jax.jit
-def _scale_center(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
+def _scale_center(
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+) -> Array:
     return params.scale_min + (params.scale_max - params.scale_min) * (
         array - stats.mean
     ) / (stats.maxval - stats.minval)
@@ -83,12 +87,23 @@ def _scale_center(params: ScalerParams, stats: ScalerStats, array: Array) -> Arr
 
 @jax.jit
 def _scale_center_sigma(
-    params: ScalerParams, stats: ScalerStats, array: Array
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
 ) -> Array:
     return (
         params.scale_min
         + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
     )
+
+
+@jax.jit
+def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
+    if array.ndim == 2:
+        gt = jax.lax.gt(array, stats.maxval[None, :])
+        lt = jax.lax.gt(stats.minval[None, :], array)
+    else:
+        gt = jax.lax.gt(array, stats.maxval)
+        lt = jax.lax.gt(stats.minval, array)
+    return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
 
 
 class DescriptorScaler:
@@ -117,15 +132,15 @@ class DescriptorScaler:
         assert scale_min < scale_max
 
         # Set min/max range for scaler
-        self.scale_type: str = scale_type
-        self.params = ScalerParams(
+        self.scale_type = scale_type
+        self.params = DescriptorScalerParams(
             scale_min=jnp.array(scale_min),
             scale_max=jnp.array(scale_max),
         )
 
         # Statistical parameters
         self.dimension: int = 0
-        self.stats = ScalerStats()
+        self.stats = DescriptorScalerStats()
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: Optional[int] = None
@@ -135,7 +150,7 @@ class DescriptorScaler:
 
     def fit(self, data: Array) -> None:
         """
-        Fit scaler parameters using the given input data.
+        Fit descriptor scaler internal stats using the input data.
         Bach-wise sampling is also possible (see `this`_ for more details).
 
         .. _this: https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
@@ -151,11 +166,11 @@ class DescriptorScaler:
                     f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
                     exception=ValueError,
                 )
-            self.stats = _update_scaler(self.stats, data)
+            self.stats = _fit_scaler(self.stats, data)
 
     def __call__(self, array: Array, warnings: bool = False) -> Array:
         """
-        Transform the input descriptor values base on the scaler parameters.
+        Transform the input descriptor values based on the scaler parameters.
 
         This method has to be called after fitting scaler over the dataset,
         or statistical parameters are already loaded (e.g. saved file).
@@ -185,18 +200,7 @@ class DescriptorScaler:
         if self.max_number_of_warnings is None:
             return
 
-        gt: Array
-        lt: Array
-        if array.ndim == 2:
-            gt = jax.lax.gt(array, self.stats.maxval[None, :])
-            lt = jax.lax.gt(self.stats.minval[None, :], array)
-        else:
-            gt = jax.lax.gt(array, self.stats.maxval)
-            lt = jax.lax.gt(self.stats.minval, array)
-
-        self.number_of_warnings += int(
-            jnp.any(jnp.logical_or(gt, lt))
-        )  # alternative counting is using sum
+        self.number_of_warnings += int(_get_number_of_warnings(self.stats, array))
 
         if self.number_of_warnings >= self.max_number_of_warnings:
             logger.warning(
@@ -235,7 +239,7 @@ class DescriptorScaler:
         data = np.loadtxt(str(filename)).T
         dtype = dtype if dtype is not None else default_dtype.FLOATX
         self.dimension = data.shape[1]
-        self.stats = ScalerStats(
+        self.stats = DescriptorScalerStats(
             nsamples=_to_jax_int(1),
             mean=jnp.array(data[2], dtype=dtype),
             sigma=jnp.array(data[3], dtype=dtype),
