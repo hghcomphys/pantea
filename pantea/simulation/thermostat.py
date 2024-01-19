@@ -11,8 +11,8 @@ from pantea.types import Array
 
 @jax.jit
 def _get_rescaled_velocities(
-    velocities: Array,
     params: BrendsenThermostatParams,
+    velocities: Array,
 ):
     scaling_factor = 1.0 / jnp.sqrt(
         1.0
@@ -63,4 +63,4 @@ class BrendsenThermostat:
             current_temperature,
             self.target_temperature,
         )
-        return _get_rescaled_velocities(system.velocities, params)
+        return _get_rescaled_velocities(params, system.velocities)
