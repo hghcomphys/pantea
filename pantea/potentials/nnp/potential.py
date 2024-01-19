@@ -17,7 +17,7 @@ from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.acsf.angular import G3, G9
 from pantea.descriptors.acsf.cutoff import CutoffFunction
 from pantea.descriptors.acsf.radial import G1, G2
-from pantea.descriptors.scaler import Scaler
+from pantea.descriptors.scaler import DescriptorScaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.network import NeuralNetworkModel
@@ -145,7 +145,7 @@ class NeuralNetworkPotential:
         """
         logger.info("Initializing atomic potentials")
         descriptor: Dict[Element, ACSF] = self._init_descriptor()
-        scaler: Dict[Element, Scaler] = self._init_scaler()
+        scaler: Dict[Element, DescriptorScaler] = self._init_scaler()
         model: Dict[Element, NeuralNetworkModel] = self._init_model()
         for element in self.settings.elements:
             self.atomic_potential[element] = AtomicPotential(
@@ -240,10 +240,10 @@ class NeuralNetworkPotential:
                 )
         return descriptor
 
-    def _init_scaler(self) -> Dict[Element, Scaler]:
+    def _init_scaler(self) -> Dict[Element, DescriptorScaler]:
         """Initialize descriptor scaler for each element."""
         logger.info("Initializing descriptor scalers")
-        scaler: Dict[Element, Scaler] = dict()
+        scaler: Dict[Element, DescriptorScaler] = dict()
         settings = self.settings
         # Prepare scaler input argument if exist in settings
         scaler_kwargs = {
@@ -258,7 +258,7 @@ class NeuralNetworkPotential:
         logger.debug(f"Scaler kwargs={scaler_kwargs}")
         # Assign an ACSF scaler to each element
         for element in settings.elements:
-            scaler[element] = Scaler(**scaler_kwargs)
+            scaler[element] = DescriptorScaler(**scaler_kwargs)
         return scaler
 
     def _init_model(self) -> Dict[Element, NeuralNetworkModel]:

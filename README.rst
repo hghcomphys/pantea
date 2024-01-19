@@ -22,7 +22,7 @@ Description
 -----------
 Pantea is an optimized Python library on basis of Google `JAX`_ that enables 
 development of machine learning inter-atomic potentials 
-for use in computational physics, chemistry, and material science. 
+for use in computational physics. 
 These potentials are necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 

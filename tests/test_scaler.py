@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pytest
 from jax import random
 
-from pantea.descriptors.scaler import Scaler
+from pantea.descriptors.scaler import DescriptorScaler
 from pantea.types import Array, default_dtype
 from pantea.utils.batch import create_batch
 
@@ -43,19 +43,22 @@ class TestStructure:
         data: Array,
         expected: Tuple,
     ) -> None:
-        scaler = Scaler()
+        scaler = DescriptorScaler()
         scaler.fit(data)
         assert scaler.dimension == expected[0]
-        assert scaler.nsamples == expected[1]
+        assert scaler.stats.nsamples == expected[1]
 
-    def fit_scaler(self, scaler: Scaler, data: Array, batch_size: int) -> None:
+    def fit_scaler(
+        self, scaler: DescriptorScaler, data: Array, batch_size: int
+    ) -> None:
         for batch in create_batch(data, batch_size=batch_size):
             scaler.fit(batch)
 
-    def compare(self, scaler: Scaler, data: Array) -> None:
-        for name in ("mean", "min", "max"):
-            assert jnp.allclose(getattr(data, name)(axis=0), getattr(scaler, name))
-        assert jnp.allclose(data.std(axis=0), scaler.sigma)
+    def compare(self, scaler: DescriptorScaler, data: Array) -> None:
+        assert jnp.allclose(data.mean(axis=0), scaler.stats.mean)
+        assert jnp.allclose(data.max(axis=0), scaler.stats.maxval)
+        assert jnp.allclose(data.min(axis=0), scaler.stats.minval)
+        assert jnp.allclose(data.std(axis=0), scaler.stats.sigma)
 
     @pytest.mark.parametrize(
         "data",
@@ -73,7 +76,7 @@ class TestStructure:
             ("scale_center", "scale", "center"),
             (7, 10, 1),
         ):
-            scaler = Scaler(scale_type=scale_type)
+            scaler = DescriptorScaler(scale_type=scale_type)
             self.fit_scaler(scaler, data, batch_size=batch_size)
             self.compare(scaler, data)
 
@@ -89,7 +92,7 @@ class TestStructure:
         self,
         data: Array,
     ) -> None:
-        scaler = Scaler()
+        scaler = DescriptorScaler()
         scaler.fit(data)
 
         assert scaler.max_number_of_warnings is None
