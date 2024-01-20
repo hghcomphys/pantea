@@ -2,52 +2,75 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import partial, update_wrapper
-from typing import Any, Callable, Mapping
+from typing import Callable, Mapping
 
 import jax
 import jax.numpy as jnp
+
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
 
-_TANH_PRE: float = ((math.e + 1 / math.e) / (math.e - 1 / math.e)) ** 3
+_TANH_PRE: Array = jnp.array(((math.e + 1 / math.e) / (math.e - 1 / math.e)) ** 3)
 
 
-def _hard(r: Array) -> Array:
-    return jnp.ones_like(r)
+def _apply_cutoff(r: Array, fc: Array, r_cutoff: Array) -> Array:
+    return jnp.where(r < r_cutoff, fc, jnp.zeros_like(r))
 
 
-def _tanhu(r: Array, r_cutoff: float) -> Array:
-    return jnp.tanh(1.0 - r / r_cutoff) ** 3
+@jax.jit
+def _hard(r: Array, r_cutoff: Array) -> Array:
+    fc = jnp.ones_like(r)
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _tanh(r: Array, r_cutoff: float) -> Array:
-    return _TANH_PRE * jnp.tanh(1.0 - r / r_cutoff) ** 3
+@jax.jit
+def _tanhu(r: Array, r_cutoff: Array) -> Array:
+    fc = jnp.tanh(1.0 - r / r_cutoff) ** 3
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _cos(r: Array, r_cutoff: float) -> Array:
-    return 0.5 * (jnp.cos(jnp.pi * r / r_cutoff) + 1.0)
+@jax.jit
+def _tanh(r: Array, r_cutoff: Array) -> Array:
+    fc = _TANH_PRE * jnp.tanh(1.0 - r / r_cutoff) ** 3
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _exp(r: Array, r_cutoff: float) -> Array:
-    return jnp.exp(1.0 - 1.0 / (1.0 - (r / r_cutoff) ** 2))
+@jax.jit
+def _cos(r: Array, r_cutoff: Array) -> Array:
+    fc = 0.5 * (jnp.cos(jnp.pi * r / r_cutoff) + 1.0)
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _poly1(r: Array) -> Array:
-    return (2.0 * r - 3.0) * r**2 + 1.0
+@jax.jit
+def _exp(r: Array, r_cutoff: Array) -> Array:
+    fc = jnp.exp(1.0 - 1.0 / (1.0 - (r / r_cutoff) ** 2))
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _poly2(r: Array) -> Array:
-    return ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
+@jax.jit
+def _poly1(r: Array, r_cutoff: Array) -> Array:
+    fc = (2.0 * r - 3.0) * r**2 + 1.0
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable:
-    partial_function = partial(function, **kwargs)
-    update_wrapper(partial_function, function)
-    return partial_function
+@jax.jit
+def _poly2(r: Array, r_cutoff: Array) -> Array:
+    fc = ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
+    return _apply_cutoff(r, fc, r_cutoff)
 
 
-@dataclass(frozen=True)
+_MAP_CUTOFF_FUNCTIONS: Mapping[str, Callable[[Array, Array], Array]] = {
+    "hard": _hard,
+    "tanhu": _tanhu,
+    "tanh": _tanh,
+    "cos": _cos,
+    "exp": _exp,
+    "poly1": _poly1,
+    "poly2": _poly2,
+}
+
+
+@dataclass
 class CutoffFunction(BaseJaxPytreeDataClass):
     """Cutoff function for ACSF descriptor.
 
@@ -73,40 +96,27 @@ class CutoffFunction(BaseJaxPytreeDataClass):
     .. _`cutoff type`: https://compphysvienna.github.io/n2p2/topics/keywords.html?highlight=cutoff_type
     """
 
-    r_cutoff: float
+    r_cutoff: Array
     cutoff_function: Callable
 
     @classmethod
-    def from_cutoff_type(
+    def from_type(
         cls,
+        cutoff_type: str,
         r_cutoff: float,
-        cutoff_type: str = "tanh",
     ) -> CutoffFunction:
-        """Create cutoff function from the input cutoff type such as "tanh", "cos", and "tanh"."""
-        _cutoff_function_map: Mapping[str, Callable] = {
-            "hard": _hard,
-            "tanhu": _wrapped_partial(_tanhu, r_cutoff=r_cutoff),
-            "tanh": _wrapped_partial(_tanh, r_cutoff=r_cutoff),
-            "cos": _wrapped_partial(_cos, r_cutoff=r_cutoff),
-            "exp": _wrapped_partial(_exp, r_cutoff=r_cutoff),
-            "poly1": _poly1,
-            "poly2": _poly2,
-        }
-        return cls(r_cutoff, _cutoff_function_map[cutoff_type])
+        """Create cutoff function from the cutoff type such as "tanh", "cos", etc."""
+        return cls(
+            jnp.array(r_cutoff),
+            _MAP_CUTOFF_FUNCTIONS[cutoff_type],
+        )
 
     def __post_init__(self) -> None:
-        self._assert_jit_dynamic_attributes()
-        self._assert_jit_static_attributes(
-            expected=("r_cutoff", "cutoff_function")
-        )
+        self._assert_jit_dynamic_attributes(expected=("r_cutoff",))
+        self._assert_jit_static_attributes(expected=("cutoff_function",))
 
-    @jax.jit
     def __call__(self, r: Array) -> Array:
-        return jnp.where(
-            r < self.r_cutoff,
-            self.cutoff_function(r),
-            jnp.zeros_like(r),
-        )
+        return self.cutoff_function(r, self.r_cutoff)
 
     def __hash__(self) -> int:
         """Override the hash function from the base jax pytree data class."""

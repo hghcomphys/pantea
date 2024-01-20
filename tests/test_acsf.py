@@ -17,10 +17,8 @@ from pantea.types import Array
 # @pytest.fixture
 def lj_acsf() -> ACSF:
     """Initialize using the `add` method."""
-    acsf: ACSF = ACSF("Ne")
-    cfn: CutoffFunction = CutoffFunction.from_cutoff_type(
-        r_cutoff=3.0, cutoff_type="tanhu"
-    )
+    acsf = ACSF("Ne")
+    cfn = CutoffFunction.from_type("tanhu", r_cutoff=3.0)
     acsf.add(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
     acsf.add(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
     acsf.add(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
@@ -37,8 +35,8 @@ def h2o_acsf() -> ACSF:
             (
                 EnvironmentElements(central="O", neighbor_j="H"),
                 G2(
-                    cfn=CutoffFunction.from_cutoff_type(
-                        r_cutoff=5.9043202, cutoff_type="tanhu"
+                    cfn=CutoffFunction.from_type(
+                        "tanhu", r_cutoff=5.9043202
                     ),  # r_cutoff = box.length / 2
                     r_shift=0.0,
                     eta=0.001,
@@ -49,8 +47,8 @@ def h2o_acsf() -> ACSF:
             (
                 EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
                 G3(
-                    cfn=CutoffFunction.from_cutoff_type(
-                        r_cutoff=5.9043202, cutoff_type="tanhu"
+                    cfn=CutoffFunction.from_type(
+                        "tanhu", r_cutoff=5.9043202
                     ),  # r_cutoff = box.length / 2
                     eta=0.07,
                     zeta=1.0,
