@@ -218,40 +218,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     these calculations represent a fingerprint of the local atomic environment and can
     be used in various machine learning potentials.
 
-
-    Example
-    -------
-
-    .. code-block:: python
-        :linenos:
-
-        from pantea.descriptors.acsf import ACSF, G2, G3, G9, CutoffFunction
-
-        # Create an instance of ACSF for `O` element
-        acsf = ACSF('O')
-
-        # Set cutoff function and symmetry functions
-        cfn = CutoffFunction(12.0)
-        g2 = G2(cfn, eta=0.5, r_shift=0.0)
-        g3 = G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0)
-
-        # Add different symmetry functions
-        acsf.add(g2, 'O')
-        acsf.add(g2, 'H')
-        acsf.add(g3, 'H', 'H')
-        acsf.add(g3, 'H', 'O')
-
-        print(acsf)
-
-    Output:
-
-    .. code-block:: bash
-
-        ACSF(central_element='O', num_symmetry_functions=4, r_cutoff=12.0)
-
-
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
-
     """
 
     central_element: str

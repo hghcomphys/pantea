@@ -16,7 +16,7 @@ def _to_jax_int(n: int) -> Array:
     return jnp.array(n, dtype=default_dtype.INT)
 
 
-class DescriptorScalerStats(NamedTuple):
+class ScalerStats(NamedTuple):
     """Scaler statistical quantities."""
 
     nsamples: Array = _to_jax_int(0)
@@ -26,7 +26,7 @@ class DescriptorScalerStats(NamedTuple):
     maxval: Array = jnp.array([])
 
 
-class DescriptorScalerParams(NamedTuple):
+class ScalerParams(NamedTuple):
     """Scaler parameters."""
 
     scale_min: Array = jnp.array(0.0)
@@ -34,8 +34,8 @@ class DescriptorScalerParams(NamedTuple):
 
 
 @jax.jit
-def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
-    return DescriptorScalerStats(
+def _init_scaler_stats_from(data: Array) -> ScalerStats:
+    return ScalerStats(
         nsamples=_to_jax_int(data.shape[0]),
         mean=jnp.mean(data, axis=0),
         sigma=jnp.std(data, axis=0),
@@ -45,7 +45,7 @@ def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
 
 
 @jax.jit
-def _fit_scaler(stats: DescriptorScalerStats, data: Array) -> DescriptorScalerStats:
+def _fit_scaler(stats: ScalerStats, data: Array) -> ScalerStats:
     # Calculate stats for a new batch of data
     new_mean: Array = jnp.mean(data, axis=0)
     new_sigma: Array = jnp.std(data, axis=0)
@@ -62,11 +62,11 @@ def _fit_scaler(stats: DescriptorScalerStats, data: Array) -> DescriptorScalerSt
     maxval = jnp.maximum(stats.maxval, new_max)
     minval = jnp.minimum(stats.minval, new_min)
     nsamples = stats.nsamples + n
-    return DescriptorScalerStats(nsamples, mean, sigma, minval, maxval)
+    return ScalerStats(nsamples, mean, sigma, minval, maxval)
 
 
 @jax.jit
-def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
+def _get_number_of_warnings(stats: ScalerStats, array: Array) -> Array:
     if array.ndim == 2:
         gt = jax.lax.gt(array, stats.maxval[None, :])
         lt = jax.lax.gt(stats.minval[None, :], array)
@@ -77,8 +77,8 @@ def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array
 
 
 class KernelInputs(NamedTuple):
-    params: DescriptorScalerParams
-    stats: DescriptorScalerStats
+    params: ScalerParams
+    stats: ScalerStats
     array: Array
 
 
@@ -122,7 +122,7 @@ _MAP_SCALER_KERNELS: Mapping[str, Callable[[KernelInputs], Array]] = {
 
 
 @dataclass
-class DescriptorScaler:
+class Scaler:
     """
     Scale descriptor values.
 
@@ -139,8 +139,8 @@ class DescriptorScaler:
     """
 
     transform: Callable[[KernelInputs], Array]
-    params: DescriptorScalerParams = field(default_factory=DescriptorScalerParams)
-    stats: DescriptorScalerStats = field(default_factory=DescriptorScalerStats)
+    params: ScalerParams = field(default_factory=ScalerParams)
+    stats: ScalerStats = field(default_factory=ScalerStats)
     dimension: int = 0
     number_of_warnings: int = 0
     max_number_of_warnings: Optional[int] = None
@@ -151,18 +151,18 @@ class DescriptorScaler:
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-    ) -> DescriptorScaler:
+    ) -> Scaler:
         """Initialize scaler including scaler type and min/max values."""
         assert scale_min < scale_max, logger.error(
             "expected scale_min < scale_max", exception=ValueError
         )
         # Set min/max range for scaler
-        params = DescriptorScalerParams(
+        params = ScalerParams(
             scale_min=jnp.array(scale_min),
             scale_max=jnp.array(scale_max),
         )
         # Statistical parameters
-        stats = DescriptorScalerStats()
+        stats = ScalerStats()
 
         # Set scaler type function
 
@@ -251,7 +251,7 @@ class DescriptorScaler:
         data = np.loadtxt(str(filename)).T
         dtype = dtype if dtype is not None else default_dtype.FLOATX
         self.dimension = data.shape[1]
-        self.stats = DescriptorScalerStats(
+        self.stats = ScalerStats(
             nsamples=_to_jax_int(1),
             mean=jnp.array(data[2], dtype=dtype),
             sigma=jnp.array(data[3], dtype=dtype),
