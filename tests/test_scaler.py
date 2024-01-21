@@ -43,7 +43,7 @@ class TestStructure:
         data: Array,
         expected: Tuple,
     ) -> None:
-        scaler = DescriptorScaler()
+        scaler = DescriptorScaler.from_type("center")
         scaler.fit(data)
         assert scaler.dimension == expected[0]
         assert scaler.stats.nsamples == expected[1]
@@ -76,7 +76,7 @@ class TestStructure:
             ("scale_center", "scale", "center"),
             (7, 10, 1),
         ):
-            scaler = DescriptorScaler(scale_type=scale_type)
+            scaler = DescriptorScaler.from_type(scale_type=scale_type)
             self.fit_scaler(scaler, data, batch_size=batch_size)
             self.compare(scaler, data)
 
@@ -92,7 +92,7 @@ class TestStructure:
         self,
         data: Array,
     ) -> None:
-        scaler = DescriptorScaler()
+        scaler = DescriptorScaler.from_type("center")
         scaler.fit(data)
 
         assert scaler.max_number_of_warnings is None

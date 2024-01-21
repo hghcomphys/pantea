@@ -258,7 +258,7 @@ class NeuralNetworkPotential:
         logger.debug(f"Scaler kwargs={scaler_kwargs}")
         # Assign an ACSF scaler to each element
         for element in settings.elements:
-            scaler[element] = DescriptorScaler(**scaler_kwargs)
+            scaler[element] = DescriptorScaler.from_type(**scaler_kwargs)
         return scaler
 
     def _init_model(self) -> Dict[Element, NeuralNetworkModel]:

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import Callable, Mapping, NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -26,8 +29,8 @@ class DescriptorScalerStats(NamedTuple):
 class DescriptorScalerParams(NamedTuple):
     """Scaler parameters."""
 
-    scale_min: Array
-    scale_max: Array
+    scale_min: Array = jnp.array(0.0)
+    scale_max: Array = jnp.array(1.0)
 
 
 @jax.jit
@@ -63,39 +66,6 @@ def _fit_scaler(stats: DescriptorScalerStats, data: Array) -> DescriptorScalerSt
 
 
 @jax.jit
-def _center(stats: DescriptorScalerStats, array: Array) -> Array:
-    return array - stats.mean
-
-
-@jax.jit
-def _scale(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.minval
-    ) / (stats.maxval - stats.minval)
-
-
-@jax.jit
-def _scale_center(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.mean
-    ) / (stats.maxval - stats.minval)
-
-
-@jax.jit
-def _scale_center_sigma(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return (
-        params.scale_min
-        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
-    )
-
-
-@jax.jit
 def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
     if array.ndim == 2:
         gt = jax.lax.gt(array, stats.maxval[None, :])
@@ -106,6 +76,52 @@ def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array
     return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
 
 
+class KernelInputs(NamedTuple):
+    params: DescriptorScalerParams
+    stats: DescriptorScalerStats
+    array: Array
+
+
+@jax.jit
+def _center(inputs: KernelInputs) -> Array:
+    _, stats, array = inputs
+    return array - stats.mean
+
+
+@jax.jit
+def _scale(inputs: KernelInputs) -> Array:
+    params, stats, array = inputs
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.minval
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center(inputs: KernelInputs) -> Array:
+    params, stats, array = inputs
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.mean
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center_sigma(inputs: KernelInputs) -> Array:
+    params, stats, array = inputs
+    return (
+        params.scale_min
+        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
+    )
+
+
+_MAP_SCALER_KERNELS: Mapping[str, Callable[[KernelInputs], Array]] = {
+    "center": _center,
+    "scale": _scale,
+    "scale_center": _scale_center,
+    "scale_center_sigma": _scale_center_sigma,
+}
+
+
+@dataclass
 class DescriptorScaler:
     """
     Scale descriptor values.
@@ -122,31 +138,39 @@ class DescriptorScaler:
     on the fitted scaler parameters.
     """
 
-    def __init__(
-        self,
+    transform: Callable[[KernelInputs], Array]
+    params: DescriptorScalerParams = field(default_factory=DescriptorScalerParams)
+    stats: DescriptorScalerStats = field(default_factory=DescriptorScalerStats)
+    dimension: int = 0
+    number_of_warnings: int = 0
+    max_number_of_warnings: Optional[int] = None
+
+    @classmethod
+    def from_type(
+        cls,
         scale_type: str = "scale_center",
         scale_min: float = 0.0,
         scale_max: float = 1.0,
-    ) -> None:
+    ) -> DescriptorScaler:
         """Initialize scaler including scaler type and min/max values."""
-        assert scale_min < scale_max
-
+        assert scale_min < scale_max, logger.error(
+            "expected scale_min < scale_max", exception=ValueError
+        )
         # Set min/max range for scaler
-        self.scale_type = scale_type
-        self.params = DescriptorScalerParams(
+        params = DescriptorScalerParams(
             scale_min=jnp.array(scale_min),
             scale_max=jnp.array(scale_max),
         )
-
         # Statistical parameters
-        self.dimension: int = 0
-        self.stats = DescriptorScalerStats()
-
-        self.number_of_warnings: int = 0
-        self.max_number_of_warnings: Optional[int] = None
+        stats = DescriptorScalerStats()
 
         # Set scaler type function
-        self._transform = getattr(self, f"{self.scale_type}")
+
+        return cls(
+            params=params,
+            stats=stats,
+            transform=_MAP_SCALER_KERNELS[scale_type],
+        )
 
     def fit(self, data: Array) -> None:
         """
@@ -177,7 +201,7 @@ class DescriptorScaler:
         """
         if warnings:
             self._check_warnings(array)
-        return self._transform(array)
+        return self.transform(KernelInputs(self.params, self.stats, array))
 
     def set_max_number_of_warnings(self, number: Optional[int] = None) -> None:
         """Set the maximum number of warning for out of range descriptor values."""
@@ -208,18 +232,6 @@ class DescriptorScaler:
                 f"{self.number_of_warnings} (max={self.max_number_of_warnings})"
             )
 
-    def center(self, array: Array) -> Array:
-        return _center(self.stats, array)
-
-    def scale(self, array: Array) -> Array:
-        return _scale(self.params, self.stats, array)
-
-    def scale_center(self, array: Array) -> Array:
-        return _scale_center(self.params, self.stats, array)
-
-    def scale_center_sigma(self, array: Array) -> Array:
-        return _scale_center_sigma(self.params, self.stats, array)
-
     def save(self, filename: Path) -> None:
         """Save scaler parameters into file."""
         logger.debug(f"Saving scaler parameters into '{str(filename)}'")
@@ -249,7 +261,7 @@ class DescriptorScaler:
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(scale_type='{self.scale_type}', "
+            f"{self.__class__.__name__}(scale_type='{self.transform.__name__[1:]}', "
             f"scale_min={self.params.scale_min}, scale_max={self.params.scale_max})"
         )
 
