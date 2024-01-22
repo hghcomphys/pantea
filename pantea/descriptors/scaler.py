@@ -17,7 +17,7 @@ def _to_jax_int(n: int) -> Array:
 
 
 class ScalerStats(NamedTuple):
-    """Scaler statistical quantities."""
+    """Scaler statistical quantities (JAX arrays)."""
 
     nsamples: Array = _to_jax_int(0)
     mean: Array = jnp.array([])
@@ -27,7 +27,7 @@ class ScalerStats(NamedTuple):
 
 
 class ScalerParams(NamedTuple):
-    """Scaler parameters."""
+    """Scaler range parameters."""
 
     scale_min: Array = jnp.array(0.0)
     scale_max: Array = jnp.array(1.0)
@@ -76,44 +76,39 @@ def _get_number_of_warnings(stats: ScalerStats, array: Array) -> Array:
     return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
 
 
-class KernelInputs(NamedTuple):
-    params: ScalerParams
-    stats: ScalerStats
-    array: Array
+# ---
 
 
 @jax.jit
-def _center(inputs: KernelInputs) -> Array:
-    _, stats, array = inputs
+def _center(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
     return array - stats.mean
 
 
 @jax.jit
-def _scale(inputs: KernelInputs) -> Array:
-    params, stats, array = inputs
+def _scale(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
     return params.scale_min + (params.scale_max - params.scale_min) * (
         array - stats.minval
     ) / (stats.maxval - stats.minval)
 
 
 @jax.jit
-def _scale_center(inputs: KernelInputs) -> Array:
-    params, stats, array = inputs
+def _scale_center(params: ScalerParams, stats: ScalerStats, array: Array) -> Array:
     return params.scale_min + (params.scale_max - params.scale_min) * (
         array - stats.mean
     ) / (stats.maxval - stats.minval)
 
 
 @jax.jit
-def _scale_center_sigma(inputs: KernelInputs) -> Array:
-    params, stats, array = inputs
+def _scale_center_sigma(
+    params: ScalerParams, stats: ScalerStats, array: Array
+) -> Array:
     return (
         params.scale_min
         + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
     )
 
 
-_MAP_SCALER_KERNELS: Mapping[str, Callable[[KernelInputs], Array]] = {
+_MAP_SCALER_KERNELS: Mapping[str, Callable] = {
     "center": _center,
     "scale": _scale,
     "scale_center": _scale_center,
@@ -138,7 +133,7 @@ class Scaler:
     on the fitted scaler parameters.
     """
 
-    transform: Callable[[KernelInputs], Array]
+    transform: Callable[[ScalerParams, ScalerStats, Array], Array]
     params: ScalerParams = field(default_factory=ScalerParams)
     stats: ScalerStats = field(default_factory=ScalerStats)
     dimension: int = 0
@@ -154,7 +149,7 @@ class Scaler:
     ) -> Scaler:
         """Initialize scaler including scaler type and min/max values."""
         assert scale_min < scale_max, logger.error(
-            "expected scale_min < scale_max", exception=ValueError
+            f"Unexpected {scale_min=} >= {scale_max=}", exception=ValueError
         )
         # Set min/max range for scaler
         params = ScalerParams(
@@ -163,14 +158,9 @@ class Scaler:
         )
         # Statistical parameters
         stats = ScalerStats()
-
-        # Set scaler type function
-
-        return cls(
-            params=params,
-            stats=stats,
-            transform=_MAP_SCALER_KERNELS[scale_type],
-        )
+        # Set scaler function
+        transform = _MAP_SCALER_KERNELS[scale_type]
+        return cls(transform, params, stats)
 
     def fit(self, data: Array) -> None:
         """
@@ -180,7 +170,6 @@ class Scaler:
         .. _this: https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
         """
         data = jnp.atleast_2d(data)  # type: ignore
-
         if self.stats.nsamples == 0:
             self.dimension = data.shape[1]
             self.stats = _init_scaler_stats_from(data)
@@ -201,7 +190,7 @@ class Scaler:
         """
         if warnings:
             self._check_warnings(array)
-        return self.transform(KernelInputs(self.params, self.stats, array))
+        return self.transform(self.params, self.stats, array)
 
     def set_max_number_of_warnings(self, number: Optional[int] = None) -> None:
         """Set the maximum number of warning for out of range descriptor values."""
