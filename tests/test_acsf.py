@@ -10,7 +10,7 @@ import pytest
 
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf import ACSF, G2, G3, CutoffFunction
-from pantea.descriptors.acsf.symmetry import EnvironmentElements
+from pantea.descriptors.acsf.acsf import EnvironmentElements
 from pantea.types import Array
 
 
@@ -19,11 +19,11 @@ def lj_acsf() -> ACSF:
     """Initialize using the `add` method."""
     acsf = ACSF("Ne")
     cfn = CutoffFunction.from_type("tanhu", r_cutoff=3.0)
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.75), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=1.00), "Ne")
+    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
+    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
+    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
+    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.75), "Ne")
+    acsf.add_radial(G2(cfn, eta=1.00, r_shift=1.00), "Ne")
     return acsf
 
 

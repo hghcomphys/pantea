@@ -89,8 +89,8 @@ The resulting values can then be used to construct a machine learning potential.
         # It includes two radial (G2) and angular (G3) symmetry functions
         descriptor = ACSF('H')
         cfn = CutoffFunction.from_type('tanh', r_cutoff=12.0)
-        descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
-        descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
+        descriptor.add_radial(G2(cfn, eta=0.5, r_shift=0.0), 'H')
+        descriptor.add_angular(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
         print(descriptor)
         # >> ACSF(central_element='H', symmetry_functions=2)
 

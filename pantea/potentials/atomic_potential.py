@@ -1,13 +1,18 @@
 from dataclasses import dataclass
+from typing import Protocol
 
 from frozendict import frozendict
 
 from pantea.atoms.structure import Structure
-from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.descriptors.scaler import Scaler
 from pantea.models.nn.network import NeuralNetworkModel
 from pantea.potentials.energy import _compute_atomic_energy
 from pantea.types import Array, Element
+
+
+class DescriptorInterface(Protocol):
+    num_descriptors: int
+    r_cutoff: Array
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 import itertools
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Dict, Optional, Protocol, Tuple
+from typing import Callable, Dict, NamedTuple, Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -13,18 +13,34 @@ from pantea.atoms.distance import (
 )
 from pantea.atoms.neighbor import _calculate_masks_per_atom
 from pantea.atoms.structure import Structure
-from pantea.descriptors.acsf.angular import AngularSymmetryFunction
-from pantea.descriptors.acsf.radial import RadialSymmetryFunction
-from pantea.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
-from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.logger import logger
-from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
+from pantea.pytree import BaseJaxPytreeDataclass, register_jax_pytree_node
 from pantea.types import Array, Element
 
 
-@jit
+class EnvironmentElements(NamedTuple):
+    """
+    Representative elements for the chemical environment including central
+    elements and its neighbors.
+    """
+
+    central: Element
+    neighbor_j: Element
+    neighbor_k: Optional[Element] = None
+
+
+class RadialSymmetryFunctionInterface(Protocol):
+    """An expected interface for `two body` (radial) symmetry functions."""
+
+    r_cutoff: Array
+
+    def __call__(self, rij: Array) -> Array:
+        ...
+
+
+@jax.jit
 def _calculate_radial_acsf_per_atom(
-    radial: Dict[EnvironmentElements, RadialSymmetryFunction],
+    radial: Dict[EnvironmentElements, RadialSymmetryFunctionInterface],
     atype: Array,
     dist_i: Array,
     emap: Dict[Element, Array],
@@ -43,9 +59,18 @@ def _calculate_radial_acsf_per_atom(
     )
 
 
-@jit
+class AngularSymmetryFunctionInterface(Protocol):
+    """An expected interface for `three body` (angular) symmetry functions."""
+
+    r_cutoff: Array
+
+    def __call__(self, rij: Array, rik: Array, rjk: Array, cost: Array) -> Array:
+        ...
+
+
+@jax.jit
 def _calculate_angular_acsf_per_atom(
-    angular: Dict[EnvironmentElements, AngularSymmetryFunction],
+    angular: Dict[EnvironmentElements, AngularSymmetryFunctionInterface],
     atype: Array,
     diff_i: Array,
     dist_i: Array,
@@ -138,7 +163,7 @@ def _inner_loop_over_angular_acsf_terms(
     return total + value, value
 
 
-class AcsfInterface(Protocol):
+class AcsfDescriptorInterface(Protocol):
     num_symmetry_functions: int
     num_radial_symmetry_functions: int
     num_angular_symmetry_functions: int
@@ -146,9 +171,9 @@ class AcsfInterface(Protocol):
     angular_symmetry_functions: Tuple
 
 
-@jit
+@jax.jit
 def _calculate_descriptor_per_atom(
-    acsf: AcsfInterface,
+    acsf: AcsfDescriptorInterface,
     single_atom_position: Array,
     neighbor_positions: Array,
     atype: Array,
@@ -204,7 +229,7 @@ _calculate_grad_descriptor_per_atom = jit(
 
 
 @dataclass
-class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
+class ACSF(BaseJaxPytreeDataclass):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor captures
     information about the distribution of neighboring
@@ -222,37 +247,37 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     """
 
     central_element: str
-    radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
-    angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
+    radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunctionInterface]] = tuple()  # type: ignore
+    angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunctionInterface]] = tuple()  # type: ignore
 
-    def add(
+    def add_radial(
         self,
-        symmetry_function: BaseSymmetryFunction,
+        symmetry_function: RadialSymmetryFunctionInterface,
         neighbor_element_j: Element,
-        neighbor_element_k: Optional[Element] = None,
     ) -> None:
         """Add the input symmetry function to the list of ACSFs."""
-        if isinstance(symmetry_function, RadialSymmetryFunction):
-            self.radial_symmetry_functions = self.radial_symmetry_functions + (
-                (
-                    EnvironmentElements(self.central_element, neighbor_element_j),
-                    symmetry_function,
+        self.radial_symmetry_functions = self.radial_symmetry_functions + (
+            (
+                EnvironmentElements(self.central_element, neighbor_element_j),
+                symmetry_function,
+            ),
+        )  # type: ignore
+
+    def add_angular(
+        self,
+        symmetry_function: AngularSymmetryFunctionInterface,
+        neighbor_element_j: Element,
+        neighbor_element_k: Element,
+    ) -> None:
+        """Add the input symmetry function to the list of ACSFs."""
+        self.angular_symmetry_functions = self.angular_symmetry_functions + (
+            (
+                EnvironmentElements(
+                    self.central_element, neighbor_element_j, neighbor_element_k  # type: ignore
                 ),
-            )  # type: ignore
-        elif isinstance(symmetry_function, AngularSymmetryFunction):
-            self.angular_symmetry_functions = self.angular_symmetry_functions + (
-                (
-                    EnvironmentElements(
-                        self.central_element, neighbor_element_j, neighbor_element_k  # type: ignore
-                    ),
-                    symmetry_function,
-                ),
-            )
-        else:
-            logger.error(
-                f"Unknown symmetry function type {symmetry_function}",
-                exception=TypeError,
-            )
+                symmetry_function,
+            ),
+        )
 
     def __call__(
         self,
@@ -370,7 +395,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(central_element='{self.central_element}'"
-            f", symmetry_functions={self.num_symmetry_functions})"
+            f", num_symmetry_functions={self.num_symmetry_functions})"
         )
 
 

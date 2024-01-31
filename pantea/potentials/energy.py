@@ -8,9 +8,12 @@ from jax import jit
 from pantea.atoms.structure import Inputs
 from pantea.descriptors import Scaler
 from pantea.descriptors.acsf.acsf import _calculate_descriptor
-from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.models import NeuralNetworkModel
 from pantea.types import Array, Element
+
+
+class DescriptorInterface(Protocol):
+    ...
 
 
 class AtomicPotentialInterface(Protocol):
