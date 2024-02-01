@@ -19,11 +19,11 @@ def lj_acsf() -> ACSF:
     """Initialize using the `add` method."""
     acsf = ACSF("Ne")
     cfn = CutoffFunction.from_type("tanhu", r_cutoff=3.0)
-    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
-    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
-    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
-    acsf.add_radial(G2(cfn, eta=1.00, r_shift=0.75), "Ne")
-    acsf.add_radial(G2(cfn, eta=1.00, r_shift=1.00), "Ne")
+    acsf.add_radial(G2(cutoff_function=cfn, eta=1.00, r_shift=0.00), "Ne")
+    acsf.add_radial(G2(cutoff_function=cfn, eta=1.00, r_shift=0.25), "Ne")
+    acsf.add_radial(G2(cutoff_function=cfn, eta=1.00, r_shift=0.50), "Ne")
+    acsf.add_radial(G2(cutoff_function=cfn, eta=1.00, r_shift=0.75), "Ne")
+    acsf.add_radial(G2(cutoff_function=cfn, eta=1.00, r_shift=1.00), "Ne")
     return acsf
 
 
@@ -35,7 +35,7 @@ def h2o_acsf() -> ACSF:
             (
                 EnvironmentElements(central="O", neighbor_j="H"),
                 G2(
-                    cfn=CutoffFunction.from_type(
+                    cutoff_function=CutoffFunction.from_type(
                         "tanhu", r_cutoff=5.9043202
                     ),  # r_cutoff = box.length / 2
                     r_shift=0.0,
@@ -47,7 +47,7 @@ def h2o_acsf() -> ACSF:
             (
                 EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
                 G3(
-                    cfn=CutoffFunction.from_type(
+                    cutoff_function=CutoffFunction.from_type(
                         "tanhu", r_cutoff=5.9043202
                     ),  # r_cutoff = box.length / 2
                     eta=0.07,

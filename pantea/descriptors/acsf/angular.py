@@ -22,15 +22,16 @@ class AngularSymmetryFunctionInterface(Protocol):
 class G3(BaseJaxPytreeDataclass, AngularSymmetryFunctionInterface):
     """Angular symmetry function."""
 
-    cfn: CutoffFunction
-    eta: float
-    zeta: float
-    lambda0: float
-    r_shift: float
+    eta: Array
+    zeta: Array
+    lambda0: Array
+    r_shift: Array
+    cutoff_function: CutoffFunction
 
-    def __hash__(self) -> int:
-        """Enforce to use the parent class's hash method (JIT)."""
-        return super().__hash__()
+    def __post_init__(self) -> None:
+        self._assert_jit_dynamic_attributes(("eta", "zeta", "lambda0", "r_shift"))
+        self._assert_jit_static_attributes(("cutoff_function",))
+        self._cast_dynamic_attributes_to_array(self)
 
     @jax.jit
     def __call__(self, rij: Array, rik: Array, rjk: Array, cost: Array) -> Array:
@@ -38,14 +39,18 @@ class G3(BaseJaxPytreeDataclass, AngularSymmetryFunctionInterface):
             2.0 ** (1.0 - self.zeta)
             * jnp.power(1 + self.lambda0 * cost, self.zeta)
             * jnp.exp(-self.eta * (rij**2 + rik**2 + rjk**2))
-            * self.cfn(rij)
-            * self.cfn(rik)
-            * self.cfn(rjk)
+            * self.cutoff_function(rij)
+            * self.cutoff_function(rik)
+            * self.cutoff_function(rjk)
         )
+
+    def __hash__(self) -> int:
+        """Enforce to use the parent class's hash method (JIT)."""
+        return super().__hash__()
 
     @property
     def r_cutoff(self) -> Array:
-        return self.cfn.r_cutoff
+        return self.cutoff_function.r_cutoff
 
 
 @dataclass
@@ -56,15 +61,16 @@ class G9(BaseJaxPytreeDataclass, AngularSymmetryFunctionInterface):
     See `J. Behler, J. Chem. Phys. 134, 074106 (2011)`.
     """
 
-    cfn: CutoffFunction
-    eta: float
-    zeta: float
-    lambda0: float
-    r_shift: float
+    eta: Array
+    zeta: Array
+    lambda0: Array
+    r_shift: Array
+    cutoff_function: CutoffFunction
 
-    def __hash__(self) -> int:
-        """Enforce to use the parent class's hash method (JIT)."""
-        return super().__hash__()
+    def __post_init__(self) -> None:
+        self._assert_jit_dynamic_attributes(("eta", "zeta", "lambda0", "r_shift"))
+        self._assert_jit_static_attributes(("cutoff_function",))
+        self._cast_dynamic_attributes_to_array(self)
 
     @jax.jit
     def __call__(self, rij: Array, rik: Array, rjk: Array, cost: Array) -> Array:
@@ -73,13 +79,17 @@ class G9(BaseJaxPytreeDataclass, AngularSymmetryFunctionInterface):
             2.0 ** (1.0 - self.zeta)
             * jnp.power(1 + self.lambda0 * cost, self.zeta)
             * jnp.exp(-self.eta * (rij**2 + rik**2))
-            * self.cfn(rij)
-            * self.cfn(rik)
+            * self.cutoff_function(rij)
+            * self.cutoff_function(rik)
         )
+
+    def __hash__(self) -> int:
+        """Enforce to use the parent class's hash method (JIT)."""
+        return super().__hash__()
 
     @property
     def r_cutoff(self) -> Array:
-        return self.cfn.r_cutoff
+        return self.cutoff_function.r_cutoff
 
 
 register_jax_pytree_node(G3)

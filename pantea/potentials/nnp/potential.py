@@ -189,7 +189,7 @@ class NeuralNetworkPotential:
             if args.acsf_type == 1:
                 descriptor[args.central_element].add_radial(
                     symmetry_function=G1(
-                        CutoffFunction.from_type(
+                        cutoff_function=CutoffFunction.from_type(
                             cutoff_type=settings.cutoff_type,
                             r_cutoff=args.r_cutoff,
                         )
@@ -199,7 +199,7 @@ class NeuralNetworkPotential:
             elif args.acsf_type == 2:
                 descriptor[args.central_element].add_radial(
                     symmetry_function=G2(
-                        CutoffFunction.from_type(
+                        cutoff_function=CutoffFunction.from_type(
                             cutoff_type=settings.cutoff_type,
                             r_cutoff=args.r_cutoff,
                         ),
@@ -211,7 +211,7 @@ class NeuralNetworkPotential:
             elif args.acsf_type == 3:
                 descriptor[args.central_element].add_angular(
                     symmetry_function=G3(
-                        CutoffFunction.from_type(
+                        cutoff_function=CutoffFunction.from_type(
                             cutoff_type=settings.cutoff_type,
                             r_cutoff=args.r_cutoff,
                         ),
@@ -226,7 +226,7 @@ class NeuralNetworkPotential:
             elif args.acsf_type == 9:
                 descriptor[args.central_element].add_angular(
                     symmetry_function=G9(
-                        CutoffFunction.from_type(
+                        cutoff_function=CutoffFunction.from_type(
                             cutoff_type=settings.cutoff_type,
                             r_cutoff=args.r_cutoff,
                         ),
