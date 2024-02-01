@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple
 
+import jax.numpy as jnp
 from jax import tree_util
+
 from pantea.logger import logger
 
 
-class BaseJaxPytreeDataClass:
+class BaseJaxPytreeDataclass:
     """
     Here we specify exactly which components of a `dataclass` should be treated as
-    static and which should be treated as dynamic (array) attributes.
+    static and which should be treated as dynamic (JAX array) attributes.
 
     The `hash` method then it would only based on the static attributes and
     used for JIT re-compilation if they change.
@@ -21,7 +23,7 @@ class BaseJaxPytreeDataClass:
 
         Registering the class to jax pytree node is also required.
 
-        Must be used only for dataclasses.
+        It must be used only for dataclasses.
 
     See https://jax.readthedocs.io/en/latest/faq.html#how-to-use-jit-with-methods
     """
@@ -31,15 +33,14 @@ class BaseJaxPytreeDataClass:
             getattr(self, attr) for attr in self._get_jit_dynamic_attributes()
         )
         aux_data: Dict[str, Any] = {
-            attr: getattr(self, attr)
-            for attr in self._get_jit_static_attributes()
+            attr: getattr(self, attr) for attr in self._get_jit_static_attributes()
         }
         return (children, aux_data)
 
     @classmethod
     def _tree_unflatten(
         cls, aux_data: Dict[str, Any], children: Tuple[Any, ...]
-    ) -> BaseJaxPytreeDataClass:
+    ) -> BaseJaxPytreeDataclass:
         return cls(*children, **aux_data)  # type: ignore
 
     def __hash__(self) -> int:
@@ -55,9 +56,7 @@ class BaseJaxPytreeDataClass:
     def _get_jit_dynamic_attributes(cls) -> Tuple[str, ...]:
         """Get JAX JIT compilation dynamic attribute names (i.e. jax.ndarray)."""
         return tuple(
-            attr
-            for attr, dtype in cls.__annotations__.items()
-            if "Array" in str(dtype)
+            attr for attr, dtype in cls.__annotations__.items() if "Array" in str(dtype)
         )
 
     @classmethod
@@ -85,9 +84,7 @@ class BaseJaxPytreeDataClass:
             )
 
     @classmethod
-    def _assert_jit_static_attributes(
-        cls, expected: Tuple[str, ...] = tuple()
-    ) -> None:
+    def _assert_jit_static_attributes(cls, expected: Tuple[str, ...] = tuple()) -> None:
         cls._assert_jit_attributes(
             cls._get_jit_static_attributes(), expected, tag="static"
         )
@@ -99,6 +96,12 @@ class BaseJaxPytreeDataClass:
         cls._assert_jit_attributes(
             cls._get_jit_dynamic_attributes(), expected, tag="dynamic"
         )
+
+    @classmethod
+    def _cast_dynamic_attributes_to_array(cls, obj) -> None:
+        for attr in cls._get_jit_dynamic_attributes():
+            attr_value = getattr(obj, attr)
+            setattr(obj, attr, jnp.asarray(attr_value))
 
 
 def register_jax_pytree_node(cls) -> None:
