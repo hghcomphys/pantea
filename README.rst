@@ -74,7 +74,7 @@ The resulting values can then be used to construct a machine learning potential.
 
 
 .. code-block:: python
-
+        
         from pantea.datasets import Dataset
         from pantea.descriptors import ACSF
         from pantea.descriptors.acsf import CutoffFunction, G2, G3
@@ -85,14 +85,16 @@ The resulting values can then be used to construct a machine learning potential.
         print(structure)
         # >> Structure(natoms=12, elements=('H', 'O'), dtype=float64)
 
-        # Define an ACSF descriptor for hydrogen
-        # It includes two radial (G2) and angular (G3) symmetry functions
-        descriptor = ACSF('H')
+        # Define two radial (G2) and angular (G3) symmetry functions
         cfn = CutoffFunction.from_type('tanh', r_cutoff=12.0)
-        descriptor.add_radial(G2(cfn, eta=0.5, r_shift=0.0), 'H')
-        descriptor.add_angular(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
+        g2 = G2(cutoff_function=cfn, eta=0.5, r_shift=0.0)
+        g3 = G3(cutoff_function=cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0)
+        # Then adding those symmetry functions to an ACSF descriptor for Hydrogen atoms
+        descriptor = ACSF(central_element='H')
+        descriptor.add_radial(symmetry_function=g2, neighbor_element='H')
+        descriptor.add_angular(symmetry_function=g3, neighbor_element_first='H', neighbor_element_second='O')
         print(descriptor)
-        # >> ACSF(central_element='H', symmetry_functions=2)
+        # >> ACSF(central_element='H', num_symmetry_functions=2)
 
         values = descriptor(structure)
         print("Descriptor values:\n", values)
@@ -102,8 +104,8 @@ The resulting values can then be used to construct a machine learning potential.
         # ...
         #  [0.00228752 0.41445455]]
 
-        gradient = descriptor.grad(structure, atom_index=0)
-        print("Descriptor gradient:\n", gradient)
+        gradient_values = descriptor.grad(structure, atom_index=0)
+        print("Descriptor gradient values:\n", gradient_values)
         # >> Descriptor gradient:
         # [[ 0.04645236 -0.05037861 -0.06146214]
         # [-0.10481855 -0.01841708  0.04760214]]
