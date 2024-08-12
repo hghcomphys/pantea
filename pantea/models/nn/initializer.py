@@ -1,8 +1,10 @@
 from typing import Tuple
 
 from flax import linen as nn
-from jax.random import KeyArray
+
 from pantea.types import Array, Dtype
+
+KeyArray = Array
 
 
 class UniformInitializer:
@@ -14,7 +16,5 @@ class UniformInitializer:
             self.weights_range[1] - self.weights_range[0]
         )
 
-    def __call__(
-        self, rng: KeyArray, shape: Tuple[int, ...], dtype: Dtype
-    ) -> Array:
+    def __call__(self, rng: KeyArray, shape: Tuple[int, ...], dtype: Dtype) -> Array:
         return self.initializer(rng, shape, dtype) + self.weights_range[0]
