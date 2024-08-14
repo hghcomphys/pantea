@@ -194,11 +194,23 @@ _calculate_descriptor = jit(
 )
 
 
-_calculate_grad_descriptor_per_atom = jit(
-    jax.jacfwd(
-        _calculate_descriptor_per_atom,
-        argnums=1,
-    ),
+_calculate_grad_descriptor_per_atom = jax.jacfwd(
+    _calculate_descriptor_per_atom,
+    argnums=1,
+)
+
+_jitted_calculate_grad_descriptor_per_atom = jit(
+    _calculate_grad_descriptor_per_atom,
+    static_argnums=(0,),
+)
+
+_calculate_grad_descriptor_per_element = vmap(
+    _calculate_grad_descriptor_per_atom,
+    in_axes=(None, 0, None, None, None, None),
+)
+
+_jitted_calculate_grad_descriptor_per_element = jit(
+    _calculate_grad_descriptor_per_element,
     static_argnums=(0,),
 )
 
@@ -332,17 +344,42 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
             structure.element_map.element_to_atom_type,
         )
 
+    def grad_per_element(
+        self,
+        structure: Structure,
+        element: Element,
+    ) -> Array:
+        """
+        Compute gradient of ACSF descriptor respect to the atom position for element.
+
+        :param structure: input Structure instance
+        :param element: element exists in the structure
+        :return: gradient of the descriptor value respect to the atom position
+        """
+        element_aids = structure.select(element)
+        return _jitted_calculate_grad_descriptor_per_element(
+            self,
+            structure.positions[element_aids],  # must be element positions shape=(1, 3)
+            structure.positions,
+            structure.atom_types,
+            structure.lattice,
+            structure.element_map.element_to_atom_type,
+        )
+
     def grad(
         self,
         structure: Structure,
         atom_index: int,
     ) -> Array:
         """
-        Compute gradient of ACSF descriptor respect to atom position (x, y, and z).
+        Compute gradient of ACSF descriptor respect to the atom position for a single atom.
 
         :param structure: input Structure instance
         :param atom_index: atom index in Structure [0, natoms)
         :return: gradient of the descriptor value respect to the atom position
+
+        Please note that `grad_per_element` method is way much faster than
+        the current implementation of this method method.
         """
         if not (0 <= atom_index < structure.natoms):
             logger.error(
@@ -351,7 +388,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
                 ValueError,
             )
 
-        return _calculate_grad_descriptor_per_atom(
+        return _jitted_calculate_grad_descriptor_per_atom(
             self,
             structure.positions[
                 atom_index
