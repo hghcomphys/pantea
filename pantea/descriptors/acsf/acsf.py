@@ -22,7 +22,6 @@ from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Element
 
 
-@jit
 def _calculate_radial_acsf_per_atom(
     radial: Dict[EnvironmentElements, RadialSymmetryFunction],
     atype: Array,
@@ -43,7 +42,6 @@ def _calculate_radial_acsf_per_atom(
     )
 
 
-@jit
 def _calculate_angular_acsf_per_atom(
     angular: Dict[EnvironmentElements, AngularSymmetryFunction],
     atype: Array,
@@ -146,7 +144,6 @@ class AcsfInterface(Protocol):
     angular_symmetry_functions: Tuple
 
 
-@jit
 def _calculate_descriptor_per_atom(
     acsf: AcsfInterface,
     single_atom_position: Array,
@@ -193,24 +190,16 @@ _calculate_descriptor = jit(
     static_argnums=(0,),
 )
 
-
 _calculate_grad_descriptor_per_atom = jax.jacfwd(
     _calculate_descriptor_per_atom,
     argnums=1,
 )
 
-_jitted_calculate_grad_descriptor_per_atom = jit(
-    _calculate_grad_descriptor_per_atom,
-    static_argnums=(0,),
-)
-
-_calculate_grad_descriptor_per_element = vmap(
-    _calculate_grad_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None),
-)
-
-_jitted_calculate_grad_descriptor_per_element = jit(
-    _calculate_grad_descriptor_per_element,
+_calculate_grad_descriptor = jit(
+    vmap(
+        _calculate_grad_descriptor_per_atom,
+        in_axes=(None, 0, None, None, None, None),
+    ),
     static_argnums=(0,),
 )
 
@@ -302,7 +291,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     def __call__(
         self,
         structure: Structure,
-        atom_indices: Optional[Array] = None,
+        atom_index: Optional[Array] = None,
     ) -> Array:
         """
         Calculate descriptor values for the input given structure and atom index.
@@ -315,51 +304,28 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         :return: descriptor values
         :rtype: Array
         """
-
         if self.num_symmetry_functions == 0:
             logger.warning("No symmetry function was found")
 
-        if atom_indices is None:
-            atom_indices = structure.select(self.central_element)
+        if atom_index is None:
+            aids = structure.select(self.central_element)
         else:
-            atom_indices = jnp.atleast_1d(atom_indices)  # type: ignore
-            # Check aid atom type match the central element
+            aids = jnp.atleast_1d(atom_index)
+            # Check all atom types match the central element
             if not jnp.all(
                 structure.element_map.element_to_atom_type[self.central_element]
-                == structure.atom_types[atom_indices]
+                == structure.atom_types[aids]
             ):
                 logger.error(
                     f"Inconsistent central element '{self.central_element}': "
-                    f" input atom indices={atom_indices}"
-                    f" (atom_types='{int(structure.atom_types[atom_indices])}')",
+                    f" input atom index={atom_index}"
+                    f" (atom_types='{int(structure.atom_types[aids])}')",
                     exception=ValueError,
                 )
 
         return _calculate_descriptor(
             self,
-            structure.positions[atom_indices],
-            structure.positions,
-            structure.atom_types,
-            structure.lattice,
-            structure.element_map.element_to_atom_type,
-        )
-
-    def grad_per_element(
-        self,
-        structure: Structure,
-        element: Element,
-    ) -> Array:
-        """
-        Compute gradient of ACSF descriptor respect to the atom position for element.
-
-        :param structure: input Structure instance
-        :param element: element exists in the structure
-        :return: gradient of the descriptor value respect to the atom position
-        """
-        element_aids = structure.select(element)
-        return _jitted_calculate_grad_descriptor_per_element(
-            self,
-            structure.positions[element_aids],  # must be element positions shape=(1, 3)
+            structure.positions[aids],
             structure.positions,
             structure.atom_types,
             structure.lattice,
@@ -369,10 +335,10 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     def grad(
         self,
         structure: Structure,
-        atom_index: int,
+        atom_index: Optional[Array] = None,
     ) -> Array:
         """
-        Compute gradient of ACSF descriptor respect to the atom position for a single atom.
+        Compute gradient of ACSF descriptor respect to the atom position.
 
         :param structure: input Structure instance
         :param atom_index: atom index in Structure [0, natoms)
@@ -381,18 +347,22 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         Please note that `grad_per_element` method is way much faster than
         the current implementation of this method method.
         """
-        if not (0 <= atom_index < structure.natoms):
-            logger.error(
-                f"Unexpected {atom_index=}."
-                f" The index must be between [0, {structure.natoms})",
-                ValueError,
-            )
+        if atom_index is None:
+            positions = structure.positions
+        else:
+            aids = jnp.atleast_1d(atom_index)
+            # check atom index
+            if not jnp.all((0 <= aids) & (aids < structure.natoms)):
+                logger.error(
+                    f"unexpected {atom_index=}."
+                    f"Input index must be between [0, {structure.natoms})",
+                    ValueError,
+                )
+            positions = structure.positions[aids]
 
-        return _jitted_calculate_grad_descriptor_per_atom(
+        return _calculate_grad_descriptor(
             self,
-            structure.positions[
-                atom_index
-            ],  # must be a single atom position shape=(1, 3)
+            positions,
             structure.positions,
             structure.atom_types,
             structure.lattice,

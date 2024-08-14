@@ -180,4 +180,4 @@ class TestACSF:
         expected: Array,
     ) -> None:
         assert acsf(structure).shape == expected[0]
-        assert jnp.allclose(acsf(structure, atom_indices=jnp.array(0)), expected[1])
+        assert jnp.allclose(acsf(structure, atom_index=0), expected[1])
