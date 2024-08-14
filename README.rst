@@ -109,40 +109,40 @@ The resulting values can then be used to construct a machine learning potential.
         # [-0.10481855 -0.01841708  0.04760214]]
 
 
--------------------------
-Training an NNP potential
--------------------------
-This example illustrates how to quickly create a `high-dimensional neural network 
-potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
-The trained potential can then be used to evaluate the energy and force components for new structures.
+.. -------------------------
+.. Training an NNP potential
+.. -------------------------
+.. This example illustrates how to quickly create a `high-dimensional neural network 
+.. potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
+.. The trained potential can then be used to evaluate the energy and force components for new structures.
 
-.. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
-
-
-.. code-block:: python
-
-        from pantea.datasets import Dataset
-        from pantea.potentials import NeuralNetworkPotential
-
-        structures = Dataset.from_runner("input.data")
-        structure = structures[0]
-
-        nnp = NeuralNetworkPotential.from_file("input.nn")
-
-        nnp.fit_scaler(structures)
-        nnp.fit_model(structures)
-
-        total_energy = nnp(structure)
-        print(total_energy)
-
-        forces = nnp.compute_forces(structure)
-        print(forces)
+.. .. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
 
 
-Example files: `input.data`_ and `input.nn`_
+.. .. code-block:: python
 
-.. _input.data: https://drive.google.com/file/d/1VMckgIv_OUvCOXQ0pYzaF5yl9AwR0rBy/view?usp=sharing
-.. _input.nn: https://drive.google.com/file/d/15Oq9gAJ2xXVMcHyWXlRukfJFevyVO7lI/view?usp=sharing
+..         from pantea.datasets import Dataset
+..         from pantea.potentials import NeuralNetworkPotential
+
+..         structures = Dataset.from_runner("input.data")
+..         structure = structures[0]
+
+..         nnp = NeuralNetworkPotential.from_file("input.nn")
+
+..         nnp.fit_scaler(structures)
+..         nnp.fit_model(structures)
+
+..         total_energy = nnp(structure)
+..         print(total_energy)
+
+..         forces = nnp.compute_forces(structure)
+..         print(forces)
+
+
+.. Example files: `input.data`_ and `input.nn`_
+
+.. .. _input.data: https://drive.google.com/file/d/1VMckgIv_OUvCOXQ0pYzaF5yl9AwR0rBy/view?usp=sharing
+.. .. _input.nn: https://drive.google.com/file/d/15Oq9gAJ2xXVMcHyWXlRukfJFevyVO7lI/view?usp=sharing
 
 
 
