@@ -1,6 +1,6 @@
 
 .. .. image:: docs/images/logo.png
-..         :alt: logo
+.. :alt: logo
         
 ======
 Pantea
@@ -20,29 +20,28 @@ Pantea
 
 Description
 -----------
-Pantea is an optimized Python library on basis of Google `JAX`_ that enables 
-development of machine learning inter-atomic potentials 
+Pantea is an optimized Python library based on Google `JAX`_ that enables 
+development of machine learning interatomic potentials   
 for use in computational physics. 
-These potentials are necessary for conducting large-scale molecular 
+These potentials are particularly necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 
 .. _JAX: https://github.com/google/jax
 
 
-See `documentation`_ for more information.
-
-.. _documentation: https://pantea.readthedocs.io/en/latest/readme.html
+See `documentation <https://pantea.readthedocs.io/en/latest/theory.html>`_ for more information.
 
 
-Features
---------
+
+Main Features
+-------------
 * The design of Pantea is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
 * It uses `automatic differentiation` to make defining new descriptors straightforward.
 * Pantea is written purely in Python and optimized with `just-in-time` (JIT) compilation.
-* It also supports `GPU-accelerated` computing, which can significantly speed up preprocessing and model training.
+* It also supports `GPU` computing, which can significantly speed up preprocessing and model training.
 
 .. warning::
-        This package is under heavy development and the current focus is on the implementation of high-dimensional 
+        This package is under development and the current focus is on the implementation of high-dimensional 
         neural network potential (HDNNP) proposed by Behler et al. 
         (`2007 <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.98.146401>`_).
 
@@ -63,10 +62,14 @@ instruction on the documentation.
 Examples
 --------
 
----------------------------
-Defining an ACSF descriptor
----------------------------
-This script demonstrates the process of evaluating an array of atomic-centered symmetry functions (`ACSF`_) 
+------------------------------
+I. Defining an ACSF descriptor
+------------------------------
+Atom-centered Symmetry Function (`ACSF`_) descriptor captures information about the distribution of neighboring atoms around a 
+central atom by considering both radial (two-body) and angular (three-body) symmetry functions. 
+The values obtained from these calculations represent a fingerprint of the local atomic environment and can be used in various machine learning potentials. 
+
+This script below demonstrates the process of evaluating an array of atomic-centered symmetry functions (`ACSF`_) 
 for a specific element, which can be utilized to evaluate the descriptor values for any structure. 
 The resulting values can then be used to construct a machine learning potential.
 
@@ -110,7 +113,7 @@ The resulting values can then be used to construct a machine learning potential.
 
 
 -------------------------
-Training an NNP potential
+II. Training an NNP potential
 -------------------------
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
@@ -139,7 +142,7 @@ The trained potential can then be used to evaluate the energy and force componen
         print(forces)
 
 
-Example files: `input.data`_ and `input.nn`_
+Example input files: `input.data`_ and `input.nn`_
 
 .. _input.data: https://drive.google.com/file/d/1VMckgIv_OUvCOXQ0pYzaF5yl9AwR0rBy/view?usp=sharing
 .. _input.nn: https://drive.google.com/file/d/15Oq9gAJ2xXVMcHyWXlRukfJFevyVO7lI/view?usp=sharing
