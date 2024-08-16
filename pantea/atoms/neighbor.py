@@ -11,31 +11,22 @@ from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
 
 
-# @jax.jit
 def _calculate_masks_per_atom(
     rij: Array,
     r_cutoff: Array,
 ) -> Array:
-    """Return masks (boolean array) of a single atom inside a cutoff radius."""
+    """Return masks (boolean array) of a single atom inside the cutoff radius."""
     return (rij <= r_cutoff) & (rij > 0.0)
 
 
-_vmap_calculate_masks: Callable = jax.vmap(
+_calculate_masks: Callable = jax.vmap(
     _calculate_masks_per_atom,
     in_axes=(0, None),
 )
 
-
-@jax.jit
-def _calculate_masks(
-    rij: Array,
-    r_cutoff: Array,
-) -> Array:
-    """Calculate masks (boolean arrays) of multiple atoms inside a cutoff radius."""
-    return _vmap_calculate_masks(rij, r_cutoff)
+_jitted_calculate_masks = jax.jit(_calculate_masks)
 
 
-@jax.jit
 def _calculate_masks_from_structure(
     atom_positions: Array,
     r_cutoff: Array,
@@ -45,7 +36,9 @@ def _calculate_masks_from_structure(
     return _calculate_masks(rij, r_cutoff)
 
 
-@jax.jit
+_jitted_calculate_masks_from_structure = jax.jit(_calculate_masks_from_structure)
+
+
 def _calculate_masks_with_aux_from_structure(
     atom_positions: Array,
     r_cutoff: Array,
@@ -53,6 +46,11 @@ def _calculate_masks_with_aux_from_structure(
 ) -> Tuple[Array, Tuple[Array, Array]]:
     rij, Rij = _calculate_distances_with_aux(atom_positions, atom_positions, lattice)
     return _calculate_masks(rij, r_cutoff), (rij, Rij)
+
+
+_jitted_calculate_masks_with_aux_from_structure = jax.jit(
+    _calculate_masks_with_aux_from_structure
+)
 
 
 class StructureInterface(Protocol):
@@ -97,12 +95,12 @@ class Neighbor(BaseJaxPytreeDataClass):
     ) -> Union[Neighbor, Tuple[Array, Array]]:
         rc = jnp.asarray(r_cutoff)
         if with_aux:
-            masks, aux = _calculate_masks_with_aux_from_structure(
+            masks, aux = _jitted_calculate_masks_with_aux_from_structure(
                 structure.positions, rc, structure.lattice
             )
             return cls(rc, masks), aux
         else:
-            masks = _calculate_masks_from_structure(
+            masks = _jitted_calculate_masks_from_structure(
                 structure.positions, rc, structure.lattice
             )
             return cls(rc, masks)

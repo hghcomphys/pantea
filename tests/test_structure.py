@@ -143,7 +143,7 @@ class TestStructure:
                 expected_positions = (
                     expected[i]
                     if structure.box is None
-                    else structure.box.shift_inside_box(expected[i])
+                    else structure.box.wrap_into_box(expected[i])
                 )
                 assert jnp.allclose(structure.positions, expected_positions)
             else:

@@ -7,7 +7,6 @@ from pantea.atoms.box import _apply_pbc
 from pantea.types import Array
 
 
-# @jax.jit
 def _calculate_distances_with_aux_per_atom(
     atom_position: Array,
     neighbor_positions: Array,
@@ -26,7 +25,6 @@ def _calculate_distances_with_aux_per_atom(
     return distances, dx
 
 
-# @jax.jit
 def _calculate_distances_per_atom(
     atom_position: Array,
     neighbor_positions: Array,
@@ -40,36 +38,19 @@ def _calculate_distances_per_atom(
     return distances
 
 
-_vmap_calculate_distances_with_aux: Callable = jax.vmap(
+_calculate_distances_with_aux: Callable = jax.vmap(
     _calculate_distances_with_aux_per_atom,
     in_axes=(0, None, None),
 )
 
+_jitted_calculate_distances_with_aux = jax.jit(_calculate_distances_with_aux)
 
-_vmap_calculate_distances: Callable = jax.vmap(
+_calculate_distances: Callable = jax.vmap(
     _calculate_distances_per_atom,
     in_axes=(0, None, None),
 )
 
-
-@jax.jit
-def _calculate_distances(
-    atom_positions: Array,
-    neighbor_positions: Array,
-    lattice: Optional[Array] = None,
-) -> Array:
-    return _vmap_calculate_distances(atom_positions, neighbor_positions, lattice)
-
-
-@jax.jit
-def _calculate_distances_with_aux(
-    atom_positions: Array,
-    neighbor_positions: Array,
-    lattice: Optional[Array] = None,
-) -> Tuple[Array, Array]:
-    return _vmap_calculate_distances_with_aux(
-        atom_positions, neighbor_positions, lattice
-    )
+_jitted_calculate_distances = jax.jit(_calculate_distances)
 
 
 class StructureInterface(Protocol):
@@ -110,7 +91,9 @@ def calculate_distances(
         neighbor_positions = structure.positions[jnp.atleast_1d(neighbor_indices)]
 
     distance_kernel: Callable = (
-        _calculate_distances_with_aux if with_aux else _calculate_distances
+        _jitted_calculate_distances_with_aux
+        if with_aux
+        else _jitted_calculate_distances
     )
     return distance_kernel(
         atom_positions=atom_positions,

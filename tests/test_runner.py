@@ -10,7 +10,6 @@ import pytest
 
 from pantea.atoms import Structure
 from pantea.datasets import Dataset
-from pantea.types import default_dtype
 
 H2O_FILENAME = Path("tests", "h2o.data")
 H2O_DATA = {
@@ -155,7 +154,7 @@ class TestRunnerDataset:
                 if structure.box is not None:
                     assert jnp.allclose(
                         structure.positions,
-                        structure.box.shift_inside_box(expected[i]),
+                        structure.box.wrap_into_box(expected[i]),
                     )
                 else:
                     assert jnp.allclose(

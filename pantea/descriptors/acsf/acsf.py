@@ -5,7 +5,7 @@ from typing import Callable, Dict, Optional, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
-from jax import jit, lax, vmap
+from jax import lax
 
 from pantea.atoms.distance import (
     _calculate_distances_per_atom,
@@ -86,7 +86,7 @@ def _calculate_angular_acsf_per_atom(
     return total
 
 
-# Called by jax.lax.scan (no need for @jax.jit)
+# Called by lax.scan (no need for @jax.jit)
 def _inner_loop_over_angular_acsf_terms(
     total: Array,
     inputs: Tuple[Array, ...],
@@ -182,11 +182,13 @@ def _calculate_descriptor_per_atom(
     return result
 
 
-_calculate_descriptor = jit(
-    vmap(
-        _calculate_descriptor_per_atom,
-        in_axes=(None, 0, None, None, None, None),
-    ),
+_calculate_descriptor = jax.vmap(
+    _calculate_descriptor_per_atom,
+    in_axes=(None, 0, None, None, None, None),
+)
+
+_jitted_calculate_descriptor = jax.jit(
+    _calculate_descriptor,
     static_argnums=(0,),
 )
 
@@ -195,11 +197,13 @@ _calculate_grad_descriptor_per_atom = jax.jacfwd(
     argnums=1,
 )
 
-_calculate_grad_descriptor = jit(
-    vmap(
-        _calculate_grad_descriptor_per_atom,
-        in_axes=(None, 0, None, None, None, None),
-    ),
+_calculate_grad_descriptor = jax.vmap(
+    _calculate_grad_descriptor_per_atom,
+    in_axes=(None, 0, None, None, None, None),
+)
+
+_jitted_calculate_grad_descriptor = jax.jit(
+    _calculate_grad_descriptor,
     static_argnums=(0,),
 )
 
@@ -250,6 +254,14 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
 
         ACSF(central_element='O', num_symmetry_functions=4, r_cutoff=12.0)
 
+    This `acsf` object can be called on Structure to calculate the corresponding
+    descriptor values or grdient using `.grad` method as follows:
+
+    .. code-block:: python
+        :linenos:
+
+        acsf(structure)       # descriptor values
+        acsf.grad(structure)  # gradient values respect to the atom positions
 
     .. _ACSF: https://compphysvienna.github.io/n2p2/topics/descriptors.html?highlight=symmetry%20function#
 
@@ -323,7 +335,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
                     exception=ValueError,
                 )
 
-        return _calculate_descriptor(
+        return _jitted_calculate_descriptor(
             self,
             structure.positions[aids],
             structure.positions,
@@ -360,7 +372,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
                 )
             positions = structure.positions[aids]
 
-        return _calculate_grad_descriptor(
+        return _jitted_calculate_grad_descriptor(
             self,
             positions,
             structure.positions,
