@@ -15,7 +15,7 @@ from pantea.atoms.neighbor import _calculate_masks_per_atom
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
 from pantea.descriptors.acsf.radial import RadialSymmetryFunction
-from pantea.descriptors.acsf.symmetry import BaseSymmetryFunction, EnvironmentElements
+from pantea.descriptors.acsf.symmetry import BaseSymmetryFunction, NeighborElements
 from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
@@ -23,12 +23,12 @@ from pantea.types import Array, Element
 
 
 def _calculate_radial_acsf_per_atom(
-    radial: Dict[EnvironmentElements, RadialSymmetryFunction],
+    radial: Dict[NeighborElements, RadialSymmetryFunction],
     atype: Array,
     dist_i: Array,
     emap: Dict[Element, Array],
 ) -> Array:
-    elements: EnvironmentElements = [k for k in radial.keys()][0]
+    elements = [k for k in radial.keys()][0]
 
     mask_cutoff_i = _calculate_masks_per_atom(
         dist_i, jnp.array(radial[elements].r_cutoff)
@@ -43,14 +43,14 @@ def _calculate_radial_acsf_per_atom(
 
 
 def _calculate_angular_acsf_per_atom(
-    angular: Dict[EnvironmentElements, AngularSymmetryFunction],
+    angular: Dict[NeighborElements, AngularSymmetryFunction],
     atype: Array,
     diff_i: Array,
     dist_i: Array,
     lattice: Array,
     emap: Dict[Element, Array],
 ) -> Array:
-    elements: EnvironmentElements = [k for k in angular.keys()][0]
+    elements = [k for k in angular.keys()][0]
 
     # cutoff-radius mask
     mask_cutoff_i = _calculate_masks_per_atom(
@@ -163,13 +163,13 @@ def _calculate_descriptor_per_atom(
     )
 
     # Loop over the radial terms
-    for index, (elements, radial) in enumerate(acsf.radial_symmetry_functions):
+    for index, (radial, elements) in enumerate(acsf.radial_symmetry_functions):
         result = result.at[index].set(
             _calculate_radial_acsf_per_atom({elements: radial}, atype, dist_i, emap)
         )
 
     # Loop over the angular terms
-    for index, (elements, angular) in enumerate(
+    for index, (angular, elements) in enumerate(
         acsf.angular_symmetry_functions,
         start=acsf.num_radial_symmetry_functions,
     ):
@@ -255,7 +255,7 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         ACSF(central_element='O', num_symmetry_functions=4, r_cutoff=12.0)
 
     This `acsf` object can be called on Structure to calculate the corresponding
-    descriptor values or grdient using `.grad` method as follows:
+    descriptor values or gradient using `.grad` method as follows:
 
     .. code-block:: python
         :linenos:
@@ -268,37 +268,12 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     """
 
     central_element: str
-    radial_symmetry_functions: Tuple[Tuple[EnvironmentElements, RadialSymmetryFunction]] = tuple()  # type: ignore
-    angular_symmetry_functions: Tuple[Tuple[EnvironmentElements, AngularSymmetryFunction]] = tuple()  # type: ignore
-
-    def add(
-        self,
-        symmetry_function: BaseSymmetryFunction,
-        neighbor_element_j: Element,
-        neighbor_element_k: Optional[Element] = None,
-    ) -> None:
-        """Add the input symmetry function to the list of ACSFs."""
-        if isinstance(symmetry_function, RadialSymmetryFunction):
-            self.radial_symmetry_functions = self.radial_symmetry_functions + (
-                (
-                    EnvironmentElements(self.central_element, neighbor_element_j),
-                    symmetry_function,
-                ),
-            )  # type: ignore
-        elif isinstance(symmetry_function, AngularSymmetryFunction):
-            self.angular_symmetry_functions = self.angular_symmetry_functions + (
-                (
-                    EnvironmentElements(
-                        self.central_element, neighbor_element_j, neighbor_element_k  # type: ignore
-                    ),
-                    symmetry_function,
-                ),
-            )
-        else:
-            logger.error(
-                f"Unknown symmetry function type {symmetry_function}",
-                exception=TypeError,
-            )
+    radial_symmetry_functions: Tuple[
+        Tuple[RadialSymmetryFunction, NeighborElements], ...
+    ]
+    angular_symmetry_functions: Tuple[
+        Tuple[AngularSymmetryFunction, NeighborElements], ...
+    ]
 
     def __call__(
         self,
@@ -405,8 +380,8 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
         """Return the maximum cutoff radius for list of the symmetry functions."""
         return max(
             [
-                cfn.r_cutoff
-                for (_, cfn) in itertools.chain(
+                symmetry_function.r_cutoff
+                for (symmetry_function, _) in itertools.chain(
                     *[
                         self.radial_symmetry_functions,
                         self.angular_symmetry_functions,

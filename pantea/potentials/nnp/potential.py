@@ -17,6 +17,7 @@ from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.acsf.angular import G3, G9
 from pantea.descriptors.acsf.cutoff import CutoffFunction
 from pantea.descriptors.acsf.radial import G1, G2
+from pantea.descriptors.acsf.symmetry import NeighborElements
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
@@ -35,8 +36,7 @@ from pantea.types import Array, Element
 class UpdaterInterface(Protocol):
     """Interface for potential weight updaters."""
 
-    def fit(self, dataset: Dataset) -> Dict:
-        ...
+    def fit(self, dataset: Dataset) -> Dict: ...
 
 
 @dataclass
@@ -177,67 +177,70 @@ class NeuralNetworkPotential:
     def _init_descriptor(self) -> Dict[Element, ACSF]:
         """Initialize descriptor for each element."""
         logger.info("Initializing descriptors")
-        descriptor: Dict[Element, ACSF] = dict()
         settings = self.settings
-        # Instantiate ACSF for each element
-        for element in settings.elements:
-            descriptor[element] = ACSF(element)
-        # Add symmetry functions
-        logger.debug("Registering symmetry functions (radial and angular)")
+        descriptor: Dict[Element, ACSF] = dict()
+        radial: defaultdict = defaultdict(list)
+        angular = defaultdict(list)
 
         for args in settings.symfunction_short:
+
+            cfn = CutoffFunction.from_cutoff_type(
+                r_cutoff=args.r_cutoff,
+                cutoff_type=settings.cutoff_type,
+            )
+
             if args.acsf_type == 1:
-                descriptor[args.central_element].add(
-                    symmetry_function=G1(
-                        CutoffFunction.from_cutoff_type(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
-                        )
-                    ),
-                    neighbor_element_j=args.neighbor_element_j,
+                symmetry_function = G1(cfn)
+                neighbor_elements = NeighborElements(args.neighbor_element_j)
+                radial[args.central_element].append(
+                    (symmetry_function, neighbor_elements)
                 )
+
             elif args.acsf_type == 2:
-                descriptor[args.central_element].add(
-                    symmetry_function=G2(
-                        CutoffFunction.from_cutoff_type(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
-                        ),
-                        eta=args.eta,
-                        r_shift=args.r_shift,
-                    ),
-                    neighbor_element_j=args.neighbor_element_j,
+                symmetry_function = G2(cfn, eta=args.eta, r_shift=args.r_shift)
+                neighbor_elements = NeighborElements(args.neighbor_element_j)
+                radial[args.central_element].append(
+                    (symmetry_function, neighbor_elements)
                 )
+
             elif args.acsf_type == 3:
-                descriptor[args.central_element].add(
-                    symmetry_function=G3(
-                        CutoffFunction.from_cutoff_type(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
-                        ),
-                        eta=args.eta,
-                        zeta=args.zeta,  # type: ignore
-                        lambda0=args.lambda0,  # type: ignore
-                        r_shift=args.r_cutoff,
-                    ),
-                    neighbor_element_j=args.neighbor_element_j,
-                    neighbor_element_k=args.neighbor_element_k,  # type: ignore
+                symmetry_function = G3(
+                    cfn,
+                    eta=args.eta,
+                    zeta=args.zeta,  # type: ignore
+                    lambda0=args.lambda0,  # type: ignore
+                    r_shift=args.r_cutoff,
                 )
+                neighbor_elements = NeighborElements(
+                    args.neighbor_element_j, args.neighbor_element_k
+                )
+                angular[args.central_element].append(
+                    (symmetry_function, neighbor_elements)
+                )
+
             elif args.acsf_type == 9:
-                descriptor[args.central_element].add(
-                    symmetry_function=G9(
-                        CutoffFunction.from_cutoff_type(
-                            r_cutoff=args.r_cutoff,
-                            cutoff_type=settings.cutoff_type,
-                        ),
-                        eta=args.eta,
-                        zeta=args.zeta,  # type: ignore
-                        lambda0=args.lambda0,  # type: ignore
-                        r_shift=args.r_shift,
-                    ),
-                    neighbor_element_j=args.neighbor_element_j,
-                    neighbor_element_k=args.neighbor_element_k,  # type: ignore
+                symmetry_function = G9(
+                    cfn,
+                    eta=args.eta,
+                    zeta=args.zeta,  # type: ignore
+                    lambda0=args.lambda0,  # type: ignore
+                    r_shift=args.r_cutoff,
                 )
+                neighbor_elements = NeighborElements(
+                    args.neighbor_element_j, args.neighbor_element_k
+                )
+                angular[args.central_element].append(
+                    (symmetry_function, neighbor_elements)
+                )
+
+        # Instantiate ACSF for each element
+        for element in settings.elements:
+            descriptor[element] = ACSF(
+                central_element=element,
+                radial_symmetry_functions=tuple(radial[element]),
+                angular_symmetry_functions=tuple(angular[element]),
+            )
+
         return descriptor
 
     def _init_scaler(self) -> Dict[Element, DescriptorScaler]:

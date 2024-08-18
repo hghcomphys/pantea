@@ -6,14 +6,9 @@ from pantea.types import Array
 class DescriptorInterface(Protocol):
     """A base class for atomic environment descriptors."""
 
-    def add(self, *args: Any, **kwargs: Any) -> None:
-        ...
+    def __call__(self, *args: Any, **kwargs: Any) -> Array: ...
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Array:
-        ...
-
-    def grad(self, *args: Any, **kwargs: Any) -> Array:
-        ...
+    def grad(self, *args: Any, **kwargs: Any) -> Array: ...
 
     @property
     def num_descriptors(self) -> int:
