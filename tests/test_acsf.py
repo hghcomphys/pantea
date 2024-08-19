@@ -15,7 +15,7 @@ from pantea.types import Array
 
 
 def lj_acsf() -> ACSF:
-    cfn = CutoffFunction.from_cutoff_type(r_cutoff=3.0, cutoff_type="tanhu")
+    cfn = CutoffFunction.from_type("tanhu", r_cutoff=3.0)
     neighbor_elements = NeighborElements("Ne")
     symmetry_functions = (
         (G2(cfn, eta=1.00, r_shift=0.00), neighbor_elements),
@@ -34,7 +34,7 @@ def lj_acsf() -> ACSF:
 def h2o_acsf() -> ACSF:
     """Initialize directly from the radial and angular terms."""
     # r_cutoff = box.length / 2
-    cfn = CutoffFunction.from_cutoff_type(r_cutoff=5.9043202, cutoff_type="tanhu")
+    cfn = CutoffFunction.from_type("tanhu", r_cutoff=5.9043202)
     return ACSF(
         central_element="O",
         radial_symmetry_functions=(

@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping
 
 import jax
 import jax.numpy as jnp
+
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
 
@@ -41,7 +42,7 @@ def _poly2(r: Array) -> Array:
     return ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
 
 
-def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable:
+def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable[[Array], Array]:
     partial_function = partial(function, **kwargs)
     update_wrapper(partial_function, function)
     return partial_function
@@ -77,13 +78,13 @@ class CutoffFunction(BaseJaxPytreeDataClass):
     cutoff_function: Callable
 
     @classmethod
-    def from_cutoff_type(
+    def from_type(
         cls,
+        cutoff_type: str,
         r_cutoff: float,
-        cutoff_type: str = "tanh",
     ) -> CutoffFunction:
-        """Create cutoff function from the input cutoff type such as "tanh", "cos", and "tanh"."""
-        _cutoff_function_map: Mapping[str, Callable] = {
+        """Create a cutoff function from the input cutoff type."""
+        _cutoff_function_map: Mapping[str, Callable[[Array], Array]] = {
             "hard": _hard,
             "tanhu": _wrapped_partial(_tanhu, r_cutoff=r_cutoff),
             "tanh": _wrapped_partial(_tanh, r_cutoff=r_cutoff),
@@ -96,9 +97,7 @@ class CutoffFunction(BaseJaxPytreeDataClass):
 
     def __post_init__(self) -> None:
         self._assert_jit_dynamic_attributes()
-        self._assert_jit_static_attributes(
-            expected=("r_cutoff", "cutoff_function")
-        )
+        self._assert_jit_static_attributes(expected=("r_cutoff", "cutoff_function"))
 
     @jax.jit
     def __call__(self, r: Array) -> Array:

@@ -184,9 +184,9 @@ class NeuralNetworkPotential:
 
         for args in settings.symfunction_short:
 
-            cfn = CutoffFunction.from_cutoff_type(
-                r_cutoff=args.r_cutoff,
+            cfn = CutoffFunction.from_type(
                 cutoff_type=settings.cutoff_type,
+                r_cutoff=args.r_cutoff,
             )
 
             if args.acsf_type == 1:

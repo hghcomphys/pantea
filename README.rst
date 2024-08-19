@@ -80,7 +80,7 @@ The resulting values can then be used to construct a machine learning potential.
 
         from pantea.datasets import Dataset
         from pantea.descriptors import ACSF
-        from pantea.descriptors.acsf import CutoffFunction, G2, G3
+        from pantea.descriptors.acsf import CutoffFunction, NeighborElements, G2, G3
 
         # Read atomic structure dataset (e.g. water molecules)
         structures = Dataset.from_runner('input.data')
@@ -88,14 +88,24 @@ The resulting values can then be used to construct a machine learning potential.
         print(structure)
         # >> Structure(natoms=12, elements=('H', 'O'), dtype=float64)
 
-        # Define an ACSF descriptor for hydrogen
+        # Define an ACSF descriptor for hydrogen atoms
         # It includes two radial (G2) and angular (G3) symmetry functions
-        descriptor = ACSF('H')
-        cfn = CutoffFunction.from_cutoff_type(r_cutoff=12.0, cutoff_type='tanh')
-        descriptor.add(G2(cfn, eta=0.5, r_shift=0.0), 'H')
-        descriptor.add(G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0), 'H', 'O')
+        cfn = CutoffFunction.from_type("tanh", r_cutoff=12.0)
+        g2 = G2(cfn, eta=0.5, r_shift=0.0)
+        g3 = G3(cfn, eta=0.001, zeta=2.0, lambda0=1.0, r_shift=12.0)
+
+        descriptor = ACSF(
+                central_element='H',
+                radial_symmetry_functions=(
+                        (g2, NeighborElements('H')),
+                ),
+                angular_symmetry_functions=(
+                        (g3, NeighborElements('H', 'O')),
+                ),
+        )
+
         print(descriptor)
-        # >> ACSF(central_element='H', symmetry_functions=2)
+        # >> ACSF(central_element='H', num_symmetry_functions=2)
 
         values = descriptor(structure)
         print("Descriptor values:\n", values)
@@ -105,12 +115,16 @@ The resulting values can then be used to construct a machine learning potential.
         # ...
         #  [0.00228752 0.41445455]]
 
-        gradient = descriptor.grad(structure, atom_index=0)
+        gradient = descriptor.grad(structure)
         print("Descriptor gradient:\n", gradient)
         # >> Descriptor gradient:
-        # [[ 0.04645236 -0.05037861 -0.06146214]
-        # [-0.10481855 -0.01841708  0.04760214]]
-
+        # [[[ 4.64523585e-02 -5.03786078e-02 -6.14621389e-02]
+        #   [-1.04818547e-01 -1.84170755e-02  4.76021411e-02]]
+        #  [[-9.67003098e-03 -5.45498827e-02  6.32422634e-03]
+        #   [-1.59613454e-01 -5.94085256e-02  1.72978932e-01]]
+        # ...
+        #  [[-1.36223042e-03 -8.02832759e-03 -6.08306094e-05]
+        #   [ 1.29199076e-02 -9.58762344e-03 -9.12714216e-02]]] 
 
 -------------------------
 II. Training an NNP potential
@@ -118,6 +132,9 @@ II. Training an NNP potential
 This example illustrates how to quickly create a `high-dimensional neural network 
 potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
 The trained potential can then be used to evaluate the energy and force components for new structures.
+
+Please note that the example below is just for demonstration. 
+For training a NNP model in real world we actually need larger samples of data.
 
 .. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
 
