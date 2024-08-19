@@ -88,9 +88,9 @@ class KalmanFilterUpdater:
         """
         settings: PotentialSettings = self.potential.settings
 
-        atomic_potential: Dict[
-            Element, AtomicPotential
-        ] = self.potential.atomic_potential
+        atomic_potential: Dict[Element, AtomicPotential] = (
+            self.potential.atomic_potential
+        )
 
         model_params: Dict[Element, frozendict] = self.potential.model_params
 
@@ -106,7 +106,7 @@ class KalmanFilterUpdater:
                 model_params,
                 structure.get_inputs_per_element(),
             )
-            return (E_ref - E_pot)[0] / structure.natoms
+            return (E_ref - E_pot) / structure.natoms
 
         def compute_force_error(state_vector: Array, structure: Structure) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
