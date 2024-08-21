@@ -16,7 +16,6 @@ from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
 from pantea.descriptors.acsf.radial import RadialSymmetryFunction
 from pantea.descriptors.acsf.symmetry import NeighborElements
-from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Element
@@ -209,7 +208,7 @@ _jitted_calculate_grad_descriptor = jax.jit(
 
 
 @dataclass
-class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
+class ACSF(BaseJaxPytreeDataClass):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor captures
     information about the distribution of neighboring
@@ -328,10 +327,6 @@ class ACSF(BaseJaxPytreeDataClass, DescriptorInterface):
     def num_symmetry_functions(self) -> int:
         """Return the total (`two-body` and `tree-body`) number of symmetry functions."""
         return self.num_radial_symmetry_functions + self.num_angular_symmetry_functions
-
-    @property
-    def num_descriptors(self) -> int:
-        return self.num_symmetry_functions
 
     @property
     def r_cutoff(self) -> float:  # type: ignore

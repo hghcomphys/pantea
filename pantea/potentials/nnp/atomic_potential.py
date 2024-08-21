@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from frozendict import frozendict
 
 from pantea.atoms.structure import Structure
-from pantea.descriptors.descriptor import DescriptorInterface
+from pantea.descriptors.acsf.acsf import AcsfInterface
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.models.nn.network import NeuralNetworkModel
 from pantea.potentials.nnp.energy import _compute_energy_per_atom
@@ -15,11 +15,11 @@ class AtomicPotential:
     """
     Atomic potential.
 
-    It chains all the required transformers (descriptor, scaler, model, etc.)
+    This class simply chains all the required transformers (descriptor, scaler, model, etc.)
     to calculate per-atom energy for a specific element.
     """
 
-    descriptor: DescriptorInterface
+    descriptor: AcsfInterface
     scaler: DescriptorScaler
     model: NeuralNetworkModel
 
@@ -51,7 +51,7 @@ class AtomicPotential:
     @property
     def model_input_size(self) -> int:
         """Return size of the model input."""
-        return self.descriptor.num_descriptors
+        return self.descriptor.num_symmetry_functions
 
     def __repr__(self) -> str:
         out: str = f"{self.__class__.__name__}("
