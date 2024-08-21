@@ -6,7 +6,7 @@ from pantea.atoms.structure import Structure
 from pantea.descriptors.descriptor import DescriptorInterface
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.energy import _compute_atomic_energy
+from pantea.potentials.nnp.energy import _compute_energy_per_atom
 from pantea.types import Array, Element
 
 
@@ -16,7 +16,7 @@ class AtomicPotential:
     Atomic potential.
 
     It chains all the required transformers (descriptor, scaler, model, etc.)
-    to calculate per-atom energy.
+    to calculate per-atom energy for a specific element.
     """
 
     descriptor: DescriptorInterface
@@ -25,7 +25,7 @@ class AtomicPotential:
 
     def apply(
         self,
-        params: frozendict,
+        params: frozendict[str, Array],
         structure: Structure,
     ) -> Array:
         """
@@ -41,7 +41,7 @@ class AtomicPotential:
         element: Element = self.descriptor.central_element  # type: ignore
         aid: Array = structure.select(element)
 
-        return _compute_atomic_energy(
+        return _compute_energy_per_atom(
             self,
             structure.positions[aid],
             params,

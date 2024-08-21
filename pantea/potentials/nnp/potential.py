@@ -22,9 +22,9 @@ from pantea.descriptors.scaler import DescriptorScaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.atomic_potential import AtomicPotential
-from pantea.potentials.energy import _compute_energy
-from pantea.potentials.force import _compute_force
+from pantea.potentials.nnp.atomic_potential import AtomicPotential
+from pantea.potentials.nnp.energy import _compute_energy
+from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.gradient_descent import GradientDescentUpdater
 from pantea.potentials.nnp.kalman_filter import KalmanFilterUpdater
 from pantea.potentials.nnp.settings import (
@@ -318,18 +318,18 @@ class NeuralNetworkPotential:
         :param structure: input structure
         :return: predicted force components for all atoms
         """
-        force_dict: Dict[Element, Array] = _compute_force(
+        forces_dict = _compute_forces(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions_per_element(),
             self.model_params,
             structure.get_inputs_per_element(),
         )
-        force: Array = jnp.empty_like(structure.forces)
+        forces: Array = jnp.empty_like(structure.forces)
         for element in structure.get_unique_elements():
             atom_index: Array = structure.select(element)
-            force = force.at[atom_index].set(force_dict[element])
+            forces = forces.at[atom_index].set(forces_dict[element])
 
-        return force
+        return forces
 
     # ------------------------------------------------------------------------
 
@@ -497,6 +497,3 @@ class NeuralNetworkPotential:
     def model(self) -> Dict:
         """Return model for each element."""
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
-
-
-NNP = NeuralNetworkPotential

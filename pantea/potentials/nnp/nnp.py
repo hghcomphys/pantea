@@ -1,7 +1,8 @@
 from typing import Dict, Protocol, Tuple
 
 from frozendict import frozendict
-from pantea.potentials.atomic_potential import AtomicPotential
+
+from pantea.potentials.nnp.atomic_potential import AtomicPotential
 from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )

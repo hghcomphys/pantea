@@ -12,9 +12,9 @@ from tqdm import tqdm
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
-from pantea.potentials.atomic_potential import AtomicPotential
-from pantea.potentials.energy import _compute_energy
-from pantea.potentials.force import _compute_force
+from pantea.potentials.nnp.atomic_potential import AtomicPotential
+from pantea.potentials.nnp.energy import _compute_energy
+from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.nnp import (
     NeuralNetworkPotentialInterface as PotentialInterface,
 )
@@ -108,11 +108,11 @@ class KalmanFilterUpdater:
             )
             return (E_ref - E_pot) / structure.natoms
 
-        def compute_force_error(state_vector: Array, structure: Structure) -> Array:
+        def compute_forces_error(state_vector: Array, structure: Structure) -> Array:
             model_params: Dict = self._unflatten_state_vector(state_vector)
             F_ref: Array = _tree_flatten(structure.get_forces_per_element())
             F_pot: Array = _tree_flatten(
-                _compute_force(
+                _compute_forces(
                     frozendict(atomic_potential),
                     structure.get_positions_per_element(),
                     model_params,
@@ -122,7 +122,7 @@ class KalmanFilterUpdater:
             return (F_ref - F_pot)[..., 0]
 
         grad_energy_error: Callable = jax.grad(compute_energy_error)
-        jacob_force_error: Callable = jax.jacrev(compute_force_error)
+        jacob_forces_error: Callable = jax.jacrev(compute_forces_error)
 
         def compute_energy_error_gradient(
             model_params: Dict[Element, frozendict], structure: Structure
@@ -131,10 +131,10 @@ class KalmanFilterUpdater:
                 grad_energy_error(model_params, structure),
             )
 
-        def compute_force_error_jacobian(
+        def compute_forces_error_jacobian(
             state_vector: Array, structure: Structure
         ) -> Array:
-            return jacob_force_error(state_vector[..., 0], structure).transpose()
+            return jacob_forces_error(state_vector[..., 0], structure).transpose()
 
         # ----------------------
 
@@ -155,11 +155,11 @@ class KalmanFilterUpdater:
 
                 # Error and jacobian matrices
                 if np.random.rand() < self.force_fraction:
-                    Xi = self.beta * compute_force_error(
+                    Xi = self.beta * compute_forces_error(
                         self.W,
                         structure,
                     ).reshape(-1, 1)
-                    H = -self.beta * compute_force_error_jacobian(
+                    H = -self.beta * compute_forces_error_jacobian(
                         self.W,
                         structure,
                     )

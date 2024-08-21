@@ -17,8 +17,8 @@ from tqdm import tqdm
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
-from pantea.potentials.energy import _energy_fn
-from pantea.potentials.force import _compute_force
+from pantea.potentials.nnp.energy import _compute_energy
+from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.metrics import ErrorMetric
 from pantea.potentials.nnp.nnp import (
     NeuralNetworkPotentialInterface as PotentialInterface,
@@ -179,7 +179,7 @@ class GradientDescentUpdater:
 
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
-                    forces = _compute_force(
+                    forces = _compute_forces(
                         frozendict(self.potential.atomic_potential),
                         positions,
                         params,
@@ -197,7 +197,7 @@ class GradientDescentUpdater:
 
                 else:
                     # ------ energy ------
-                    energy = _energy_fn(
+                    energy = _compute_energy(
                         frozendict(self.potential.atomic_potential),
                         positions,
                         params,
