@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional, Protocol, Tuple, Union
+from typing import Optional, Protocol, Tuple, Union
 
 import jax
 import jax.numpy as jnp
@@ -9,48 +9,6 @@ import jax.numpy as jnp
 from pantea.atoms.distance import _calculate_distances, _calculate_distances_with_aux
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
-
-
-def _calculate_masks_per_atom(
-    rij: Array,
-    r_cutoff: Array,
-) -> Array:
-    """Return masks (boolean array) of a single atom inside the cutoff radius."""
-    return (rij <= r_cutoff) & (rij > 0.0)
-
-
-_calculate_masks: Callable = jax.vmap(
-    _calculate_masks_per_atom,
-    in_axes=(0, None),
-)
-
-_jitted_calculate_masks = jax.jit(_calculate_masks)
-
-
-def _calculate_masks_from_structure(
-    atom_positions: Array,
-    r_cutoff: Array,
-    lattice: Optional[Array] = None,
-) -> Array:
-    rij = _calculate_distances(atom_positions, atom_positions, lattice)
-    return _calculate_masks(rij, r_cutoff)
-
-
-_jitted_calculate_masks_from_structure = jax.jit(_calculate_masks_from_structure)
-
-
-def _calculate_masks_with_aux_from_structure(
-    atom_positions: Array,
-    r_cutoff: Array,
-    lattice: Optional[Array] = None,
-) -> Tuple[Array, Tuple[Array, Array]]:
-    rij, Rij = _calculate_distances_with_aux(atom_positions, atom_positions, lattice)
-    return _calculate_masks(rij, r_cutoff), (rij, Rij)
-
-
-_jitted_calculate_masks_with_aux_from_structure = jax.jit(
-    _calculate_masks_with_aux_from_structure
-)
 
 
 class StructureInterface(Protocol):
@@ -95,12 +53,12 @@ class Neighbor(BaseJaxPytreeDataClass):
     ) -> Union[Neighbor, Tuple[Array, Array]]:
         rc = jnp.asarray(r_cutoff)
         if with_aux:
-            masks, aux = _jitted_calculate_masks_with_aux_from_structure(
+            masks, aux = _jitted_calculate_cutoff_masks_with_aux_from_structure(
                 structure.positions, rc, structure.lattice
             )
             return cls(rc, masks), aux
         else:
-            masks = _jitted_calculate_masks_from_structure(
+            masks = _jitted_calculate_cutoff_masks_from_structure(
                 structure.positions, rc, structure.lattice
             )
             return cls(rc, masks)
@@ -111,6 +69,50 @@ class Neighbor(BaseJaxPytreeDataClass):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
+
+
+def _calculate_cutoff_masks_from_structure(
+    positions: Array,
+    r_cutoff: Array,
+    lattice: Optional[Array] = None,
+) -> Array:
+    rij = _calculate_distances(positions, positions, lattice)
+    return _calculate_cutoff_masks(rij, r_cutoff)
+
+
+_jitted_calculate_cutoff_masks_from_structure = jax.jit(
+    _calculate_cutoff_masks_from_structure
+)
+
+
+def _calculate_cutoff_masks_with_aux_from_structure(
+    positions: Array,
+    r_cutoff: Array,
+    lattice: Optional[Array] = None,
+) -> Tuple[Array, Tuple[Array, Array]]:
+    rij, Rij = _calculate_distances_with_aux(positions, positions, lattice)
+    return _calculate_cutoff_masks(rij, r_cutoff), (rij, Rij)
+
+
+_jitted_calculate_cutoff_masks_with_aux_from_structure = jax.jit(
+    _calculate_cutoff_masks_with_aux_from_structure
+)
+
+
+def _calculate_cutoff_masks_per_atom(
+    rij: Array,
+    r_cutoff: Array,
+) -> Array:
+    """Return masks (boolean array) of a single atom inside the cutoff radius."""
+    return (rij <= r_cutoff) & (rij > 0.0)
+
+
+_calculate_cutoff_masks = jax.vmap(
+    _calculate_cutoff_masks_per_atom,
+    in_axes=(0, None),
+)
+
+_jitted_calculate_cutoff_masks = jax.jit(_calculate_cutoff_masks)
 
 
 register_jax_pytree_node(Neighbor)

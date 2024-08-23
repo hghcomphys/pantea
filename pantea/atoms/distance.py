@@ -1,56 +1,12 @@
+from __future__ import annotations
+
 from typing import Optional, Protocol, Tuple, Union
 
-import jax
 import jax.numpy as jnp
+from jax import jit, vmap
 
 from pantea.atoms.box import _apply_pbc
 from pantea.types import Array
-
-
-def _calculate_distances_with_aux_per_atom(
-    atom_position: Array,
-    neighbor_atom_positions: Array,
-    lattice: Optional[Array] = None,
-) -> Tuple[Array, Array]:
-    dx = atom_position - neighbor_atom_positions
-    if lattice is not None:
-        dx = _apply_pbc(dx, lattice)
-    # Fix NaN in gradient of np.linalg.norm for zero distances
-    # see https://github.com/google/jax/issues/3058
-    is_zero = jnp.prod(dx == 0.0, axis=1, keepdims=True, dtype=bool)
-    dx_masked = jnp.where(is_zero, 1.0, dx)
-    # TODO: replace where with lax.cond to avoid calculating norm for all items
-    distances = jnp.linalg.norm(dx_masked, ord=2, axis=1)
-    distances = jnp.where(is_zero[..., 1], 0.0, distances)
-    return distances, dx
-
-
-def _calculate_distances_per_atom(
-    atom_position: Array,
-    neighbor_atom_positions: Array,
-    lattice: Optional[Array] = None,
-) -> Array:
-    distances, _ = _calculate_distances_with_aux_per_atom(
-        atom_position,
-        neighbor_atom_positions,
-        lattice,
-    )
-    return distances
-
-
-_calculate_distances_with_aux = jax.vmap(
-    _calculate_distances_with_aux_per_atom,
-    in_axes=(0, None, None),
-)
-
-_jitted_calculate_distances_with_aux = jax.jit(_calculate_distances_with_aux)
-
-_calculate_distances = jax.vmap(
-    _calculate_distances_per_atom,
-    in_axes=(0, None, None),
-)
-
-_jitted_calculate_distances = jax.jit(_calculate_distances)
 
 
 class StructureInterface(Protocol):
@@ -102,3 +58,48 @@ def calculate_distances(
         neighbor_atom_positions,
         structure.lattice,
     )  # type: ignore
+
+
+def _calculate_distances_with_aux_per_atom(
+    atom_position: Array,
+    neighbor_atom_positions: Array,
+    lattice: Optional[Array] = None,
+) -> Tuple[Array, Array]:
+    dx = atom_position - neighbor_atom_positions
+    if lattice is not None:
+        dx = _apply_pbc(dx, lattice)
+    # Fix NaN in gradient of np.linalg.norm for zero distances
+    # see https://github.com/google/jax/issues/3058
+    is_zero = jnp.prod(dx == 0.0, axis=1, keepdims=True, dtype=bool)
+    dx_masked = jnp.where(is_zero, 1.0, dx)
+    # TODO: replace where with lax.cond to avoid calculating norm for all items
+    distances = jnp.linalg.norm(dx_masked, ord=2, axis=1)
+    distances = jnp.where(is_zero[..., 1], 0.0, distances)
+    return distances, dx
+
+
+_calculate_distances_with_aux = vmap(
+    _calculate_distances_with_aux_per_atom,
+    in_axes=(0, None, None),
+)
+
+_jitted_calculate_distances_with_aux = jit(_calculate_distances_with_aux)
+
+
+def _calculate_distances_per_atom(
+    atom_position: Array,
+    neighbor_atom_positions: Array,
+    lattice: Optional[Array] = None,
+) -> Array:
+    distances, _ = _calculate_distances_with_aux_per_atom(
+        atom_position, neighbor_atom_positions, lattice
+    )
+    return distances
+
+
+_calculate_distances = vmap(
+    _calculate_distances_per_atom,
+    in_axes=(0, None, None),
+)
+
+_jitted_calculate_distances = jit(_calculate_distances)

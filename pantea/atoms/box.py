@@ -11,26 +11,6 @@ from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Dtype, default_dtype
 
 
-def _apply_pbc(dx: Array, lattice: Array) -> Array:
-    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
-    box = lattice.diagonal()
-    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
-    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
-    return dx
-
-
-_jitted_apply_pbc = jax.jit(_apply_pbc)
-
-
-def _wrap_into_box(positions: Array, lattice: Array) -> Array:
-    """Wrap atoms back into the simulation box using periodic boundary condition."""
-    box = lattice.diagonal()
-    return jnp.remainder(positions, box)
-
-
-_jitted_wrap_into_box = jax.jit(_wrap_into_box)
-
-
 @dataclass
 class Box(BaseJaxPytreeDataClass):
     """
@@ -127,6 +107,26 @@ class Box(BaseJaxPytreeDataClass):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice}, dtype={self.dtype})"
+
+
+def _apply_pbc(dx: Array, lattice: Array) -> Array:
+    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
+    box = lattice.diagonal()
+    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
+    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
+    return dx
+
+
+_jitted_apply_pbc = jax.jit(_apply_pbc)
+
+
+def _wrap_into_box(positions: Array, lattice: Array) -> Array:
+    """Wrap atoms back into the simulation box using periodic boundary condition."""
+    box = lattice.diagonal()
+    return jnp.remainder(positions, box)
+
+
+_jitted_wrap_into_box = jax.jit(_wrap_into_box)
 
 
 register_jax_pytree_node(Box)

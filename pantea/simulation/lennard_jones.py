@@ -4,7 +4,7 @@ from typing import Callable, Literal, NamedTuple, Optional
 import jax
 import jax.numpy as jnp
 
-from pantea.atoms.neighbor import _calculate_masks_with_aux_from_structure
+from pantea.atoms.neighbor import _calculate_cutoff_masks_with_aux_from_structure
 from pantea.atoms.structure import Structure
 from pantea.types import Array
 
@@ -82,7 +82,7 @@ def _compute_total_energy(
     lattice: Optional[Array],
     r_cutoff: Array,
 ) -> Array:
-    masks, (rij, _) = _calculate_masks_with_aux_from_structure(
+    masks, (rij, _) = _calculate_cutoff_masks_with_aux_from_structure(
         positions, r_cutoff, lattice
     )
     pair_energies = _compute_pair_energies(params, rij)
@@ -111,7 +111,7 @@ def _compute_forces(
     lattice: Optional[Array],
     r_cutoff: Array,
 ) -> Array:
-    masks, (rij, Rij) = _calculate_masks_with_aux_from_structure(
+    masks, (rij, Rij) = _calculate_cutoff_masks_with_aux_from_structure(
         positions, r_cutoff, lattice
     )
     pair_forces = _compute_pair_forces(params, rij, Rij)

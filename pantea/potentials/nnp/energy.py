@@ -7,9 +7,7 @@ from jax import jit
 
 from pantea.atoms.structure import Inputs
 from pantea.descriptors import DescriptorScaler
-from pantea.descriptors.acsf.acsf import AcsfInterface, _calculate_descriptor
-
-# from pantea.descriptors.descriptor import DescriptorInterface
+from pantea.descriptors.acsf.acsf import ACSF, _calculate_acsf_descriptor
 from pantea.models import NeuralNetworkModel
 from pantea.types import Array, Element
 
@@ -17,7 +15,7 @@ from pantea.types import Array, Element
 class AtomicPotentialInterface(Protocol):
     """An interface for AtomicPotential."""
 
-    descriptor: AcsfInterface
+    descriptor: ACSF
     scaler: DescriptorScaler
     model: NeuralNetworkModel
 
@@ -30,13 +28,13 @@ def _compute_energy_per_atom(
     inputs: Inputs,
 ) -> Array:
     """Compute model output per-atom energy."""
-    x = _calculate_descriptor(
+    x = _calculate_acsf_descriptor(
         atomic_potential.descriptor,
         positions,
         inputs.positions,
         inputs.atom_types,
         inputs.lattice,
-        inputs.emap,
+        inputs.element_map,
     )
     x = atomic_potential.scaler(x)
     atomic_energy = atomic_potential.model.apply({"params": params}, x)  # type: ignore
@@ -68,6 +66,3 @@ def _compute_energy(
         )
         total_energy += jnp.sum(per_atom_energy)
     return total_energy
-
-
-_energy_func = _compute_energy

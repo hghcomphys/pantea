@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from frozendict import frozendict
 
 from pantea.atoms.structure import Structure
-from pantea.descriptors.acsf.acsf import AcsfInterface
+from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.models.nn.network import NeuralNetworkModel
 from pantea.potentials.nnp.energy import _compute_energy_per_atom
@@ -19,7 +19,7 @@ class AtomicPotential:
     to calculate per-atom energy for a specific element.
     """
 
-    descriptor: AcsfInterface
+    descriptor: ACSF
     scaler: DescriptorScaler
     model: NeuralNetworkModel
 

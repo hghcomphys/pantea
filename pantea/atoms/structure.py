@@ -392,7 +392,7 @@ class Inputs(NamedTuple):
     positions: Array
     atom_types: Array
     lattice: Array
-    emap: Dict[Element, Array]
+    element_map: Dict[Element, Array]
 
 
 register_jax_pytree_node(Structure)
