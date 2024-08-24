@@ -346,23 +346,13 @@ class Structure(BaseJaxPytreeDataClass):
 
     # ---
 
-    def _get_inputs_per_element(self) -> Iterator[Tuple[Element, Inputs]]:
-        for element in self.get_unique_elements():
-            atom_indices: Array = self.select(element)
-            yield element, Inputs(
-                self.positions[atom_indices],
-                self.positions,
-                self.atom_types,
-                self.lattice,
-                tree_util.tree_map(
-                    lambda x: jnp.array(x),
-                    self.element_map.element_to_atom_type,
-                ),
-            )
-
-    def get_inputs_per_element(self) -> Dict[Element, Inputs]:
-        """Get required info per element for training and evaluating a potential."""
-        return {element: input for element, input in self._get_inputs_per_element()}
+    def get_structure_info(self) -> StructureInfo:
+        return StructureInfo(
+            self.positions,
+            self.atom_types,
+            self.lattice,
+            self.element_map.element_to_atom_type,
+        )
 
     def _get_positions_per_element(self) -> Iterator[Tuple[Element, Array]]:
         for element in self.get_unique_elements():
@@ -385,10 +375,12 @@ class Structure(BaseJaxPytreeDataClass):
         return {element: force for element, force in self._get_forces_per_element()}
 
 
-class Inputs(NamedTuple):
-    """Represent array data of Structure for computing energy and forces."""
+class StructureInfo(NamedTuple):
+    """
+    This is a jit-complied compatible representation of structure
+    to be used for for energy and force computing kernels.
+    """
 
-    atom_positions: Array
     positions: Array
     atom_types: Array
     lattice: Array

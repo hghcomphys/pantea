@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from frozendict import frozendict
 from jax import jit
 
-from pantea.atoms.structure import Inputs
+from pantea.atoms.structure import StructureInfo
 from pantea.descriptors import DescriptorScaler
 from pantea.descriptors.acsf.acsf import ACSF, _calculate_acsf_descriptor
 from pantea.models import NeuralNetworkModel
@@ -24,21 +24,18 @@ class AtomicPotentialInterface(Protocol):
 def _compute_energy_per_atom(
     atomic_potential: AtomicPotentialInterface,
     positions: Array,
-    params: frozendict[str, Array],
-    inputs: Inputs,
+    model_params: frozendict[str, Array],
+    structure: StructureInfo,
 ) -> Array:
     """Compute model output per-atom energy."""
     x = _calculate_acsf_descriptor(
         atomic_potential.descriptor,
         positions,
-        inputs.positions,
-        inputs.atom_types,
-        inputs.lattice,
-        inputs.element_map,
+        structure,
     )
     x = atomic_potential.scaler(x)
-    atomic_energy = atomic_potential.model.apply({"params": params}, x)  # type: ignore
-    return atomic_energy
+    x = atomic_potential.model.apply({"params": model_params}, x)  # type: ignore
+    return x
 
 
 # _jitted_compute_energy_per_atom = jit(_compute_energy_per_atom, static_argnums=(0,))
@@ -46,23 +43,19 @@ def _compute_energy_per_atom(
 
 @partial(jit, static_argnums=(0,))
 def _compute_energy(
-    atomic_potential: Dict[Element, AtomicPotentialInterface],
-    positions: Dict[Element, Array],
-    params: Dict[Element, frozendict[str, Array]],
-    inputs: Dict[Element, Inputs],
+    atomic_potential_dict: Dict[Element, AtomicPotentialInterface],
+    positions_dict: Dict[Element, Array],
+    params_dict: Dict[Element, frozendict[str, Array]],
+    structure: StructureInfo,
 ) -> Array:
-    """
-    A helper function that allows to calculate gradient of the NNP total energy
-    respect to the atom positions (for each element).
-    """
-    elements: list[Element] = list(inputs.keys())
+    """Calculate the total potential energy."""
     total_energy: Array = jnp.array(0.0)
-    for element in elements:
+    for element in atomic_potential_dict:
         per_atom_energy = _compute_energy_per_atom(
-            atomic_potential[element],
-            positions[element],
-            params[element],
-            inputs[element],
+            atomic_potential_dict[element],
+            positions_dict[element],
+            params_dict[element],
+            structure,
         )
         total_energy += jnp.sum(per_atom_energy)
     return total_energy

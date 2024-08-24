@@ -1,7 +1,7 @@
 import itertools
 from dataclasses import dataclass
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import jax.numpy as jnp
 from jax import jacfwd, jit, lax, vmap
@@ -11,13 +11,13 @@ from pantea.atoms.distance import (
     _calculate_distances_with_aux_per_atom,
 )
 from pantea.atoms.neighbor import _calculate_cutoff_masks_per_atom
-from pantea.atoms.structure import Structure
+from pantea.atoms.structure import Structure, StructureInfo
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
 from pantea.descriptors.acsf.radial import RadialSymmetryFunction
 from pantea.descriptors.acsf.symmetry import NeighborElements
 from pantea.logger import logger
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
-from pantea.types import Array, Element
+from pantea.types import Array
 
 AssignedRadialSymmetryFunction = Tuple[RadialSymmetryFunction, NeighborElements]
 AssignedAngularSymmetryFunction = Tuple[AngularSymmetryFunction, NeighborElements]
@@ -82,10 +82,7 @@ class ACSF(BaseJaxPytreeDataClass):
         return _jitted_calculate_acsf_descriptor(
             self,
             structure.positions[index],
-            structure.positions,
-            structure.atom_types,
-            structure.lattice,
-            structure.element_map.element_to_atom_type,
+            structure.get_structure_info(),
         )  # type: ignore
 
     def grad(
@@ -119,10 +116,7 @@ class ACSF(BaseJaxPytreeDataClass):
         return _jitted_calculate_grad_acsf_descriptor(
             self,
             positions,
-            structure.positions,
-            structure.atom_types,
-            structure.lattice,
-            structure.element_map.element_to_atom_type,
+            structure.get_structure_info(),
         )  # type: ignore
 
     @property
@@ -168,17 +162,14 @@ class ACSF(BaseJaxPytreeDataClass):
 
 def _calculate_acsf_descriptor_per_atom(
     acsf: ACSF,
-    atom_position: Array,
-    neighbor_atom_positions: Array,
-    atom_types: Array,
-    lattice: Array,
-    element_map: Dict[Element, Array],
+    position: Array,
+    structure: StructureInfo,
 ) -> Array:
     """Compute the ACSF descriptor values per atom."""
-    result: Array = jnp.empty(acsf.num_symmetry_functions, dtype=atom_position.dtype)
-
+    result: Array = jnp.empty(acsf.num_symmetry_functions, dtype=position.dtype)
+    # calculate distances respect to the reference atom (_i)
     distances_i, position_differences_i = _calculate_distances_with_aux_per_atom(
-        atom_position, neighbor_atom_positions, lattice
+        position, structure.positions, structure.lattice
     )
     # Loop over the radial terms
     for index, (symmetry_function, assigned_elements) in enumerate(
@@ -188,8 +179,8 @@ def _calculate_acsf_descriptor_per_atom(
             _calculate_radial_acsf_per_atom(
                 symmetry_function,
                 distances_i,
-                atom_types,
-                element_map[assigned_elements.neighbor_j],
+                structure.atom_types,
+                structure.element_map[assigned_elements.neighbor_j],
             )
         )
     # Loop over the angular terms
@@ -200,12 +191,12 @@ def _calculate_acsf_descriptor_per_atom(
         result = result.at[index].set(
             _calculate_angular_acsf_per_atom(
                 symmetry_function,
-                atom_types,
+                structure.atom_types,
                 position_differences_i,
                 distances_i,
-                lattice,
-                element_map[assigned_elements.neighbor_j],
-                element_map[assigned_elements.neighbor_k],  # type: ignore
+                structure.lattice,
+                structure.element_map[assigned_elements.neighbor_j],
+                structure.element_map[assigned_elements.neighbor_k],  # type: ignore
             )
         )
     return result
@@ -213,7 +204,7 @@ def _calculate_acsf_descriptor_per_atom(
 
 _calculate_acsf_descriptor = vmap(
     _calculate_acsf_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None),
+    in_axes=(None, 0, None),
 )
 
 _jitted_calculate_acsf_descriptor = jit(
@@ -228,7 +219,7 @@ _calculate_grad_acsf_descriptor_per_atom = jacfwd(
 
 _calculate_grad_acsf_descriptor = vmap(
     _calculate_grad_acsf_descriptor_per_atom,
-    in_axes=(None, 0, None, None, None, None),
+    in_axes=(None, 0, None),
 )
 
 _jitted_calculate_grad_acsf_descriptor = jit(
@@ -241,7 +232,7 @@ def _calculate_radial_acsf_per_atom(
     radial_symmetry_function: RadialSymmetryFunction,
     distances_i: Array,
     atom_types: Array,
-    neighbor_atom_type_j: int,
+    neighbor_atom_type_j: Array,
 ) -> Array:
     r_cutoff = jnp.array(radial_symmetry_function.r_cutoff)
     cutoff_mask_i = _calculate_cutoff_masks_per_atom(distances_i, r_cutoff)
@@ -261,8 +252,8 @@ def _calculate_angular_acsf_per_atom(
     position_differences_i: Array,
     distances_i: Array,
     lattice: Array,
-    neighbor_atom_type_j: int,
-    neighbor_atom_type_k: int,
+    neighbor_atom_type_j: Array,
+    neighbor_atom_type_k: Array,
 ) -> Array:
 
     # cutoff-radius masks
@@ -290,10 +281,11 @@ def _calculate_angular_acsf_per_atom(
         (position_differences_i, distances_i, cutoff_masks_and_atom_types_ij),
     )
     # correct the double-counting
+    # avoided jit recompilation due to lambda's variable hash
     return lax.cond(
         neighbor_atom_type_j == neighbor_atom_type_k,
         _divide_by_two,
-        _unary,
+        _return_input,
         total,
     )  # type: ignore
 
@@ -338,7 +330,7 @@ def _inner_loop_over_angular_acsf_terms(
     return total + value, value
 
 
-def _unary(array: Array) -> Array:
+def _return_input(array: Array) -> Array:
     return array
 
 

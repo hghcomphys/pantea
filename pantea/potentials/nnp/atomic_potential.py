@@ -7,7 +7,7 @@ from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.models.nn.network import NeuralNetworkModel
 from pantea.potentials.nnp.energy import _compute_energy_per_atom
-from pantea.types import Array, Element
+from pantea.types import Array
 
 
 @dataclass(frozen=True)
@@ -25,28 +25,27 @@ class AtomicPotential:
 
     def apply(
         self,
-        params: frozendict[str, Array],
+        model_params: frozendict[str, Array],
         structure: Structure,
     ) -> Array:
         """
-        Calculate model output energy.
-        It must be noted model output for each element has no physical meaning.
-        It's only the total energy, sum of the atomic energies over all atom in the structure,
+        Calculate model output energy for a specific element.
+
+        It must be noted that the model output has no physical meaning.
+        It's only the total energy, sum of the atomic energies over all atom,
         which has actually physical meaning.
 
-        :param params: model parameters
+        :param model_params: model parameters per element
         :param structure: input structure
         :return: model energy output
         """
-        element: Element = self.descriptor.central_element  # type: ignore
-        aid: Array = structure.select(element)
-
+        atom_ids = structure.select(self.descriptor.central_element)
         return _compute_energy_per_atom(
             self,
-            structure.positions[aid],
-            params,
-            structure.get_inputs_per_element()[element],
-        )
+            structure.positions[atom_ids],
+            model_params,
+            structure.get_structure_info(),
+        )  # type: ignore
 
     @property
     def model_input_size(self) -> int:
