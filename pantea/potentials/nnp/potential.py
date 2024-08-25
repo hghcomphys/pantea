@@ -22,7 +22,7 @@ from pantea.descriptors.scaler import DescriptorScaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.nnp.atomic_potential import AtomicPotential
+from pantea.potentials.nnp.atomic_potential import AtomicPotential, ModelParams
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.gradient_descent import GradientDescentUpdater
@@ -46,26 +46,6 @@ class NeuralNetworkPotential:
 
     It contains all the required descriptors, scalers, and neural networks for each element,
     and an updater to fit the potential model using the reference structure data.
-
-    Example
-    -------
-    Different methods to initialize neural network potential (NNP):
-
-    .. code-block:: python
-        :linenos:
-
-        from pantea.potentials import NeuralNetworkPotential
-        from pantea.potentials.nnp import NeuralNetworkPotentialSettings as Settings
-
-        # Method #1 (potential file)
-        nnp1 = NeuralNetworkPotential.from_file("input.nn")
-
-        # Method #2 (json file)
-        nnp3 = NeuralNetworkPotential.from_file('h2o.json')
-
-        # Method #3 (dictionary of parameters)
-        settings = Settings(**params_dict)
-        nnp3 = NeuralNetworkPotential(settings)
     """
 
     settings: PotentialSettings = field(repr=False)
@@ -73,29 +53,36 @@ class NeuralNetworkPotential:
     atomic_potential: Dict[Element, AtomicPotential] = field(
         default_factory=dict, repr=True, init=False
     )
-    model_params: Dict[Element, frozendict] = field(
+    model_params: Dict[Element, ModelParams] = field(
         default_factory=dict, repr=False, init=False
     )
     updater: Optional[UpdaterInterface] = field(default=None, repr=False, init=False)
 
     @classmethod
-    def from_file(cls, filename: Path) -> NeuralNetworkPotential:
-        """Create an instance of the potential from input file (RuNNer format)."""
-        logger.info("Creating potential from input file (RuNNer format)")
-        potfile = Path(filename)
-        suffix: str = potfile.suffix.lower()
-        if ".json" == suffix:
-            logger.info(f"Initializing from json file: {potfile.name}")
-            settings = PotentialSettings.from_json(potfile)
-        else:
-            logger.info(
-                f"Initializing from original RuNNer file format: {potfile.name}"
-            )
-            settings = PotentialSettings.from_file(potfile)
-
+    def from_runner(
+        cls,
+        directory: Path,
+        potential_filename: str = "input.nn",
+    ) -> NeuralNetworkPotential:
+        logger.info(f"Creating potential from RuNNer: {str(directory)}")
+        potfile = Path(directory) / potential_filename
+        logger.info(f"Initializing potential settings from RuNNer file: {potfile.name}")
         return NeuralNetworkPotential(
-            settings=settings,  # type: ignore
-            output_dir=potfile.parent,
+            settings=PotentialSettings.from_file(potfile),
+            output_dir=directory,
+        )
+
+    @classmethod
+    def from_json(
+        cls,
+        filename: Path,
+        output_dir: Path = Path("./"),
+    ) -> NeuralNetworkPotential:
+        logger.info(f"Creating potential from JSON file: {str(filename)}")
+        logger.info(f"Potential output directory: {str(output_dir)}")
+        return NeuralNetworkPotential(
+            settings=PotentialSettings.from_json(filename),
+            output_dir=output_dir,
         )
 
     def __post_init__(self) -> None:
@@ -105,10 +92,8 @@ class NeuralNetworkPotential:
         """
         logger.info(f"Initializing {self.__class__.__name__}")
 
-        self.elements: Tuple[Element, ...] = tuple(
-            element for element in self.settings.elements
-        )
-        self.num_elements: int = self.settings.number_of_elements
+        self.elements = tuple(element for element in self.settings.elements)
+        self.num_elements = self.settings.number_of_elements
 
         logger.info(f"Number of elements: {self.num_elements}")
         for element in self.elements:
@@ -179,7 +164,7 @@ class NeuralNetworkPotential:
         logger.info("Initializing descriptors")
         settings = self.settings
         descriptor: Dict[Element, ACSF] = dict()
-        radial: defaultdict = defaultdict(list)
+        radial = defaultdict(list)
         angular = defaultdict(list)
 
         for args in settings.symfunction_short:
@@ -195,14 +180,12 @@ class NeuralNetworkPotential:
                 radial[args.central_element].append(
                     (symmetry_function, neighbor_elements)
                 )
-
             elif args.acsf_type == 2:
                 symmetry_function = G2(cfn, eta=args.eta, r_shift=args.r_shift)
                 neighbor_elements = NeighborElements(args.neighbor_element_j)
                 radial[args.central_element].append(
                     (symmetry_function, neighbor_elements)
                 )
-
             elif args.acsf_type == 3:
                 symmetry_function = G3(
                     cfn,
@@ -217,7 +200,6 @@ class NeuralNetworkPotential:
                 angular[args.central_element].append(
                     (symmetry_function, neighbor_elements)
                 )
-
             elif args.acsf_type == 9:
                 symmetry_function = G9(
                     cfn,
@@ -303,13 +285,12 @@ class NeuralNetworkPotential:
         :param structure: Structure
         :return: total energy
         """
-
         return _compute_energy(
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions_per_element(),
             self.model_params,
             structure.as_kernel_args(),
-        )
+        )  # type: ignore
 
     def compute_forces(self, structure: Structure) -> Array:
         """
@@ -328,7 +309,6 @@ class NeuralNetworkPotential:
         for element in structure.get_unique_elements():
             atom_index = structure.select(element)
             forces = forces.at[atom_index].set(forces_dict[element])
-
         return forces
 
     # ------------------------------------------------------------------------
@@ -360,7 +340,6 @@ class NeuralNetworkPotential:
         #     "validation_split", self.settings.test_fraction
         # )
         # kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
-
         history = defaultdict(list)
         print("Training potential...")
         try:
@@ -369,7 +348,6 @@ class NeuralNetworkPotential:
             print("Keyboard Interrupt")
         else:
             print("Done.")
-
         return history
 
     def fit(self) -> None:
@@ -497,3 +475,6 @@ class NeuralNetworkPotential:
     def model(self) -> Dict:
         """Return model for each element."""
         return {elem: pot.model for elem, pot in self.atomic_potential.items()}
+
+
+NNP = NeuralNetworkPotential

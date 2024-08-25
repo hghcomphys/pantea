@@ -5,24 +5,23 @@ from typing import Callable, List, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict
+
 from pantea.logger import logger
-from pantea.models.model import ModelInterface
 from pantea.models.nn.activation import _activation_function_map
 from pantea.types import Array, Dtype, default_dtype
 
 
-class NeuralNetworkModel(nn.Module, ModelInterface):
+class NeuralNetworkModel(nn.Module):
     """Neural network model that outputs energy."""
 
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "identity")
     param_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
-    # bias_initializer: Callable = nn.initializers.zeros
 
     def setup(self) -> None:
         """Initialize neural network model."""
-        self.layers: List = self.create_network()
+        self.layers = self.create_network()
 
     def create_layer(self, features: int) -> nn.Dense:
         """
