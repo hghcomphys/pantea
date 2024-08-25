@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-from frozendict import frozendict
-
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.nnp.energy import _compute_energy_per_atom
+from pantea.potentials.nnp.energy import ModelParams, _compute_energy_per_atom
 from pantea.types import Array
 
 
@@ -25,7 +23,7 @@ class AtomicPotential:
 
     def apply(
         self,
-        model_params: frozendict[str, Array],
+        model_params: ModelParams,
         structure: Structure,
     ) -> Array:
         """
@@ -39,12 +37,12 @@ class AtomicPotential:
         :param structure: input structure
         :return: model energy output
         """
-        atom_ids = structure.select(self.descriptor.central_element)
+        atom_index = structure.select(self.descriptor.central_element)
         return _compute_energy_per_atom(
             self,
-            structure.positions[atom_ids],
+            structure.positions[atom_index],
             model_params,
-            structure.get_structure_info(),
+            structure.as_kernel_args(),
         )  # type: ignore
 
     @property

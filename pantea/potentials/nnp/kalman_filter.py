@@ -104,7 +104,7 @@ class KalmanFilterUpdater:
                 frozendict(atomic_potential),
                 structure.get_positions_per_element(),
                 model_params,
-                structure.get_structure_info(),
+                structure.as_kernel_args(),
             )
             return (E_ref - E_pot) / structure.natoms
 
@@ -116,7 +116,7 @@ class KalmanFilterUpdater:
                     frozendict(atomic_potential),
                     structure.get_positions_per_element(),
                     model_params,
-                    structure.get_structure_info(),
+                    structure.as_kernel_args(),
                 )
             )
             return (F_ref - F_pot)[..., 0]

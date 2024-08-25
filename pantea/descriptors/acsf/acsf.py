@@ -11,7 +11,7 @@ from pantea.atoms.distance import (
     _calculate_distances_with_aux_per_atom,
 )
 from pantea.atoms.neighbor import _calculate_cutoff_masks_per_atom
-from pantea.atoms.structure import Structure, StructureInfo
+from pantea.atoms.structure import Structure, StructureAsKernelArgs
 from pantea.descriptors.acsf.angular import AngularSymmetryFunction
 from pantea.descriptors.acsf.radial import RadialSymmetryFunction
 from pantea.descriptors.acsf.symmetry import NeighborElements
@@ -24,7 +24,7 @@ AssignedAngularSymmetryFunction = Tuple[AngularSymmetryFunction, NeighborElement
 
 
 @dataclass
-class ACSF(BaseJaxPytreeDataClass):
+class AtomCenteredSymmetryFunction(BaseJaxPytreeDataClass):
     """
     Atom-centered Symmetry Function (`ACSF`_) descriptor captures
     information about the distribution of neighboring
@@ -54,9 +54,9 @@ class ACSF(BaseJaxPytreeDataClass):
 
         :param structure: input structure instance
         :type structure: Structure
-        :param atom_indices: atom indices, defaults select all atom indices
+        :param atom_index: atom indices, defaults select all atom indices
         of type the central element of the descriptor.
-        :type atom_indices: Optional[Array], optional
+        :type atom_index: Optional[Array], optional
         :return: descriptor values
         :rtype: Array
         """
@@ -82,7 +82,7 @@ class ACSF(BaseJaxPytreeDataClass):
         return _jitted_calculate_acsf_descriptor(
             self,
             structure.positions[index],
-            structure.get_structure_info(),
+            structure.as_kernel_args(),
         )  # type: ignore
 
     def grad(
@@ -91,7 +91,7 @@ class ACSF(BaseJaxPytreeDataClass):
         atom_index: Optional[Array] = None,
     ) -> Array:
         """
-        Compute gradient of ACSF descriptor respect to the atom position.
+        Compute gradient of the ACSF descriptor respect to the atom position.
 
         :param structure: input Structure instance
         :param atom_index: atom index in Structure [0, natoms)
@@ -116,7 +116,7 @@ class ACSF(BaseJaxPytreeDataClass):
         return _jitted_calculate_grad_acsf_descriptor(
             self,
             positions,
-            structure.get_structure_info(),
+            structure.as_args(),
         )  # type: ignore
 
     @property
@@ -161,9 +161,9 @@ class ACSF(BaseJaxPytreeDataClass):
 
 
 def _calculate_acsf_descriptor_per_atom(
-    acsf: ACSF,
+    acsf: AtomCenteredSymmetryFunction,
     position: Array,
-    structure: StructureInfo,
+    structure: StructureAsKernelArgs,
 ) -> Array:
     """Compute the ACSF descriptor values per atom."""
     result: Array = jnp.empty(acsf.num_symmetry_functions, dtype=position.dtype)
@@ -338,4 +338,6 @@ def _divide_by_two(array: Array) -> Array:
     return array * 0.5
 
 
-register_jax_pytree_node(ACSF)
+ACSF = AtomCenteredSymmetryFunction
+
+register_jax_pytree_node(AtomCenteredSymmetryFunction)

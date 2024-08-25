@@ -308,7 +308,7 @@ class NeuralNetworkPotential:
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions_per_element(),
             self.model_params,
-            structure.get_structure_info(),
+            structure.as_kernel_args(),
         )
 
     def compute_forces(self, structure: Structure) -> Array:
@@ -322,11 +322,11 @@ class NeuralNetworkPotential:
             frozendict(self.atomic_potential),  # must be hashable
             structure.get_positions_per_element(),
             self.model_params,
-            structure.get_structure_info(),
+            structure.as_kernel_args(),
         )
         forces: Array = jnp.empty_like(structure.forces)
         for element in structure.get_unique_elements():
-            atom_index: Array = structure.select(element)
+            atom_index = structure.select(element)
             forces = forces.at[atom_index].set(forces_dict[element])
 
         return forces

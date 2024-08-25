@@ -22,7 +22,7 @@ default_dtype.FLOATX = jnp.float32
 
 class TestNeuralNetworkPotential:
     dataset = Dataset.from_runner(dataset_file)
-    nnp: NeuralNetworkPotential = NeuralNetworkPotential.from_file(potential_file)
+    nnp = NeuralNetworkPotential.from_json(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, expected",
