@@ -104,9 +104,20 @@ class TestNeuralNetworkPotential:
 
         settings_new = nnp.settings.copy()
         settings_new.random_seed = 4321
-        nnp_new = NeuralNetworkPotential(settings=settings_new)
+        atomic_potentials = NeuralNetworkPotential._build_atomic_potentials(
+            settings_new
+        )
+        models_params = NeuralNetworkPotential._initialize_models_params(
+            settings_new, atomic_potentials
+        )
+        nnp_new = NeuralNetworkPotential(
+            directory=Path("."),
+            settings=settings_new,
+            atomic_potentials=atomic_potentials,
+            models_params=models_params,
+        )
         nnp_new.fit_scaler(dataset)
-        nnp_new.output_dir = potential_file.parent
+        nnp_new.directory = potential_file.parent
 
         assert not nnp.settings == nnp_new.settings
         assert not jnp.allclose(nnp(structure), nnp_new(structure))
