@@ -116,7 +116,7 @@ class AtomCenteredSymmetryFunction(BaseJaxPytreeDataClass):
         return _jitted_calculate_grad_acsf_descriptor(
             self,
             positions,
-            structure.as_args(),
+            structure.as_kernel_args(),
         )  # type: ignore
 
     @property
