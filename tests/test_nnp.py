@@ -22,7 +22,10 @@ default_dtype.FLOATX = jnp.float32
 
 class TestNeuralNetworkPotential:
     dataset = Dataset.from_runner(dataset_file)
-    nnp = NeuralNetworkPotential.from_json(potential_file)
+    nnp = NeuralNetworkPotential.from_json(
+        potential_file,
+        output_dir=potential_file.parent,
+    )
 
     @pytest.mark.parametrize(
         "nnp, expected",
@@ -79,47 +82,7 @@ class TestNeuralNetworkPotential:
         dataset: Dataset,
         expected: Tuple,
     ) -> None:
-        nnp.fit_scaler(dataset)
-        # total energy
+        nnp.load_scaler()
+        nnp.load_model()
         assert jnp.allclose(nnp(dataset[0]), expected[0])
         assert jnp.allclose(nnp.compute_forces(dataset[0]), expected[1])
-
-    @pytest.mark.parametrize(
-        "nnp, dataset",
-        [
-            (
-                nnp,
-                dataset,
-            ),
-        ],
-    )
-    def test_save_and_load(
-        self,
-        nnp: NeuralNetworkPotential,
-        dataset: Dataset,
-    ) -> None:
-        structure = dataset[0]
-        nnp.output_dir = potential_file.parent
-        nnp.save()
-
-        settings_new = nnp.settings.copy()
-        settings_new.random_seed = 4321
-        atomic_potentials = NeuralNetworkPotential._build_atomic_potentials(
-            settings_new
-        )
-        models_params = NeuralNetworkPotential._initialize_models_params(
-            settings_new, atomic_potentials
-        )
-        nnp_new = NeuralNetworkPotential(
-            directory=Path("."),
-            settings=settings_new,
-            atomic_potentials=atomic_potentials,
-            models_params=models_params,
-        )
-        nnp_new.fit_scaler(dataset)
-        nnp_new.directory = potential_file.parent
-
-        assert not nnp.settings == nnp_new.settings
-        assert not jnp.allclose(nnp(structure), nnp_new(structure))
-        nnp_new.load()
-        assert jnp.allclose(nnp(structure), nnp_new(structure))

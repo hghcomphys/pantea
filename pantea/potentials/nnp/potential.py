@@ -3,16 +3,14 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Protocol, Tuple
+from typing import Dict, Optional, Tuple
 
 import jax.numpy as jnp
 from frozendict import frozendict
 from jax import random
-from tqdm import tqdm
 
 from pantea.atoms.element import ElementMap
 from pantea.atoms.structure import Structure
-from pantea.datasets.dataset import Dataset
 from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.acsf.angular import G3, G9
 from pantea.descriptors.acsf.cutoff import CutoffFunction
@@ -25,16 +23,8 @@ from pantea.models.nn.network import NeuralNetworkModel
 from pantea.potentials.nnp.atomic_potential import AtomicPotential, ModelParams
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
-from pantea.potentials.nnp.gradient_descent import GradientDescentUpdater
-from pantea.potentials.nnp.kalman_filter import KalmanFilterUpdater
 from pantea.potentials.nnp.settings import NeuralNetworkPotentialSettings
 from pantea.types import Array, Element
-
-
-class UpdaterInterface(Protocol):
-    """Interface for potential weight updaters."""
-
-    def fit(self, dataset: Dataset) -> Dict: ...
 
 
 @dataclass
@@ -50,7 +40,6 @@ class NeuralNetworkPotential:
     settings: NeuralNetworkPotentialSettings
     atomic_potentials: frozendict[Element, AtomicPotential]
     models_params: Dict[Element, ModelParams]
-    # updater: Optional[UpdaterInterface] = field(default=None, repr=False, init=False)
 
     @classmethod
     def from_runner(
@@ -82,6 +71,7 @@ class NeuralNetworkPotential:
         settings = NeuralNetworkPotentialSettings.from_json(filename)
         atomic_potentials = cls._build_atomic_potentials(settings)
         models_params = cls._initialize_models_params(settings, atomic_potentials)
+        # updater = cls._build_updater(settings)
         return NeuralNetworkPotential(
             directory=output_dir,
             settings=settings,
@@ -121,20 +111,6 @@ class NeuralNetworkPotential:
             atom_index = structure.select(element)
             forces = forces.at[atom_index].set(forces_dict[element])
         return forces
-
-    def __post_init__(self) -> None:
-        """
-        Initialize potential components such as atomic potential, model params,
-        and updater from the potential settings.
-        """
-        logger.info(f"Initializing {self.__class__.__name__}")
-        logger.info(f"Number of elements: {self.num_elements}")
-        for element in self.elements:
-            logger.info(
-                f"Element: {element} ({ElementMap.get_atomic_number_from_element(element)})"
-            )
-
-
 
     @classmethod
     def _build_atomic_potentials(
@@ -311,111 +287,8 @@ class NeuralNetworkPotential:
             )
         return models
 
-    # def _init_updater(self) -> None:
-    #     """Initialize selected updater from the potential settings."""
-    #     logger.info("Initializing updater")
-    #     updater_type: str = self.settings.updater_type
-    #     if updater_type == "kalman_filter":
-    #         self.updater = KalmanFilterUpdater(potential=self)
-    #     elif updater_type == "gradient_descent":
-    #         self.updater = GradientDescentUpdater(potential=self)
-    #     else:
-    #         logger.error(
-    #             f"Unknown updater type: {updater_type}",
-    #             exception=TypeError,
-    #         )
-    #     logger.info(f"Updater type: {updater_type}")
-
-    # ------------------------------------------------------------------------
-
-    def fit_scaler(self, dataset: Dataset) -> None:
-        """
-        Fit scaler parameters for each element using the input structure data.
-        No gradient history is required here.
-        """
-        print("Fitting descriptor scaler...")
-        try:
-            dataset_size: int = len(dataset)
-            for index in tqdm(range(dataset_size)):
-                structure: Structure = dataset[index]
-                elements: Tuple[Element, ...] = structure.get_unique_elements()
-                for element in elements:
-                    x: Array = self.atomic_potentials[element].descriptor(structure)
-                    self.atomic_potentials[element].scaler.fit(x)
-        except KeyboardInterrupt:
-            print("Keyboard Interrupt")
-        else:
-            print("Done.")
-
-    # def fit_model(self, dataset: Dataset) -> Dict:
-    #     """
-    #     Fit energy model for all elements using the input structure loader.
-    #     """
-    #     # kwargs["validation_split"] = kwargs.get(
-    #     #     "validation_split", self.settings.test_fraction
-    #     # )
-    #     # kwargs["epochs"] = kwargs.get("epochs", self.settings.epochs)
-    #     history = defaultdict(list)
-    #     print("Training potential...")
-    #     try:
-    #         history = self.updater.fit(dataset)  # type: ignore
-    #     except KeyboardInterrupt:
-    #         print("Keyboard Interrupt")
-    #     else:
-    #         print("Done.")
-    #     return history
-
-    def fit(self) -> None:
-        """
-        This method provides a user-friendly interface to fit both descriptor and model in one step.
-        """
-        ...
-
-    # ------------------------------------------------------------------------
-
-    def save_scaler(self) -> None:
-        """
-        This method saves scaler parameters for each element into separate files.
-        """
-        # Save scaler parameters for each element separately
-        for element in self.settings.elements:
-            atomic_number: int = ElementMap.get_atomic_number_from_element(element)
-            scaler_file = Path(
-                self.directory,
-                self.settings.scaler_save_naming_format.format(atomic_number),
-            )
-            logger.info(
-                f"Saving scaler parameters for element ({element}): {scaler_file.name}"
-            )
-            self.atomic_potentials[element].scaler.save(scaler_file)
-
-    def save_model(self) -> None:
-        """
-        Save model weights separately for all elements.
-        """
-        for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number_from_element(element)
-            model_file = Path(
-                self.directory,
-                self.settings.model_save_naming_format.format(atomic_number),
-            )
-            logger.info(
-                f"Saving model weights for element ({element}): {model_file.name}"
-            )
-            self.atomic_potentials[element].model.save(
-                model_file, self.models_params[element]
-            )
-
-    def save(self) -> None:
-        """Save scaler and model into corresponding files for each element."""
-        self.save_scaler()
-        self.save_model()
-
     def load_scaler(self) -> None:
-        """
-        This method loads scaler parameters of each element from separate files.
-        This save computational time as the would be no need to fit the scalers each time.
-        """
+        """Loads scaler parameters of each element from separate files."""
         # Load scaler parameters for each element separately
         for element in self.elements:
             atomic_number = ElementMap.get_atomic_number_from_element(element)
@@ -429,9 +302,7 @@ class NeuralNetworkPotential:
             self.atomic_potentials[element].scaler.load(scaler_file)
 
     def load_model(self) -> None:
-        """
-        Load model weights separately for all elements.
-        """
+        """Load model weights separately for all elements."""
         for element in self.elements:
             atomic_number = ElementMap.get_atomic_number_from_element(element)
             model_file = Path(

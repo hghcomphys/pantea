@@ -9,7 +9,6 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
-from frozendict import frozendict
 from jax import value_and_grad
 from optax import GradientTransformation
 from tqdm import tqdm
@@ -17,12 +16,11 @@ from tqdm import tqdm
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
+from pantea.potentials.nnp.atomic_potential import ModelParams
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.metrics import ErrorMetric
-from pantea.potentials.nnp.nnp import (
-    NeuralNetworkPotentialInterface as PotentialInterface,
-)
+from pantea.potentials.nnp.potential import NeuralNetworkPotential
 from pantea.potentials.nnp.settings import (
     NeuralNetworkPotentialSettings as PotentialSettings,
 )
@@ -42,17 +40,17 @@ class GradientDescentUpdater:
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """
 
-    # potential: PotentialInterface
+    # potential: NerualNetworkPotential
     # settings: PotentialSettings
     # criterion: Callable = field(default_factory=lambda: mse_loss)
     # error_metric: ErrorMetric
     # optimizer: Dict[Element, Any]
 
-    def __init__(self, potential: PotentialInterface) -> None:
+    def __init__(self, potential: NeuralNetworkPotential) -> None:
         """Initialize potential."""
-        self.potential: PotentialInterface = potential
+        self.potential = potential
         self.criterion: Callable[..., Array] = _mse_loss
-        self.error_metric: ErrorMetric = ErrorMetric.create(
+        self.error_metric = ErrorMetric.create(
             self.potential.settings.main_error_metric
         )
         self._init_parameters()
@@ -90,8 +88,8 @@ class GradientDescentUpdater:
         def generate_train_state():
             for element in self.potential.elements:
                 yield element, TrainState.create(
-                    apply_fn=self.potential.atomic_potential[element].model.apply,
-                    params=self.potential.model_params[element],
+                    apply_fn=self.potential.atomic_potentials[element].model.apply,
+                    params=self.potential.models_params[element],
                     tx=self.optimizer,  # [element]?
                 )
 
@@ -163,7 +161,7 @@ class GradientDescentUpdater:
     ) -> Tuple:
         """Train potential on a batch of data."""
 
-        def loss_fn(params: Dict[Element, frozendict]) -> Tuple[Array, Any]:
+        def loss_fn(params: Dict[Element, ModelParams]) -> Tuple[Array, Any]:
             """Loss function."""
             xbatch, ybatch = batch
             batch_size = len(xbatch)
@@ -180,7 +178,7 @@ class GradientDescentUpdater:
                 if np.random.rand() < self.force_fraction:
                     # ------ Force ------
                     forces = _compute_forces(
-                        frozendict(self.potential.atomic_potential),
+                        self.potential.atomic_potentials,
                         positions,
                         params,
                         inputs,
@@ -198,7 +196,7 @@ class GradientDescentUpdater:
                 else:
                     # ------ energy ------
                     energy = _compute_energy(
-                        frozendict(self.potential.atomic_potential),
+                        self.potential.atomic_potentials,
                         positions,
                         params,
                         inputs,
