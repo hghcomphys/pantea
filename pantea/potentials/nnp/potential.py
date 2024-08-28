@@ -44,17 +44,15 @@ class NeuralNetworkPotential:
     @classmethod
     def from_runner(
         cls,
-        directory: Path,
-        potential_filename: str = "input.nn",
+        filename: Path,
     ) -> NeuralNetworkPotential:
-        logger.info(f"Creating potential from RuNNer: {str(directory)}")
-        potfile = Path(directory) / potential_filename
-        logger.info(f"Initializing potential settings from RuNNer file: {potfile.name}")
+        logger.info(f"Creating potential from RuNNer potential file: {str(filename)}")
+        potfile = Path(filename)
         settings = NeuralNetworkPotentialSettings.from_file(potfile)
         atomic_potentials = cls._build_atomic_potentials(settings)
         models_params = cls._initialize_models_params(settings, atomic_potentials)
         return NeuralNetworkPotential(
-            directory=directory,
+            directory=potfile.parent,
             settings=settings,
             atomic_potentials=atomic_potentials,
             models_params=models_params,
@@ -64,16 +62,15 @@ class NeuralNetworkPotential:
     def from_json(
         cls,
         filename: Path,
-        output_dir: Path = Path("./"),
     ) -> NeuralNetworkPotential:
-        logger.info(f"Creating potential from JSON file: {str(filename)}")
-        logger.info(f"Potential output directory: {str(output_dir)}")
-        settings = NeuralNetworkPotentialSettings.from_json(filename)
+        logger.info(f"Creating potential from a JSON file: {str(filename)}")
+        potfile = Path(filename)
+        settings = NeuralNetworkPotentialSettings.from_json(potfile)
         atomic_potentials = cls._build_atomic_potentials(settings)
         models_params = cls._initialize_models_params(settings, atomic_potentials)
         # updater = cls._build_updater(settings)
         return NeuralNetworkPotential(
-            directory=output_dir,
+            directory=potfile.parent,
             settings=settings,
             atomic_potentials=atomic_potentials,
             models_params=models_params,
