@@ -32,10 +32,10 @@ def _mse_loss(*, logits: Array, targets: Array) -> Array:
 
 
 # @dataclass
-class GradientDescentUpdater:
+class GradientDescent:
     """
-    A trainer class to fit a generic NNP potential weights using target values of the total
-    energy and force components.
+    Gradient Descent implementation for updating model parameters
+    for energy and force component (gradient) predictions.
 
     See https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
     """

@@ -22,16 +22,20 @@ def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
 
 
-class KalmanFilterUpdater:
+class KalmanFilter:
     """
-    A potential trainer which uses Kalman filter to update model weights (see this_).
+    Kalman Filter implementation for updating model parameters to predict
+    the total potential energy and force components (gradient).
 
-    .. _this: https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
+    See  https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
     """
 
     # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
-    def __init__(self, potential: NeuralNetworkPotential) -> None:
+    def __init__(
+        self,
+        potential: NeuralNetworkPotential,
+    ) -> None:
         self.potential = potential
         self._init_parameters()
         self._init_matrices()
@@ -41,7 +45,7 @@ class KalmanFilterUpdater:
         dataset: Dataset,
     ) -> defaultdict[str, Any]:
         """
-        Fit potential weights.
+        Fit the potential model parameters.
 
         :param dataset: training dataset
         :type dataset: StructureDataset
@@ -243,3 +247,6 @@ class KalmanFilterUpdater:
         self.P: Array = (1.0 / self.epsilon) * jnp.identity(
             self.num_states, dtype=default_dtype.FLOATX
         )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}"

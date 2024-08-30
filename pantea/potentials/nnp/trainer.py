@@ -10,8 +10,8 @@ from tqdm import tqdm
 from pantea.atoms.element import ElementMap
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
-from pantea.potentials.nnp.gradient_descent import GradientDescentUpdater
-from pantea.potentials.nnp.kalman_filter import KalmanFilterUpdater
+from pantea.potentials.nnp.gradient_descent import GradientDescent
+from pantea.potentials.nnp.kalman_filter import KalmanFilter
 from pantea.potentials.nnp.potential import NeuralNetworkPotential
 
 
@@ -23,14 +23,15 @@ class UpdaterInterface(Protocol):
 
 @dataclass
 class NeuralNetworkPotentialTrainer:
-    """Fit scalers and models of a neural network potential."""
+    """Train both scaler and model parameters of a neural network potential."""
 
     potential: NeuralNetworkPotential
     updater: UpdaterInterface
 
     @classmethod
-    def from_nnp(
-        cls, potential: NeuralNetworkPotential
+    def from_runner(
+        cls,
+        potential: NeuralNetworkPotential,
     ) -> NeuralNetworkPotentialTrainer:
         return cls(
             potential=potential,
@@ -47,9 +48,10 @@ class NeuralNetworkPotentialTrainer:
         updater: UpdaterInterface
         updater_type: str = potential.settings.updater_type
         if updater_type == "kalman_filter":
-            updater = KalmanFilterUpdater(potential)
+            updater = KalmanFilter(potential)
         elif updater_type == "gradient_descent":
             updater = GradientDescentUpdater(potential)
+            raise NotImplementedError("Updater type: Gradient Descent")
         else:
             logger.error(
                 f"Unknown updater type: {updater_type}",

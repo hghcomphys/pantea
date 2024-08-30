@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -37,9 +37,9 @@ class NeuralNetworkPotential:
     """
 
     directory: Path
-    settings: NeuralNetworkPotentialSettings
+    settings: NeuralNetworkPotentialSettings = field(repr=False)
     atomic_potentials: frozendict[Element, AtomicPotential]
-    models_params: Dict[Element, ModelParams]
+    models_params: Dict[Element, ModelParams] = field(repr=False)
 
     @classmethod
     def from_runner(
