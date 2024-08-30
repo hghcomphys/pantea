@@ -9,17 +9,6 @@ Subpackages
 
    pantea.models.nn
 
-Submodules
-----------
-
-pantea.models.model module
---------------------------
-
-.. automodule:: pantea.models.model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

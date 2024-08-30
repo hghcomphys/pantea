@@ -51,14 +51,4 @@ than traditional interatomic potential models.
 ------------------
 Training procedure
 ------------------
-Proper training can ensure that a potential accurately captures the material's properties.
-Below lists illustrates example involved steps in using ab initio reference data to train an ML potential:
-
-    - Collect a dataset of atomic positions and corresponding energies or forces, for example from DFT calculations.
-    - Select and calculate descriptor values for all atoms in the dataset.
-    - Split the dataset into training, validation, and testing sets.
-    - Define the architecture of the potential and the training parameters.
-    - Train the neural network potential on the training set using the input descriptors and the target energy and forces.
-    - Validate the accuracy of the ML potential on the validation set by comparing its predictions to the DFT reference data.
-    - Use trained potential to perform molecular dynamics simulations of larger systems.
-
+Training a Machine Learning Potential involves using a dataset of atomic configurations with corresponding energies and forces, typically obtained from quantum mechanical calculations like density functional theory (DFT). The process begins by computing atomic descriptors that capture the local atomic environments. The potential model (e.g. neural network) is then trained on this data to learn the relationship between atomic positions and their associated energies or forces. After training, the ML potential is validated against a separate set of data to ensure its accuracy before being used for simulations, such as molecular dynamics, to study larger and more complex systems.

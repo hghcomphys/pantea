@@ -5,12 +5,12 @@ History
 
 0.10
 -------------------
-* added an optimized implementation (100x faster) of ACSF gradient calculation per element
+* added an optimized implementation (100x faster) of the ACSF gradient calculation
 
 0.9
 -------------------
-* required adjustments on the base codes and example notebooks to work with recent version of JAX
-* added `autodiff` gradient method to LJ force calculations
+* required adjustments on the base codes and example notebooks to work with the recent version of JAX
+* added `autodiff` gradient method to the LJ force calculation kernel
 
 0.8
 -------------------
@@ -23,8 +23,8 @@ History
 
 0.6
 -------------------
-* Implemented Molecular dynamics (MD) simulator
-* Added Monte-Carlo (MC) simulator
+* Implemented a Molecular dynamics (MD) simulator
+* Monte-Carlo (MC) simulator
 
 0.5
 -------------------

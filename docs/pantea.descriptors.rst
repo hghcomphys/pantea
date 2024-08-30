@@ -12,14 +12,6 @@ Subpackages
 Submodules
 ----------
 
-pantea.descriptors.descriptor module
-------------------------------------
-
-.. automodule:: pantea.descriptors.descriptor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pantea.descriptors.scaler module
 --------------------------------
 

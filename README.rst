@@ -62,9 +62,9 @@ instruction on the documentation.
 Examples
 --------
 
-------------------------------
-I. Defining an ACSF descriptor
-------------------------------
+--------------------
+I. Descriptor (ACSF)
+--------------------
 Atom-centered Symmetry Function (`ACSF`_) descriptor captures information about the distribution of neighboring atoms around a 
 central atom by considering both radial (two-body) and angular (three-body) symmetry functions. 
 The values obtained from these calculations represent a fingerprint of the local atomic environment and can be used in various machine learning potentials. 
@@ -83,7 +83,7 @@ The resulting values can then be used to construct a machine learning potential.
         from pantea.descriptors.acsf import CutoffFunction, NeighborElements, G2, G3
 
         # Read atomic structure dataset (e.g. water molecules)
-        structures = Dataset.from_runner('input.data')
+        structures = Dataset.from_runner("input.data")
         structure = structures[0]
         print(structure)
         # >> Structure(natoms=12, elements=('H', 'O'), dtype=float64)
@@ -126,31 +126,27 @@ The resulting values can then be used to construct a machine learning potential.
         #  [[-1.36223042e-03 -8.02832759e-03 -6.08306094e-05]
         #   [ 1.29199076e-02 -9.58762344e-03 -9.12714216e-02]]] 
 
--------------------------
-II. Training an NNP potential
--------------------------
-This example illustrates how to quickly create a `high-dimensional neural network 
-potential` (`HDNNP`_) instance from an in input setting files and train it on input structures. 
-The trained potential can then be used to evaluate the energy and force components for new structures.
 
-Please note that the example below is just for demonstration. 
-For training a NNP model in real world we actually need larger samples of data.
+-------------------
+II. Potential (NNP)
+-------------------
+This example illustrates how to quickly create a `high-dimensional neural network 
+potential` (`HDNNP`_) instance from an input setting file.
 
 .. _HDNNP: https://pubs.acs.org/doi/10.1021/acs.chemrev.0c00868
-
 
 .. code-block:: python
 
         from pantea.datasets import Dataset
         from pantea.potentials import NeuralNetworkPotential
 
+        # Dataset: reading structures from RuNNer input data file
         structures = Dataset.from_runner("input.data")
         structure = structures[0]
 
-        nnp = NeuralNetworkPotential.from_file("input.nn")
-
-        nnp.fit_scaler(structures)
-        nnp.fit_model(structures)
+        # Potential: creating a NNP from the RuNNer potential file
+        nnp = NeuralNetworkPotential.from_runner("input.nn")
+        nnp.load()  # this will require loading scaler and model parameter files.
 
         total_energy = nnp(structure)
         print(total_energy)
@@ -159,11 +155,36 @@ For training a NNP model in real world we actually need larger samples of data.
         print(forces)
 
 
-Example input files: `input.data`_ and `input.nn`_
+-------------------
+III. Training (NNP) 
+-------------------
+This example shows the process of training a NNP potential on input structures. 
+The trained potential can then be used to evaluate the energy and force components for new structures.
 
-.. _input.data: https://drive.google.com/file/d/1VMckgIv_OUvCOXQ0pYzaF5yl9AwR0rBy/view?usp=sharing
-.. _input.nn: https://drive.google.com/file/d/15Oq9gAJ2xXVMcHyWXlRukfJFevyVO7lI/view?usp=sharing
+.. code-block:: python
 
+        from pantea.datasets import Dataset
+        from pantea.potentials import NeuralNetworkPotential
+        from pantea.potentials.nnp import NeuralNetworkPotentialTrainer        
+
+        # Dataset: reading structures from RuNNer input data file
+        structures = Dataset.from_runner("input.data", persist=True)
+        structures.preload()
+
+        # Potential: creating a NNP from the RuNNer configuration file
+        nnp = NeuralNetworkPotential.from_runner("input.nn")
+
+        # Trainer: initializing a trainer from the NNP potential 
+        trainer = NeuralNetworkPotentialTrainer.from_runner(potential=nnp)
+        trainer.fit_scaler()
+        trainer.fit_model()
+
+        trainer.save()  # this will save scaler and model parameters into files
+
+Please note that the example below is just for demonstration. 
+For training a NNP model in real world we actually need larger samples of data.
+
+Download example input files from `here <https://drive.google.com/drive/folders/1vABOndAia41Bn0v1jPaJZmVGnbjg8UPE?usp=sharing>`_.
 
 
 License
