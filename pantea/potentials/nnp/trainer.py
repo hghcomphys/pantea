@@ -50,7 +50,7 @@ class NeuralNetworkPotentialTrainer:
         if updater_type == "kalman_filter":
             updater = KalmanFilter(potential)
         elif updater_type == "gradient_descent":
-            updater = GradientDescentUpdater(potential)
+            updater = GradientDescent(potential)
             raise NotImplementedError("Updater type: Gradient Descent")
         else:
             logger.error(

@@ -213,7 +213,7 @@ class NeuralNetworkPotential:
                 neighbor_elements = NeighborElements(
                     args.neighbor_element_j, args.neighbor_element_k
                 )
-                angular[args.central_element].append(
+                angulars[args.central_element].append(
                     (symmetry_function, neighbor_elements)
                 )
 

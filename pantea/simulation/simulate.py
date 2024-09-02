@@ -10,11 +10,9 @@ from pantea.types import Array
 
 
 class PotentialInterface(Protocol):
-    def __call__(self, structure: Structure) -> Array:
-        ...
+    def __call__(self, structure: Structure) -> Array: ...
 
-    def compute_forces(self, structure: Structure) -> Array:
-        ...
+    def compute_forces(self, structure: Structure) -> Array: ...
 
 
 class MDSystemInterface(Protocol):
@@ -25,11 +23,9 @@ class MDSystemInterface(Protocol):
 class SimulatorInterface(Protocol):
     step: int
 
-    def repr_physical_params(self, system: MDSystemInterface) -> None:
-        ...
+    def repr_physical_params(self, system: MDSystemInterface) -> None: ...
 
-    def simulate_one_step(self, system: MDSystemInterface) -> None:
-        ...
+    def simulate_one_step(self, system: MDSystemInterface) -> None: ...
 
 
 def simulate(
@@ -58,7 +54,7 @@ def simulate(
     """
 
     cls_name = simulator.__class__.__name__
-    logger.info(f"MD Simulating {cls_name} for {num_steps} steps")
+    logger.info(f"Running {cls_name} for {num_steps} steps")
 
     if output_freq is None:
         output_freq = 1 if num_steps < 100 else int(0.01 * num_steps)

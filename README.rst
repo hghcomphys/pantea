@@ -22,7 +22,7 @@ Description
 -----------
 Pantea is an optimized Python library based on Google `JAX`_ that enables 
 development of machine learning interatomic potentials   
-for use in computational physics. 
+for use in computational material science. 
 These potentials are particularly necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
 
@@ -32,7 +32,7 @@ dynamics simulations of complex materials with ab initio accuracy.
 See `documentation <https://pantea.readthedocs.io/en/latest/theory.html>`_ for more information.
 
 
-
+-------------
 Main Features
 -------------
 * The design of Pantea is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
@@ -69,9 +69,8 @@ Atom-centered Symmetry Function (`ACSF`_) descriptor captures information about 
 central atom by considering both radial (two-body) and angular (three-body) symmetry functions. 
 The values obtained from these calculations represent a fingerprint of the local atomic environment and can be used in various machine learning potentials. 
 
-This script below demonstrates the process of evaluating an array of atomic-centered symmetry functions (`ACSF`_) 
-for a specific element, which can be utilized to evaluate the descriptor values for any structure. 
-The resulting values can then be used to construct a machine learning potential.
+Script below demonstrates the process of defining multiple symmetry functions
+for an element, which can be utilized to evaluate the descriptor values for any structure. 
 
 .. _ACSF: https://aip.scitation.org/doi/10.1063/1.3553717
 
@@ -181,8 +180,10 @@ The trained potential can then be used to evaluate the energy and force componen
 
         trainer.save()  # this will save scaler and model parameters into files
 
-Please note that the example below is just for demonstration. 
-For training a NNP model in real world we actually need larger samples of data.
+
+.. warning::
+        Please note that the above examples are just for demonstration. 
+        For training a NNP model in real world we surely need larger samples of data.
 
 Download example input files from `here <https://drive.google.com/drive/folders/1vABOndAia41Bn0v1jPaJZmVGnbjg8UPE?usp=sharing>`_.
 
