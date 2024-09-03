@@ -19,8 +19,8 @@ from pantea.descriptors.acsf.symmetry import NeighborElements
 from pantea.descriptors.scaler import DescriptorScaler
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
-from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.nnp.atomic_potential import AtomicPotential, ModelParams
+from pantea.models.nn.model import ModelParams, NeuralNetworkModel
+from pantea.potentials.nnp.atomic_potential import AtomicPotential
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.settings import NeuralNetworkPotentialSettings
@@ -40,6 +40,7 @@ class NeuralNetworkPotential:
     settings: NeuralNetworkPotentialSettings = field(repr=False)
     atomic_potentials: frozendict[Element, AtomicPotential]
     models_params: Dict[Element, ModelParams] = field(repr=False)
+    # scalers_params: Dict[Element, ScalerParams] = field(repr=False)
 
     @classmethod
     def from_runner(
@@ -157,6 +158,16 @@ class NeuralNetworkPotential:
                 "params"
             ]
         return models_params
+
+    # @classmethod
+    # def _initialize_scalers_params(
+    #     cls,
+    #     settings: NeuralNetworkPotentialSettings,
+    #     atomic_potentials: frozendict[Element, AtomicPotential],
+    # ) -> Dict[Element, ModelParams]:
+    #     """Initialize scaler parameters for each element."""
+    #     logger.info("Initializing scaler params")
+    #     pass
 
     @classmethod
     def _build_descriptors(

@@ -10,6 +10,8 @@ from pantea.logger import logger
 from pantea.models.nn.activation import _activation_function_map
 from pantea.types import Array, Dtype, default_dtype
 
+ModelParams = frozendict[str, Array]
+
 
 class NeuralNetworkModel(nn.Module):
     """Neural network model that outputs energy."""
@@ -63,17 +65,17 @@ class NeuralNetworkModel(nn.Module):
             ")"
         )
 
-    def save(self, filename: Path, params: frozendict) -> None:
+    def save(self, filename: Path, params: ModelParams) -> None:
         """Save model weights."""
         file = str(Path(filename))
         logger.debug(f"Saving model weights into '{file}'")
         with open(file, "wb") as handle:
             pickle.dump(params, handle)
 
-    def load(self, filename: Path) -> frozendict:
+    def load(self, filename: Path) -> ModelParams:
         """Load model weights."""
         file = str(Path(filename))
         logger.debug(f"Loading model weights from '{file}'")
         with open(file, "rb") as handle:
-            params: frozendict = pickle.load(handle)
+            params = pickle.load(handle)
         return params

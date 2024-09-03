@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.acsf import ACSF
 from pantea.descriptors.scaler import DescriptorScaler
-from pantea.models.nn.network import NeuralNetworkModel
-from pantea.potentials.nnp.energy import ModelParams, _compute_energy_per_atom
+from pantea.models.nn.model import ModelParams, NeuralNetworkModel
+from pantea.potentials.nnp.energy import _compute_energy_per_atom
 from pantea.types import Array
 
 

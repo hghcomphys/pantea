@@ -1,17 +1,14 @@
 from functools import partial
 from typing import Dict, Protocol
 
-import jax.numpy as jnp
-from frozendict import frozendict
 from jax import jit
 
 from pantea.atoms.structure import StructureAsKernelArgs
 from pantea.descriptors import DescriptorScaler
 from pantea.descriptors.acsf.acsf import ACSF, _calculate_acsf_descriptor
 from pantea.models import NeuralNetworkModel
+from pantea.models.nn.model import ModelParams
 from pantea.types import Array, Element
-
-ModelParams = frozendict[str, Array]
 
 
 class AtomicPotentialInterface(Protocol):

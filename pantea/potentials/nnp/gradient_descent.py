@@ -16,7 +16,7 @@ from tqdm import tqdm
 from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
-from pantea.potentials.nnp.atomic_potential import ModelParams
+from pantea.models.nn.model import ModelParams
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.metrics import ErrorMetric

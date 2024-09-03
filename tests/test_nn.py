@@ -10,7 +10,7 @@ import pytest
 from frozendict import frozendict
 
 from pantea.models.nn.initializer import UniformInitializer
-from pantea.models.nn.network import NeuralNetworkModel
+from pantea.models.nn.model import NeuralNetworkModel
 from pantea.types import default_dtype
 
 
