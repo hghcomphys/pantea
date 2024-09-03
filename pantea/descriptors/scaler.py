@@ -30,82 +30,6 @@ class DescriptorScalerParams(NamedTuple):
     scale_max: Array
 
 
-@jax.jit
-def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
-    return DescriptorScalerStats(
-        nsamples=_to_jax_int(data.shape[0]),
-        mean=jnp.mean(data, axis=0),
-        sigma=jnp.std(data, axis=0),
-        maxval=jnp.max(data, axis=0),
-        minval=jnp.min(data, axis=0),
-    )
-
-
-@jax.jit
-def _fit_scaler(stats: DescriptorScalerStats, data: Array) -> DescriptorScalerStats:
-    # Calculate stats for a new batch of data
-    new_mean: Array = jnp.mean(data, axis=0)
-    new_sigma: Array = jnp.std(data, axis=0)
-    new_min: Array = jnp.min(data, axis=0)
-    new_max: Array = jnp.max(data, axis=0)
-    m, n = stats.nsamples, data.shape[0]
-    # Calculate scaler new stats for the entire data
-    mean = m / (m + n) * stats.mean + n / (m + n) * new_mean
-    sigma = jnp.sqrt(
-        m / (m + n) * stats.sigma**2
-        + n / (m + n) * new_sigma**2
-        + m * n / (m + n) ** 2 * (stats.mean - new_mean) ** 2
-    )
-    maxval = jnp.maximum(stats.maxval, new_max)
-    minval = jnp.minimum(stats.minval, new_min)
-    nsamples = stats.nsamples + n
-    return DescriptorScalerStats(nsamples, mean, sigma, minval, maxval)
-
-
-@jax.jit
-def _center(stats: DescriptorScalerStats, array: Array) -> Array:
-    return array - stats.mean
-
-
-@jax.jit
-def _scale(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.minval
-    ) / (stats.maxval - stats.minval)
-
-
-@jax.jit
-def _scale_center(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.mean
-    ) / (stats.maxval - stats.minval)
-
-
-@jax.jit
-def _scale_center_sigma(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
-) -> Array:
-    return (
-        params.scale_min
-        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
-    )
-
-
-@jax.jit
-def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
-    if array.ndim == 2:
-        gt = jax.lax.gt(array, stats.maxval[None, :])
-        lt = jax.lax.gt(stats.minval[None, :], array)
-    else:
-        gt = jax.lax.gt(array, stats.maxval)
-        lt = jax.lax.gt(stats.minval, array)
-    return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
-
-
 class DescriptorScaler:
     """
     Scale descriptor values.
@@ -255,3 +179,84 @@ class DescriptorScaler:
 
     def __bool__(self) -> bool:
         return False if len(self.stats.mean) == 0 else True
+
+
+@jax.jit
+def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
+    return DescriptorScalerStats(
+        nsamples=_to_jax_int(data.shape[0]),
+        mean=jnp.mean(data, axis=0),
+        sigma=jnp.std(data, axis=0),
+        maxval=jnp.max(data, axis=0),
+        minval=jnp.min(data, axis=0),
+    )
+
+
+@jax.jit
+def _fit_scaler(
+    stats: DescriptorScalerStats,
+    data: Array,
+) -> DescriptorScalerStats:
+    # Calculate stats for a new batch of data
+    new_mean: Array = jnp.mean(data, axis=0)
+    new_sigma: Array = jnp.std(data, axis=0)
+    new_min: Array = jnp.min(data, axis=0)
+    new_max: Array = jnp.max(data, axis=0)
+    m, n = stats.nsamples, data.shape[0]
+    # Calculate scaler new stats for the entire data
+    fm, fn = m / (m + n), n / (m + n)
+    mean_diff = stats.mean - new_mean
+    mean = fm * stats.mean + fn * new_mean
+    sigma = jnp.sqrt(
+        (fm * stats.sigma) * stats.sigma
+        + (fn * new_sigma) * new_sigma
+        + (fm * mean_diff) * (fn * mean_diff)
+    )  # split coefficients due to integer/float overflow
+    maxval = jnp.maximum(stats.maxval, new_max)
+    minval = jnp.minimum(stats.minval, new_min)
+    nsamples = stats.nsamples + n
+    return DescriptorScalerStats(nsamples, mean, sigma, minval, maxval)
+
+
+@jax.jit
+def _center(stats: DescriptorScalerStats, array: Array) -> Array:
+    return array - stats.mean
+
+
+@jax.jit
+def _scale(
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+) -> Array:
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.minval
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center(
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+) -> Array:
+    return params.scale_min + (params.scale_max - params.scale_min) * (
+        array - stats.mean
+    ) / (stats.maxval - stats.minval)
+
+
+@jax.jit
+def _scale_center_sigma(
+    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+) -> Array:
+    return (
+        params.scale_min
+        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
+    )
+
+
+@jax.jit
+def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
+    if array.ndim == 2:
+        gt = jax.lax.gt(array, stats.maxval[None, :])
+        lt = jax.lax.gt(stats.minval[None, :], array)
+    else:
+        gt = jax.lax.gt(array, stats.maxval)
+        lt = jax.lax.gt(stats.minval, array)
+    return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
