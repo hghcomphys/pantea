@@ -13,8 +13,8 @@ def _to_jax_int(n: int) -> Array:
     return jnp.array(n, dtype=default_dtype.INT)
 
 
-class DescriptorScalerStats(NamedTuple):
-    """Scaler statistical quantities."""
+class ScalerParams(NamedTuple):
+    """Scaler statistical parameters."""
 
     nsamples: Array = _to_jax_int(0)
     mean: Array = jnp.array([])
@@ -23,24 +23,24 @@ class DescriptorScalerStats(NamedTuple):
     maxval: Array = jnp.array([])
 
 
-class DescriptorScalerParams(NamedTuple):
-    """Scaler parameters."""
+class ScaleRange(NamedTuple):
+    """Expected range of scaled values."""
 
-    scale_min: Array
-    scale_max: Array
+    min_value: Array
+    max_value: Array
 
 
 class DescriptorScaler:
     """
-    Scale descriptor values.
+    Scale descriptor values between a desired range.
 
     Scaling parameters are calculated by fitting over the samples in the dataset.
     Available scaler information are as follows:
 
-    * mean
-    * sigma (standard deviation)
-    * maxval
-    * minval
+    * mean: average values
+    * sigma: standard deviation
+    * maxval: maximum values
+    * minval: minimum values
 
     This descriptor scaler is also used to warn when setting out-of-distribution samples base
     on the fitted scaler parameters.
@@ -56,41 +56,41 @@ class DescriptorScaler:
         assert scale_min < scale_max
 
         # Set min/max range for scaler
-        self.scale_type = scale_type
-        self.params = DescriptorScalerParams(
-            scale_min=jnp.array(scale_min),
-            scale_max=jnp.array(scale_max),
+        self.type = scale_type
+        self.range = ScaleRange(
+            min_value=jnp.array(scale_min),
+            max_value=jnp.array(scale_max),
         )
 
         # Statistical parameters
         self.dimension: int = 0
-        self.stats = DescriptorScalerStats()
+        self.params = ScalerParams()
 
         self.number_of_warnings: int = 0
         self.max_number_of_warnings: Optional[int] = None
 
         # Set scaler type function
-        self._transform = getattr(self, f"{self.scale_type}")
+        self._transform = getattr(self, f"{self.type}")
 
     def fit(self, data: Array) -> None:
         """
-        Fit descriptor scaler internal stats using the input data.
+        Fit descriptor scaler parameters using the input data.
         Bach-wise sampling is also possible (see `this`_ for more details).
 
         .. _this: https://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
         """
         data = jnp.atleast_2d(data)  # type: ignore
 
-        if self.stats.nsamples == 0:
+        if self.params.nsamples == 0:
             self.dimension = data.shape[1]
-            self.stats = _init_scaler_stats_from(data)
+            self.params = _init_scaler_params_from(data)
         else:
             if data.shape[1] != self.dimension:
                 logger.error(
                     f"Data dimension doesn't match: {data.shape[1]} (expected {self.dimension})",
                     exception=ValueError,
                 )
-            self.stats = _fit_scaler(self.stats, data)
+            self.params = _fit_scaler(self.params, data)
 
     def __call__(self, array: Array, warnings: bool = False) -> Array:
         """
@@ -124,7 +124,7 @@ class DescriptorScaler:
         if self.max_number_of_warnings is None:
             return
 
-        self.number_of_warnings += int(_get_number_of_warnings(self.stats, array))
+        self.number_of_warnings += int(_get_number_of_warnings(self.params, array))
 
         if self.number_of_warnings >= self.max_number_of_warnings:
             logger.warning(
@@ -133,16 +133,16 @@ class DescriptorScaler:
             )
 
     def center(self, array: Array) -> Array:
-        return _center(self.stats, array)
+        return _center(self.params, array)
 
     def scale(self, array: Array) -> Array:
-        return _scale(self.params, self.stats, array)
+        return _scale(self.range, self.params, array)
 
     def scale_center(self, array: Array) -> Array:
-        return _scale_center(self.params, self.stats, array)
+        return _scale_center(self.range, self.params, array)
 
     def scale_center_sigma(self, array: Array) -> Array:
-        return _scale_center_sigma(self.params, self.stats, array)
+        return _scale_center_sigma(self.range, self.params, array)
 
     def save(self, filename: Path) -> None:
         """Save scaler parameters into file."""
@@ -151,10 +151,10 @@ class DescriptorScaler:
             file.write(f"{'# Min':<23s} {'Max':<23s} {'Mean':<23s} {'Sigma':<23s}\n")
             for i in range(self.dimension):
                 file.write(
-                    f"{self.stats.minval[i]:<23.15E}"
-                    f"{self.stats.maxval[i]:<23.15E}"
-                    f"{self.stats.mean[i]:<23.15E}"
-                    f"{self.stats.sigma[i]:<23.15E}\n"
+                    f"{self.params.minval[i]:<23.15E}"
+                    f"{self.params.maxval[i]:<23.15E}"
+                    f"{self.params.mean[i]:<23.15E}"
+                    f"{self.params.sigma[i]:<23.15E}\n"
                 )
 
     def load(self, filename: Path, dtype: Optional[Dtype] = None) -> None:
@@ -163,7 +163,7 @@ class DescriptorScaler:
         data = np.loadtxt(str(filename)).T
         dtype = dtype if dtype is not None else default_dtype.FLOATX
         self.dimension = data.shape[1]
-        self.stats = DescriptorScalerStats(
+        self.params = ScalerParams(
             nsamples=_to_jax_int(1),
             mean=jnp.array(data[2], dtype=dtype),
             sigma=jnp.array(data[3], dtype=dtype),
@@ -173,17 +173,17 @@ class DescriptorScaler:
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(scale_type='{self.scale_type}', "
-            f"scale_min={self.params.scale_min}, scale_max={self.params.scale_max})"
+            f"{self.__class__.__name__}(scale_type='{self.type}', "
+            f"scale_range=({int(self.range.min_value)}, {int(self.range.max_value)}))"
         )
 
     def __bool__(self) -> bool:
-        return False if len(self.stats.mean) == 0 else True
+        return False if len(self.params.mean) == 0 else True
 
 
 @jax.jit
-def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
-    return DescriptorScalerStats(
+def _init_scaler_params_from(data: Array) -> ScalerParams:
+    return ScalerParams(
         nsamples=_to_jax_int(data.shape[0]),
         mean=jnp.mean(data, axis=0),
         sigma=jnp.std(data, axis=0),
@@ -194,69 +194,86 @@ def _init_scaler_stats_from(data: Array) -> DescriptorScalerStats:
 
 @jax.jit
 def _fit_scaler(
-    stats: DescriptorScalerStats,
+    params: ScalerParams,
     data: Array,
-) -> DescriptorScalerStats:
-    # Calculate stats for a new batch of data
+) -> ScalerParams:
+    # Calculate params for a new batch of data
     new_mean: Array = jnp.mean(data, axis=0)
     new_sigma: Array = jnp.std(data, axis=0)
     new_min: Array = jnp.min(data, axis=0)
     new_max: Array = jnp.max(data, axis=0)
-    m, n = stats.nsamples, data.shape[0]
-    # Calculate scaler new stats for the entire data
+    m, n = params.nsamples, data.shape[0]
+
+    # Calculate scaler new params for the entire data
     fm, fn = m / (m + n), n / (m + n)
-    mean_diff = stats.mean - new_mean
-    mean = fm * stats.mean + fn * new_mean
+    mean_diff = params.mean - new_mean
+    mean = fm * params.mean + fn * new_mean
     sigma = jnp.sqrt(
-        (fm * stats.sigma) * stats.sigma
+        (fm * params.sigma) * params.sigma
         + (fn * new_sigma) * new_sigma
         + (fm * mean_diff) * (fn * mean_diff)
     )  # split coefficients due to integer/float overflow
-    maxval = jnp.maximum(stats.maxval, new_max)
-    minval = jnp.minimum(stats.minval, new_min)
-    nsamples = stats.nsamples + n
-    return DescriptorScalerStats(nsamples, mean, sigma, minval, maxval)
+
+    maxval = jnp.maximum(params.maxval, new_max)
+    minval = jnp.minimum(params.minval, new_min)
+    nsamples = params.nsamples + n
+    return ScalerParams(nsamples, mean, sigma, minval, maxval)
 
 
 @jax.jit
-def _center(stats: DescriptorScalerStats, array: Array) -> Array:
-    return array - stats.mean
+def _center(
+    params: ScalerParams,
+    array: Array,
+) -> Array:
+    return array - params.mean
 
 
 @jax.jit
 def _scale(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+    scale_range: ScaleRange,
+    params: ScalerParams,
+    array: Array,
 ) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.minval
-    ) / (stats.maxval - stats.minval)
+    return scale_range.min_value + (scale_range.max_value - scale_range.min_value) * (
+        array - params.minval
+    ) / (params.maxval - params.minval)
 
 
 @jax.jit
 def _scale_center(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+    scale_range: ScaleRange,
+    params: ScalerParams,
+    array: Array,
 ) -> Array:
-    return params.scale_min + (params.scale_max - params.scale_min) * (
-        array - stats.mean
-    ) / (stats.maxval - stats.minval)
+    return scale_range.min_value + (scale_range.max_value - scale_range.min_value) * (
+        array - params.mean
+    ) / (params.maxval - params.minval)
 
 
 @jax.jit
 def _scale_center_sigma(
-    params: DescriptorScalerParams, stats: DescriptorScalerStats, array: Array
+    scale_range: ScaleRange,
+    params: ScalerParams,
+    array: Array,
 ) -> Array:
     return (
-        params.scale_min
-        + (params.scale_max - params.scale_min) * (array - stats.mean) / stats.sigma
+        scale_range.min_value
+        + (scale_range.min_value - scale_range.max_value)
+        * (array - params.mean)
+        / params.sigma
     )
 
 
 @jax.jit
-def _get_number_of_warnings(stats: DescriptorScalerStats, array: Array) -> Array:
+def _get_number_of_warnings(
+    params: ScalerParams,
+    array: Array,
+) -> Array:
     if array.ndim == 2:
-        gt = jax.lax.gt(array, stats.maxval[None, :])
-        lt = jax.lax.gt(stats.minval[None, :], array)
+        gt = jax.lax.gt(array, params.maxval[None, :])
+        lt = jax.lax.gt(params.minval[None, :], array)
     else:
-        gt = jax.lax.gt(array, stats.maxval)
-        lt = jax.lax.gt(stats.minval, array)
-    return jnp.any(jnp.logical_or(gt, lt))  # alternative counting is using sum
+        gt = jax.lax.gt(array, params.maxval)
+        lt = jax.lax.gt(params.minval, array)
+    # alternative counting is using sum
+    return jnp.any(jnp.logical_or(gt, lt))

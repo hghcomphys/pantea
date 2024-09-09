@@ -46,7 +46,7 @@ class TestStructure:
         scaler = DescriptorScaler()
         scaler.fit(data)
         assert scaler.dimension == expected[0]
-        assert scaler.stats.nsamples == expected[1]
+        assert scaler.params.nsamples == expected[1]
 
     def fit_scaler(
         self, scaler: DescriptorScaler, data: Array, batch_size: int
@@ -55,10 +55,10 @@ class TestStructure:
             scaler.fit(batch)
 
     def compare(self, scaler: DescriptorScaler, data: Array) -> None:
-        assert jnp.allclose(data.mean(axis=0), scaler.stats.mean)
-        assert jnp.allclose(data.max(axis=0), scaler.stats.maxval)
-        assert jnp.allclose(data.min(axis=0), scaler.stats.minval)
-        assert jnp.allclose(data.std(axis=0), scaler.stats.sigma)
+        assert jnp.allclose(data.mean(axis=0), scaler.params.mean)
+        assert jnp.allclose(data.max(axis=0), scaler.params.maxval)
+        assert jnp.allclose(data.min(axis=0), scaler.params.minval)
+        assert jnp.allclose(data.std(axis=0), scaler.params.sigma)
 
     @pytest.mark.parametrize(
         "data",
