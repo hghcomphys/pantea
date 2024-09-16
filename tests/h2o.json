@@ -9,7 +9,7 @@
         "H": -0.45890771,
         "O": -74.94518524
     },
-    "scaler_save_naming_format": "scaling.{:03d}.data",
+    "scaler_save_naming_format": "scaling.{:03d}.json",
     "model_save_naming_format": "weights.{:03d}.pkl",
     "weights_min": -1.0,
     "weights_max": 1.0,

@@ -98,8 +98,8 @@ class NeuralNetworkPotentialSettings(_CFG):
     number_of_elements: int
     elements: List[Element] = Field(default_factory=list)
     atom_energy: Dict[Element, float] = Field(default_factory=dict)
-    scaler_save_naming_format: str = "scaling.{:03d}.data"
-    model_save_naming_format: str = "weights.{:03d}.pkl"
+    scaler_save_format: str = "scaling.{:03d}.json"
+    model_save_format: str = "weights.{:03d}.pkl"
     # Neural Network
     weights_min: float = -1.0
     weights_max: float = 1.0

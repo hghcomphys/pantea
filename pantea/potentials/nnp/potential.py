@@ -16,7 +16,7 @@ from pantea.descriptors.acsf.angular import G3, G9
 from pantea.descriptors.acsf.cutoff import CutoffFunction
 from pantea.descriptors.acsf.radial import G1, G2
 from pantea.descriptors.acsf.symmetry import NeighborElements
-from pantea.descriptors.scaler import DescriptorScaler
+from pantea.descriptors.scaler import DescriptorScaler, ScalerParams
 from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.model import ModelParams, NeuralNetworkModel
@@ -40,7 +40,7 @@ class NeuralNetworkPotential:
     settings: NeuralNetworkPotentialSettings = field(repr=False)
     atomic_potentials: frozendict[Element, AtomicPotential]
     models_params: Dict[Element, ModelParams] = field(repr=False)
-    # scalers_params: Dict[Element, ScalerParams] = field(repr=False)
+    scalers_params: Dict[Element, Optional[ScalerParams]] = field(repr=False)
 
     @classmethod
     def from_runner(
@@ -52,11 +52,13 @@ class NeuralNetworkPotential:
         settings = NeuralNetworkPotentialSettings.from_file(potfile)
         atomic_potentials = cls._build_atomic_potentials(settings)
         models_params = cls._initialize_models_params(settings, atomic_potentials)
+        scalers_params = cls._initialize_scalers_params(settings)
         return NeuralNetworkPotential(
             directory=potfile.parent,
             settings=settings,
             atomic_potentials=atomic_potentials,
             models_params=models_params,
+            scalers_params=scalers_params,
         )
 
     @classmethod
@@ -69,12 +71,13 @@ class NeuralNetworkPotential:
         settings = NeuralNetworkPotentialSettings.from_json(potfile)
         atomic_potentials = cls._build_atomic_potentials(settings)
         models_params = cls._initialize_models_params(settings, atomic_potentials)
-        # updater = cls._build_updater(settings)
+        scalers_params = cls._initialize_scalers_params(settings)
         return NeuralNetworkPotential(
             directory=potfile.parent,
             settings=settings,
             atomic_potentials=atomic_potentials,
             models_params=models_params,
+            scalers_params=scalers_params,
         )
 
     def __call__(self, structure: Structure) -> Array:
@@ -84,10 +87,12 @@ class NeuralNetworkPotential:
         :param structure: Structure
         :return: total energy
         """
+        self._check_scaler_params_exist()
         return _compute_energy(
             self.atomic_potentials,
             structure.get_positions_per_element(),
             self.models_params,
+            self.scalers_params,
             structure.as_kernel_args(),
         )  # type: ignore
 
@@ -98,10 +103,12 @@ class NeuralNetworkPotential:
         :param structure: input structure
         :return: predicted force components for all atoms
         """
+        self._check_scaler_params_exist()
         forces_dict = _compute_forces(
             self.atomic_potentials,
             structure.get_positions_per_element(),
             self.models_params,
+            self.scalers_params,
             structure.as_kernel_args(),
         )
         forces = jnp.empty_like(structure.forces)
@@ -109,6 +116,41 @@ class NeuralNetworkPotential:
             atom_index = structure.select(element)
             forces = forces.at[atom_index].set(forces_dict[element])
         return forces
+
+    def load_scaler(self) -> None:
+        """Loads scaler parameters for all elements."""
+        # Load scaler parameters for each element separately
+        for element in self.elements:
+            atomic_number = ElementMap.get_atomic_number_from_element(element)
+            scaler_file = Path(
+                self.directory,
+                self.settings.scaler_save_format.format(atomic_number),
+            )
+            logger.info(
+                f"Loading scaler parameters for element ({element}): "
+                f"{scaler_file.name}"
+            )
+            scaler = self.atomic_potentials[element].scaler
+            self.scalers_params[element] = scaler.load(scaler_file)
+
+    def load_model(self) -> None:
+        """Load model parameters for all elements."""
+        for element in self.elements:
+            atomic_number = ElementMap.get_atomic_number_from_element(element)
+            model_file = Path(
+                self.directory,
+                self.settings.model_save_format.format(atomic_number),
+            )
+            logger.info(
+                f"Loading model weights for element ({element}): {model_file.name}"
+            )
+            model = self.atomic_potentials[element].model
+            self.models_params[element] = model.load(model_file)
+
+    def load(self) -> None:
+        """Load scaler and model."""
+        self.load_scaler()
+        self.load_model()
 
     @classmethod
     def _build_atomic_potentials(
@@ -159,15 +201,12 @@ class NeuralNetworkPotential:
             ]
         return models_params
 
-    # @classmethod
-    # def _initialize_scalers_params(
-    #     cls,
-    #     settings: NeuralNetworkPotentialSettings,
-    #     atomic_potentials: frozendict[Element, AtomicPotential],
-    # ) -> Dict[Element, ModelParams]:
-    #     """Initialize scaler parameters for each element."""
-    #     logger.info("Initializing scaler params")
-    #     pass
+    @classmethod
+    def _initialize_scalers_params(
+        cls,
+        settings: NeuralNetworkPotentialSettings,
+    ) -> Dict[Element, Optional[ScalerParams]]:
+        return {element: None for element in settings.elements}
 
     @classmethod
     def _build_descriptors(
@@ -227,7 +266,6 @@ class NeuralNetworkPotential:
                 angulars[args.central_element].append(
                     (symmetry_function, neighbor_elements)
                 )
-
         # Instantiate ACSF for each element
         for element in settings.elements:
             descriptors[element] = ACSF(
@@ -235,7 +273,6 @@ class NeuralNetworkPotential:
                 radial_symmetry_functions=tuple(radials[element]),
                 angular_symmetry_functions=tuple(angulars[element]),
             )
-
         return descriptors
 
     @classmethod
@@ -259,7 +296,7 @@ class NeuralNetworkPotential:
         logger.debug(f"Scaler kwargs={scaler_kwargs}")
         # Assign an ACSF scaler to each element
         for element in settings.elements:
-            scalers[element] = DescriptorScaler(**scaler_kwargs)
+            scalers[element] = DescriptorScaler.from_type(**scaler_kwargs)
         return scalers
 
     @classmethod
@@ -295,80 +332,70 @@ class NeuralNetworkPotential:
             )
         return models
 
-    def load_scaler(self) -> None:
-        """Loads scaler parameters of each element from separate files."""
-        # Load scaler parameters for each element separately
-        for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number_from_element(element)
-            scaler_file = Path(
-                self.directory,
-                self.settings.scaler_save_naming_format.format(atomic_number),
-            )
-            logger.info(
-                f"Loading scaler parameters for element ({element}): {scaler_file.name}"
-            )
-            self.atomic_potentials[element].scaler.load(scaler_file)
-
-    def load_model(self) -> None:
-        """Load model weights separately for all elements."""
-        for element in self.elements:
-            atomic_number = ElementMap.get_atomic_number_from_element(element)
-            model_file = Path(
-                self.directory,
-                self.settings.model_save_naming_format.format(atomic_number),
-            )
-            logger.info(
-                f"Loading model weights for element ({element}): {model_file.name}"
-            )
-            self.models_params[element] = self.atomic_potentials[element].model.load(
-                model_file
+    def _check_scaler_params_exist(self) -> None:
+        if None in self.scalers_params.values():
+            logger.error(
+                (
+                    f"Scaler parameters are not set yet for all the elements ({self.scalers_params})."
+                    "Try loading or fitting the scaler first."
+                ),
+                exception=ValueError,
             )
 
-    def load(self) -> None:
-        """Load element scaler and model from their corresponding files."""
-        self.load_scaler()
-        self.load_model()
+    # def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
+    #     """
+    #     shows warning whenever a descriptor value is out of bounds defined by
+    #     minimum/maximum values in the scaler.
 
-    def set_extrapolation_warnings(self, threshold: Optional[int] = None) -> None:
-        """
-        shows warning whenever a descriptor value is out of bounds defined by
-        minimum/maximum values in the scaler.
+    #     set_extrapolation_warnings(None) will disable it.
 
-        set_extrapolation_warnings(None) will disable it.
+    #     :param threshold: maximum number of warnings
+    #     :type threshold: int
+    #     """
+    #     logger.info(f"Setting extrapolation warning: {threshold}")
+    #     for pot in self.atomic_potentials.values():
+    #         pot.scaler.set_max_number_of_warnings(threshold)
 
-        :param threshold: maximum number of warnings
-        :type threshold: int
-        """
-        logger.info(f"Setting extrapolation warning: {threshold}")
-        for pot in self.atomic_potentials.values():
-            pot.scaler.set_max_number_of_warnings(threshold)
+    # @property
+    # def extrapolation_warnings(self) -> Dict[Element, int]:
+    #     return {
+    #         element: pot.scaler.number_of_warnings
+    #         for element, pot in self.atomic_potentials.items()
+    #     }
 
     @property
-    def extrapolation_warnings(self) -> Dict[Element, int]:
+    def descriptors(self) -> Dict[Element, ACSF]:
+        """Return descriptor for each element."""
         return {
-            element: pot.scaler.number_of_warnings
-            for element, pot in self.atomic_potentials.items()
+            element: potential.descriptor
+            for element, potential in self.atomic_potentials.items()
+        }
+
+    @property
+    def scalers(self) -> Dict[Element, DescriptorScaler]:
+        """Return scaler for each element."""
+        return {
+            element: potential.scaler
+            for element, potential in self.atomic_potentials.items()
+        }
+
+    @property
+    def models(self) -> Dict[Element, NeuralNetworkModel]:
+        """Return model for each element."""
+        return {
+            element: potential.model
+            for element, potential in self.atomic_potentials.items()
         }
 
     @property
     def r_cutoff(self) -> float:
         """Return the maximum cutoff radius found between all descriptors."""
-        return max([pot.descriptor.r_cutoff for pot in self.atomic_potentials.values()])
-
-    @property
-    def descriptors(self) -> Dict[Element, ACSF]:
-        """Return descriptor for each element."""
-        return {elem: pot.descriptor for elem, pot in self.atomic_potentials.items()}
-
-    @property
-    def scalers(self) -> Dict[Element, DescriptorScaler]:
-        """Return scaler for each element."""
-        return {elem: pot.scaler for elem, pot in self.atomic_potentials.items()}
-
-    @property
-    def models(self) -> Dict[Element, NeuralNetworkModel]:
-        """Return model for each element."""
-        return {elem: pot.model for elem, pot in self.atomic_potentials.items()}
+        return max(
+            [
+                potential.descriptor.r_cutoff
+                for potential in self.atomic_potentials.values()
+            ]
+        )
 
     @property
     def elements(self) -> Tuple[Element, ...]:

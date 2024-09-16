@@ -51,7 +51,7 @@ class NeuralNetworkPotentialTrainer:
             updater = KalmanFilter(potential)
         elif updater_type == "gradient_descent":
             updater = GradientDescent(potential)
-            raise NotImplementedError("Updater type: Gradient Descent")
+            # raise NotImplementedError("Updater type: Gradient Descent")
         else:
             logger.error(
                 f"Unknown updater type: {updater_type}",
@@ -70,7 +70,13 @@ class NeuralNetworkPotentialTrainer:
                 elements = structure.get_unique_elements()
                 for element in elements:
                     x = self.potential.atomic_potentials[element].descriptor(structure)
-                    self.potential.atomic_potentials[element].scaler.fit(x)
+                    scaler = self.potential.atomic_potentials[element].scaler
+                    params = self.potential.scalers_params[element]
+                    if params is None:
+                        params = scaler.fit(x)
+                    else:
+                        params = scaler.partial_fit(params, x)
+                    self.potential.scalers_params[element] = params
         except KeyboardInterrupt:
             print("Keyboard Interrupt")
         else:
@@ -105,12 +111,18 @@ class NeuralNetworkPotentialTrainer:
             atomic_number: int = ElementMap.get_atomic_number_from_element(element)
             scaler_file = Path(
                 self.potential.directory,
-                self.potential.settings.scaler_save_naming_format.format(atomic_number),
+                self.potential.settings.scaler_save_format.format(atomic_number),
             )
             logger.info(
-                f"Saving scaler parameters for element ({element}): {scaler_file.name}"
+                f"Saving scaler parameters for element ({element}): "
+                f"{scaler_file.name}"
             )
-            self.potential.atomic_potentials[element].scaler.save(scaler_file)
+            scaler = self.potential.atomic_potentials[element].scaler
+            params = self.potential.scalers_params[element]
+            if params is not None:
+                scaler.save(params, scaler_file)
+            else:
+                logger.warning("No scaler parameters were found. Skipped saving.")
 
     def save_model(self) -> None:
         """Save model weights separately for all the elements."""
@@ -118,14 +130,13 @@ class NeuralNetworkPotentialTrainer:
             atomic_number = ElementMap.get_atomic_number_from_element(element)
             model_file = Path(
                 self.potential.directory,
-                self.potential.settings.model_save_naming_format.format(atomic_number),
+                self.potential.settings.model_save_format.format(atomic_number),
             )
             logger.info(
                 f"Saving model weights for element ({element}): {model_file.name}"
             )
-            self.potential.atomic_potentials[element].model.save(
-                model_file, self.potential.models_params[element]
-            )
+            model = self.potential.atomic_potentials[element].model
+            model.save(model_file, self.potential.models_params[element])
 
     def save(self) -> None:
         """Save scaler and model into corresponding files for each element."""

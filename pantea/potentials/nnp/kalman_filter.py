@@ -53,6 +53,7 @@ class KalmanFilter:
         settings = self.potential.settings
         atomic_potentials = self.potential.atomic_potentials
         models_params = self.potential.models_params
+        scalers_params = self.potential.scalers_params
 
         # ----------------------
 
@@ -65,6 +66,7 @@ class KalmanFilter:
                 atomic_potentials,
                 structure.get_positions_per_element(),
                 models_params,
+                scalers_params,
                 structure.as_kernel_args(),
             )
             return (E_ref - E_pot) / structure.natoms
@@ -80,6 +82,7 @@ class KalmanFilter:
                     atomic_potentials,
                     structure.get_positions_per_element(),
                     models_params,
+                    scalers_params,
                     structure.as_kernel_args(),
                 )
             )
@@ -89,7 +92,7 @@ class KalmanFilter:
         jacob_forces_error = jax.jacrev(compute_forces_error)
 
         def compute_energy_error_gradient(
-            models_params_dict: Dict[Element, ModelParams],
+            models_params: Dict[Element, ModelParams],
             structure: Structure,
         ) -> Array:
             return _tree_flatten(
@@ -97,7 +100,8 @@ class KalmanFilter:
             )
 
         def compute_forces_error_jacobian(
-            state_vector: Array, structure: Structure
+            state_vector: Array,
+            structure: Structure,
         ) -> Array:
             return jacob_forces_error(state_vector[..., 0], structure).transpose()
 
@@ -249,4 +253,4 @@ class KalmanFilter:
         )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}"
+        return f"{self.__class__.__name__}()"
