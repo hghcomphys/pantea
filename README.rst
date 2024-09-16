@@ -175,8 +175,8 @@ The trained potential can then be used to evaluate the energy and force componen
 
         # Trainer: initializing a trainer from the NNP potential 
         trainer = NeuralNetworkPotentialTrainer.from_runner(potential=nnp)
-        trainer.fit_scaler()
-        trainer.fit_model()
+        trainer.fit_scaler(structures)
+        trainer.fit_model(structures)
 
         trainer.save()  # this will save scaler and model parameters into files
 

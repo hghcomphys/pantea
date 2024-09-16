@@ -11,42 +11,6 @@ import jax.numpy as jnp
 from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array
 
-_TANH_PRE: float = ((math.e + 1 / math.e) / (math.e - 1 / math.e)) ** 3
-
-
-def _hard(r: Array) -> Array:
-    return jnp.ones_like(r)
-
-
-def _tanhu(r: Array, r_cutoff: float) -> Array:
-    return jnp.tanh(1.0 - r / r_cutoff) ** 3
-
-
-def _tanh(r: Array, r_cutoff: float) -> Array:
-    return _TANH_PRE * jnp.tanh(1.0 - r / r_cutoff) ** 3
-
-
-def _cos(r: Array, r_cutoff: float) -> Array:
-    return 0.5 * (jnp.cos(jnp.pi * r / r_cutoff) + 1.0)
-
-
-def _exp(r: Array, r_cutoff: float) -> Array:
-    return jnp.exp(1.0 - 1.0 / (1.0 - (r / r_cutoff) ** 2))
-
-
-def _poly1(r: Array) -> Array:
-    return (2.0 * r - 3.0) * r**2 + 1.0
-
-
-def _poly2(r: Array) -> Array:
-    return ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
-
-
-def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable[[Array], Array]:
-    partial_function = partial(function, **kwargs)
-    update_wrapper(partial_function, function)
-    return partial_function
-
 
 @dataclass(frozen=True)
 class CutoffFunction(BaseJaxPytreeDataClass):
@@ -113,6 +77,43 @@ class CutoffFunction(BaseJaxPytreeDataClass):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(r_cutoff={self.r_cutoff})"
+
+
+_TANH_PRE: float = ((math.e + 1 / math.e) / (math.e - 1 / math.e)) ** 3
+
+
+def _hard(r: Array) -> Array:
+    return jnp.ones_like(r)
+
+
+def _tanhu(r: Array, r_cutoff: float) -> Array:
+    return jnp.tanh(1.0 - r / r_cutoff) ** 3
+
+
+def _tanh(r: Array, r_cutoff: float) -> Array:
+    return _TANH_PRE * jnp.tanh(1.0 - r / r_cutoff) ** 3
+
+
+def _cos(r: Array, r_cutoff: float) -> Array:
+    return 0.5 * (jnp.cos(jnp.pi * r / r_cutoff) + 1.0)
+
+
+def _exp(r: Array, r_cutoff: float) -> Array:
+    return jnp.exp(1.0 - 1.0 / (1.0 - (r / r_cutoff) ** 2))
+
+
+def _poly1(r: Array) -> Array:
+    return (2.0 * r - 3.0) * r**2 + 1.0
+
+
+def _poly2(r: Array) -> Array:
+    return ((15.0 - 6.0 * r) * r - 10) * r**3 + 1.0
+
+
+def _wrapped_partial(function: Callable, **kwargs: Any) -> Callable[[Array], Array]:
+    partial_function = partial(function, **kwargs)
+    update_wrapper(partial_function, function)
+    return partial_function
 
 
 register_jax_pytree_node(CutoffFunction)

@@ -61,7 +61,7 @@ class NeuralNetworkPotentialTrainer:
         return updater
 
     def fit_scaler(self, dataset: Dataset) -> None:
-        """Fit scaler parameters for all the elements using the input structure data."""
+        """Fit scaler parameters for all the elements."""
         print("Fitting scaler for ACSF descriptor...")
         try:
             dataset_size: int = len(dataset)
@@ -83,7 +83,7 @@ class NeuralNetworkPotentialTrainer:
             print("Done.")
 
     def fit_model(self, dataset: Dataset) -> Dict[str, Any]:
-        """Fit model for all elements using the input structure loader."""
+        """Fit model parameters for all the elements."""
         # kwargs["validation_split"] = kwargs.get(
         #     "validation_split", self.settings.test_fraction
         # )

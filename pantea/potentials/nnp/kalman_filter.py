@@ -25,7 +25,7 @@ def _tree_flatten(pytree: Dict) -> Array:
 class KalmanFilter:
     """
     Kalman Filter implementation for updating model parameters to predict
-    the total potential energy and force components (gradient).
+    the total potential energy and force components (gradients).
 
     See  https://pubs.acs.org/doi/10.1021/acs.jctc.8b01092
     """
