@@ -26,6 +26,25 @@ from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.settings import NeuralNetworkPotentialSettings
 from pantea.types import Array, Element
 
+# @dataclass
+# class PotentialParams:
+#     """Parameters for Neural Network Potential."""
+
+#     elements: Tuple[Element, ...]
+#     scaler_save_format: str = field(repr=False)
+#     model_save_format: str = field(repr=False)
+
+#     @classmethod
+#     def from_runner(
+#         cls,
+#         settings: NeuralNetworkPotentialSettings,
+#     ) -> PotentialParams:
+#         return cls(
+#             elements=tuple(element for element in settings.elements),
+#             scaler_save_format=settings.scaler_save_format,
+#             model_save_format=settings.model_save_format,
+#         )
+
 
 @dataclass
 class NeuralNetworkPotential:
@@ -37,17 +56,18 @@ class NeuralNetworkPotential:
     """
 
     directory: Path
-    settings: NeuralNetworkPotentialSettings = field(repr=False)
+    elements: Tuple[Element, ...]
+    scaler_save_format: str = field(repr=False)
+    model_save_format: str = field(repr=False)
     atomic_potentials: frozendict[Element, AtomicPotential]
     models_params: Dict[Element, ModelParams] = field(repr=False)
     scalers_params: Dict[Element, Optional[ScalerParams]] = field(repr=False)
 
     @classmethod
-    def from_runner(
+    def from_file(
         cls,
         filename: Path,
     ) -> NeuralNetworkPotential:
-        logger.info(f"Creating potential from RuNNer potential file: {str(filename)}")
         potfile = Path(filename)
         settings = NeuralNetworkPotentialSettings.from_file(potfile)
         atomic_potentials = cls._build_atomic_potentials(settings)
@@ -55,26 +75,9 @@ class NeuralNetworkPotential:
         scalers_params = cls._initialize_scalers_params(settings)
         return NeuralNetworkPotential(
             directory=potfile.parent,
-            settings=settings,
-            atomic_potentials=atomic_potentials,
-            models_params=models_params,
-            scalers_params=scalers_params,
-        )
-
-    @classmethod
-    def from_json(
-        cls,
-        filename: Path,
-    ) -> NeuralNetworkPotential:
-        logger.info(f"Creating potential from a JSON file: {str(filename)}")
-        potfile = Path(filename)
-        settings = NeuralNetworkPotentialSettings.from_json(potfile)
-        atomic_potentials = cls._build_atomic_potentials(settings)
-        models_params = cls._initialize_models_params(settings, atomic_potentials)
-        scalers_params = cls._initialize_scalers_params(settings)
-        return NeuralNetworkPotential(
-            directory=potfile.parent,
-            settings=settings,
+            elements=tuple(element for element in settings.elements),
+            scaler_save_format=settings.scaler_save_format,
+            model_save_format=settings.model_save_format,
             atomic_potentials=atomic_potentials,
             models_params=models_params,
             scalers_params=scalers_params,
@@ -124,7 +127,7 @@ class NeuralNetworkPotential:
             atomic_number = ElementMap.get_atomic_number_from_element(element)
             scaler_file = Path(
                 self.directory,
-                self.settings.scaler_save_format.format(atomic_number),
+                self.scaler_save_format.format(atomic_number),
             )
             logger.info(
                 f"Loading scaler parameters for element ({element}): "
@@ -139,7 +142,7 @@ class NeuralNetworkPotential:
             atomic_number = ElementMap.get_atomic_number_from_element(element)
             model_file = Path(
                 self.directory,
-                self.settings.model_save_format.format(atomic_number),
+                self.model_save_format.format(atomic_number),
             )
             logger.info(
                 f"Loading model weights for element ({element}): {model_file.name}"
@@ -398,12 +401,8 @@ class NeuralNetworkPotential:
         )
 
     @property
-    def elements(self) -> Tuple[Element, ...]:
-        return tuple(element for element in self.settings.elements)
-
-    @property
     def num_elements(self) -> int:
-        return self.settings.number_of_elements
+        return len(self.elements)
 
 
 NNP = NeuralNetworkPotential
