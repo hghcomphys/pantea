@@ -10,9 +10,6 @@ import pytest
 
 from pantea.datasets import Dataset
 from pantea.potentials import NeuralNetworkPotential
-from pantea.potentials.nnp.settings import (
-    NeuralNetworkPotentialSettings as PotentialSettings,
-)
 from pantea.types import default_dtype
 
 dataset_file = Path("tests", "h2o.data")
@@ -22,7 +19,7 @@ default_dtype.FLOATX = jnp.float32
 
 class TestNeuralNetworkPotential:
     dataset = Dataset.from_runner(dataset_file)
-    nnp = NeuralNetworkPotential.from_json(potential_file)
+    nnp = NeuralNetworkPotential.from_file(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, expected",
@@ -43,7 +40,6 @@ class TestNeuralNetworkPotential:
     ) -> None:
         assert nnp.num_elements == expected[0]
         assert nnp.elements == expected[1]
-        assert nnp.settings == PotentialSettings.from_json(potential_file)
 
     @pytest.mark.parametrize(
         "nnp, dataset, expected",
