@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import random
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Any, Dict
 
 import jax
@@ -18,10 +21,7 @@ from pantea.potentials.nnp.potential import NeuralNetworkPotential
 from pantea.types import Array, Element, default_dtype
 
 
-def _tree_flatten(pytree: Dict) -> Array:
-    return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
-
-
+@dataclass
 class KalmanFilter:
     """
     Kalman Filter implementation for updating model parameters to predict
@@ -32,13 +32,15 @@ class KalmanFilter:
 
     # https://github.com/CompPhysVienna/n2p2/blob/master/src/libnnptrain/KalmanFilter.cpp
 
-    def __init__(
-        self,
-        potential: NeuralNetworkPotential,
-    ) -> None:
-        self.potential = potential
-        self._init_parameters()
-        self._init_matrices()
+    potential: NeuralNetworkPotential
+    params: KalmanFilterParams
+
+    @classmethod
+    def from_runner(cls, potential: NeuralNetworkPotential):
+        return cls(
+            potential=potential,
+            params=KalmanFilterParams.from_runner(potential),
+        )
 
     def fit(
         self,
@@ -50,6 +52,7 @@ class KalmanFilter:
         :param dataset: training dataset
         :type dataset: StructureDataset
         """
+        params = self.params
         settings = self.potential.settings
         atomic_potentials = self.potential.atomic_potentials
         models_params = self.potential.models_params
@@ -75,7 +78,7 @@ class KalmanFilter:
             state_vector: Array,
             structure: Structure,
         ) -> Array:
-            models_params = self._unflatten_state_vector(state_vector)
+            models_params = params.unflatten_state_vector(state_vector)
             F_ref: Array = _tree_flatten(structure.get_forces_per_element())
             F_pot: Array = _tree_flatten(
                 _compute_forces(
@@ -96,14 +99,20 @@ class KalmanFilter:
             structure: Structure,
         ) -> Array:
             return _tree_flatten(
-                grad_energy_error(models_params, structure),
+                grad_energy_error(
+                    models_params,
+                    structure,
+                ),  # type: ignore
             )
 
         def compute_forces_error_jacobian(
             state_vector: Array,
             structure: Structure,
         ) -> Array:
-            return jacob_forces_error(state_vector[..., 0], structure).transpose()
+            return jacob_forces_error(
+                state_vector[..., 0],
+                structure,
+            ).transpose()  # type: ignore
 
         # ----------------------
 
@@ -114,8 +123,8 @@ class KalmanFilter:
             print(f"Epoch: {epoch + 1} of {settings.epochs}")
             random.shuffle(indices)
 
-            loss_energy_per_epoch: Array = jnp.array(0.0)
-            loss_force_per_epoch: Array = jnp.array(0.0)
+            loss_energy_per_epoch = jnp.array(0.0)
+            loss_force_per_epoch = jnp.array(0.0)
             num_energy_updates_per_epoch: int = 0
             num_force_updates_per_epoch: int = 0
 
@@ -123,14 +132,12 @@ class KalmanFilter:
                 structure: Structure = dataset[index]
 
                 # Error and jacobian matrices
-                if np.random.rand() < self.force_fraction:
-                    Xi = self.beta * compute_forces_error(
-                        self.W,
-                        structure,
+                if np.random.rand() < params.force_fraction:
+                    Xi = params.beta * compute_forces_error(
+                        params.W, structure
                     ).reshape(-1, 1)
-                    H = -self.beta * compute_forces_error_jacobian(
-                        self.W,
-                        structure,
+                    H = -params.beta * compute_forces_error_jacobian(
+                        params.W, structure
                     )
                     loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_force_updates_per_epoch += 1
@@ -140,25 +147,25 @@ class KalmanFilter:
                     loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_energy_updates_per_epoch += 1
 
-                num_observations: int = Xi.shape[0]
+                num_observations = Xi.shape[0]
 
                 # A temporary matrix
-                X = self.P @ H
+                X = params.P @ H
 
                 # Scaling matrix
                 A = H.transpose() @ X
 
                 # Update learning rate
-                if (self.kalman_type == 0) and (self.eta < self.eta_max):
-                    self.eta *= np.exp(self.eta_tau)
+                if (params.kalman_type == 0) and (params.eta < params.eta_max):
+                    params.eta *= np.exp(params.eta_tau)
 
                 # Measurement noise
-                if self.kalman_type == 0:
-                    A += (1.0 / self.eta) * jnp.identity(
+                if params.kalman_type == 0:
+                    A += (1.0 / params.eta) * jnp.identity(
                         num_observations, dtype=default_dtype.FLOATX
                     )
-                elif self.kalman_type == 1:
-                    A += self.lambda0 * jnp.identity(
+                elif params.kalman_type == 1:
+                    A += params.lambda0 * jnp.identity(
                         num_observations, dtype=default_dtype.FLOATX
                     )
 
@@ -166,38 +173,42 @@ class KalmanFilter:
                 K = X @ jnp.linalg.inv(A)
 
                 # Update error covariance matrix
-                self.P -= K @ X.transpose()
+                params.P -= K @ X.transpose()
 
                 # Forgetting factor
-                if self.kalman_type == 1:
-                    self.P *= 1.0 / self.lambda0
+                if params.kalman_type == 1:
+                    params.P *= 1.0 / params.lambda0
 
                 # Process noise.
-                self.P += self.q * jnp.identity(
-                    self.num_states, dtype=default_dtype.FLOATX
+                params.P += params.q * jnp.identity(
+                    params.num_states, dtype=default_dtype.FLOATX
                 )
 
                 # Update state vector
-                self.W += K @ Xi
+                params.W += K @ Xi
 
                 # Anneal process noise
-                if self.q > self.q_min:
-                    self.q *= np.exp(-self.q_tau)
+                if params.q > params.q_min:
+                    params.q *= np.exp(-params.q_tau)
 
                 # Update forgetting factor
-                if self.kalman_type == 1:
-                    self.lambda0 = self.nu * self.lambda0 + 1.0 - self.nu
-                    self.gamma = 1.0 / (1.0 + self.lambda0 / self.gamma)
+                if params.kalman_type == 1:
+                    params.lambda0 = params.neu * params.lambda0 + 1.0 - params.neu
+                    params.gamma = 1.0 / (1.0 + params.lambda0 / params.gamma)
 
                 # Get params from state vector
-                models_params = self._unflatten_state_vector(self.W)
+                models_params = params.unflatten_state_vector(params.W)
 
             # Update model params
             logger.debug(f"Updating potential weights after epoch {epoch + 1}")
             self.potential.models_params = models_params
 
-            loss_energy_per_epoch /= num_energy_updates_per_epoch
-            loss_force_per_epoch /= num_force_updates_per_epoch
+            loss_energy_per_epoch /= (
+                num_energy_updates_per_epoch if num_energy_updates_per_epoch > 0 else 1
+            )
+            loss_force_per_epoch /= (
+                num_force_updates_per_epoch if num_force_updates_per_epoch > 0 else 1
+            )
             loss_per_epoch = loss_energy_per_epoch + loss_force_per_epoch
             num_updates_per_epoch = (
                 num_energy_updates_per_epoch + num_force_updates_per_epoch
@@ -215,42 +226,76 @@ class KalmanFilter:
                 f"energy_update_ratio: {num_energy_updates_per_epoch/num_updates_per_epoch:.3f}"
                 f", force_update_ratio: {num_force_updates_per_epoch/num_updates_per_epoch:.3f}"
             )
-
         return history
 
-    def _init_parameters(self) -> None:
-        """Set required parameters from the potential settings."""
-        settings = self.potential.settings
-        self.kalman_type = settings.kalman_type
-        self.beta = settings.force_weight
-        self.force_fraction = settings.short_force_fraction
-        # Standard
-        self.epsilon = settings.kalman_epsilon
-        self.q = settings.kalman_q0
-        self.q_tau = settings.kalman_qtau
-        self.q_min = settings.kalman_qmin
-        self.eta = settings.kalman_eta
-        self.eta_tau = settings.kalman_eta
-        self.eta_max = settings.kalman_etamax
-        # Fading memory
-        if self.kalman_type == 1:
-            self.lambda0 = settings.kalman_lambda_short
-            self.nu = settings.kalman_neu_short
-            self.gamma: float = 1.0
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(params={self.params})"
 
-    def _init_matrices(self) -> None:
-        """Initialize required matrices."""
-        models_params = self.potential.models_params
+
+@dataclass
+class KalmanFilterParams:
+    """Parameters for Kalman filter."""
+
+    kalman_type: int
+    beta: float
+    force_fraction: float
+    # Standard
+    epsilon: float
+    q: float
+    q_tau: float
+    q_min: float
+    eta: float
+    eta_tau: float
+    eta_max: float
+    # Fading memory
+    lambda0: float
+    neu: float
+    gamma: float
+    # state
+    num_states: int
+    W: Array = field(repr=False)
+    P: Array = field(repr=False)
+    unflatten_state_vector: Array = field(repr=False)
+
+    @classmethod
+    def from_runner(
+        cls,
+        potential: NeuralNetworkPotential,
+    ) -> KalmanFilterParams:
+        """Initialize parameters from the RuNNer potential."""
+
+        settings = potential.settings
+        models_params = potential.models_params
+        epsilon = potential.settings.kalman_epsilon
 
         # Initialize state vector
         W, tree_unflatten = flatten_util.ravel_pytree(models_params)  # type: ignore
-        self.W: Array = W.reshape(-1, 1)
-        self._unflatten_state_vector = tree_unflatten
-        self.num_states: int = self.W.shape[0]
+        W_vector = W.reshape(-1, 1)
+        num_states = W_vector.shape[0]
         # Error covariance matrix
-        self.P: Array = (1.0 / self.epsilon) * jnp.identity(
-            self.num_states, dtype=default_dtype.FLOATX
+        P = (1.0 / epsilon) * jnp.identity(num_states, dtype=default_dtype.FLOATX)
+
+        return cls(
+            kalman_type=settings.kalman_type,
+            beta=settings.force_weight,
+            force_fraction=settings.short_force_fraction,
+            epsilon=settings.kalman_epsilon,
+            q=settings.kalman_q0,
+            q_tau=settings.kalman_qtau,
+            q_min=settings.kalman_qmin,
+            eta=settings.kalman_eta,
+            eta_tau=settings.kalman_eta,
+            eta_max=settings.kalman_etamax,
+            # Fading memory
+            lambda0=settings.kalman_lambda_short,
+            neu=settings.kalman_neu_short,
+            gamma=1.0,
+            W=W_vector,
+            P=P,
+            unflatten_state_vector=tree_unflatten,
+            num_states=num_states,
         )
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}()"
+
+def _tree_flatten(pytree: Dict) -> Array:
+    return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
