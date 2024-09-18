@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, Protocol
+from typing import Any, Callable, Dict, Protocol
 
 import jax
 import jax.numpy as jnp
@@ -11,10 +11,12 @@ import numpy as np
 from jax import flatten_util
 from tqdm import tqdm
 
-from pantea.atoms.structure import Structure
+from pantea.atoms.structure import StructureAsKernelArgs
 from pantea.datasets.dataset import Dataset
+from pantea.descriptors.scaler import ScalerParams
 from pantea.logger import logger
 from pantea.models.nn.model import ModelParams
+from pantea.potentials.nnp.atomic_potential import AtomicPotential
 from pantea.potentials.nnp.energy import _compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.potential import NeuralNetworkPotential
@@ -55,7 +57,7 @@ class KalmanFilter:
     num_states: int
     W: Array = field(repr=False)
     P: Array = field(repr=False)
-    unflatten_state_vector: Array = field(repr=False)
+    unflatten_state_vector: Callable = field(repr=False)
     potential: NeuralNetworkPotential = field(repr=False)
 
     @classmethod
@@ -68,6 +70,11 @@ class KalmanFilter:
         settings = NeuralNetworkPotentialSettings.from_file(potfile)
         models_params = potential.models_params
         epsilon = settings.kalman_epsilon
+
+        # Setting random seed
+        random.seed(settings.random_seed)
+        np.random.seed(settings.random_seed)
+
         # Initialize state vector
         W, tree_unflatten = flatten_util.ravel_pytree(models_params)  # type: ignore
         W_vector = W.reshape(-1, 1)
@@ -106,64 +113,6 @@ class KalmanFilter:
         models_params = self.potential.models_params
         scalers_params = self.potential.scalers_params
 
-        # ----------------------
-
-        def compute_energy_error(
-            models_params: Dict[Element, ModelParams],
-            structure: Structure,
-        ) -> Array:
-            E_ref: Array = structure.total_energy
-            E_pot: Array = _compute_energy(
-                atomic_potentials,
-                structure.get_positions_per_element(),
-                models_params,
-                scalers_params,
-                structure.as_kernel_args(),
-            )
-            return (E_ref - E_pot) / structure.natoms
-
-        def compute_forces_error(
-            state_vector: Array,
-            structure: Structure,
-        ) -> Array:
-            models_params = self.unflatten_state_vector(state_vector)
-            F_ref: Array = _tree_flatten(structure.get_forces_per_element())
-            F_pot: Array = _tree_flatten(
-                _compute_forces(
-                    atomic_potentials,
-                    structure.get_positions_per_element(),
-                    models_params,
-                    scalers_params,
-                    structure.as_kernel_args(),
-                )
-            )
-            return (F_ref - F_pot)[..., 0]
-
-        grad_energy_error = jax.grad(compute_energy_error)
-        jacob_forces_error = jax.jacrev(compute_forces_error)
-
-        def compute_energy_error_gradient(
-            models_params: Dict[Element, ModelParams],
-            structure: Structure,
-        ) -> Array:
-            return _tree_flatten(
-                grad_energy_error(
-                    models_params,
-                    structure,
-                ),  # type: ignore
-            )
-
-        def compute_forces_error_jacobian(
-            state_vector: Array,
-            structure: Structure,
-        ) -> Array:
-            return jacob_forces_error(
-                state_vector[..., 0],
-                structure,
-            ).transpose()  # type: ignore
-
-        # ----------------------
-
         indices: list[int] = [i for i in range(len(dataset))]
 
         history = defaultdict(list)
@@ -177,21 +126,49 @@ class KalmanFilter:
             num_force_updates_per_epoch: int = 0
 
             for index in tqdm(indices):
-                structure: Structure = dataset[index]
+
+                structure = dataset[index]
+                kernel_common_args = (
+                    atomic_potentials,
+                    structure.get_positions_per_element(),
+                    scalers_params,
+                    structure.as_kernel_args(),
+                )
 
                 # Error and jacobian matrices
                 if np.random.rand() < training_params.force_fraction:
-                    Xi = training_params.force_weight * compute_forces_error(
-                        self.W, structure
-                    ).reshape(-1, 1)
-                    H = -training_params.force_weight * compute_forces_error_jacobian(
-                        self.W, structure
+                    # force error
+                    forces = structure.get_forces_per_element()
+                    forces_error = _jitted_compute_forces_error(
+                        *kernel_common_args,
+                        forces,
+                        self.unflatten_state_vector,
+                        self.W[..., 0],
                     )
+                    Xi = training_params.force_weight * forces_error.reshape(-1, 1)
+                    # gradient of force error
+                    gradients = _jitted_grad_compute_forces_error(
+                        *kernel_common_args,
+                        forces,
+                        self.unflatten_state_vector,
+                        self.W[..., 0],
+                    )
+                    H = -1.0 * training_params.force_weight * gradients.transpose()
                     loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_force_updates_per_epoch += 1
                 else:
-                    Xi = compute_energy_error(models_params, structure).reshape(-1, 1)
-                    H = -compute_energy_error_gradient(models_params, structure)
+                    # energy error
+                    energy_error = _jitted_compute_energy_error(
+                        *kernel_common_args,
+                        models_params,
+                    )
+                    Xi = energy_error.reshape(-1, 1)
+                    # gradient of energy error
+                    gradients = _jitted_grad_compute_energy_error(
+                        *kernel_common_args,
+                        models_params,
+                    )
+                    H = -1.0 * _tree_flatten(gradients)
                     loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
                     num_energy_updates_per_epoch += 1
 
@@ -279,3 +256,65 @@ class KalmanFilter:
 
 def _tree_flatten(pytree: Dict) -> Array:
     return flatten_util.ravel_pytree(pytree)[0].reshape(-1, 1)  # type: ignore
+
+
+def _compute_energy_error(
+    atomic_potentials: Dict[Element, AtomicPotential],
+    positions: Dict[Element, Array],
+    scalers_params: Dict[Element, ScalerParams],
+    structure: StructureAsKernelArgs,
+    models_params: Dict[Element, ModelParams],
+) -> Array:
+    natoms = structure.positions.shape[0]
+    E_ref = structure.total_energy
+    E_pot = _compute_energy(
+        atomic_potentials,
+        positions,
+        models_params,
+        scalers_params,
+        structure,
+    )
+    return (E_ref - E_pot) / natoms
+
+
+_jitted_compute_energy_error = jax.jit(_compute_energy_error, static_argnums=(0,))
+
+
+_grad_compute_energy_error = jax.grad(_compute_energy_error, argnums=4)
+
+_jitted_grad_compute_energy_error = jax.jit(
+    _grad_compute_energy_error, static_argnums=(0,)
+)
+
+
+def _compute_forces_error(
+    atomic_potentials: Dict[Element, AtomicPotential],
+    positions: Dict[Element, Array],
+    scalers_params: Dict[Element, ScalerParams],
+    structure: StructureAsKernelArgs,
+    forces: Dict[Element, Array],
+    unflatten_state_vector: Callable,
+    state_vector: Array,
+) -> Array:
+    models_params = unflatten_state_vector(state_vector)
+    F_ref = _tree_flatten(forces)
+    F_pot = _tree_flatten(
+        _compute_forces(
+            atomic_potentials,
+            positions,
+            models_params,
+            scalers_params,
+            structure,
+        )
+    )
+    return (F_ref - F_pot)[..., 0]
+
+
+_jitted_compute_forces_error = jax.jit(_compute_forces_error, static_argnums=(0, 5))
+
+
+_grad_compute_forces_error = jax.jacrev(_compute_forces_error, argnums=6)
+
+_jitted_grad_compute_forces_error = jax.jit(
+    _grad_compute_forces_error, static_argnums=(0, 5)
+)
