@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
-from pydantic import Field, ValidationError, validator
+from pydantic import Field, ValidationError
 
 from pantea.atoms.element import ElementMap
 from pantea.config import _CFG
@@ -82,7 +82,7 @@ gradient_type_map: Mapping[str, str] = {
 
 class NeuralNetworkPotentialSettings(_CFG):
     """
-    A configuration class for neural network potential parameters.
+    A configuration class for neural network potential settings.
 
     It contains a collections of all potential setting keywords and their default values.
     """

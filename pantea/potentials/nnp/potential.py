@@ -21,29 +21,10 @@ from pantea.logger import logger
 from pantea.models.nn.initializer import UniformInitializer
 from pantea.models.nn.model import ModelParams, NeuralNetworkModel
 from pantea.potentials.nnp.atomic_potential import AtomicPotential
-from pantea.potentials.nnp.energy import _compute_energy
+from pantea.potentials.nnp.energy import _jitted_compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.settings import NeuralNetworkPotentialSettings
 from pantea.types import Array, Element
-
-# @dataclass
-# class PotentialParams:
-#     """Parameters for Neural Network Potential."""
-
-#     elements: Tuple[Element, ...]
-#     scaler_save_format: str = field(repr=False)
-#     model_save_format: str = field(repr=False)
-
-#     @classmethod
-#     def from_runner(
-#         cls,
-#         settings: NeuralNetworkPotentialSettings,
-#     ) -> PotentialParams:
-#         return cls(
-#             elements=tuple(element for element in settings.elements),
-#             scaler_save_format=settings.scaler_save_format,
-#             model_save_format=settings.model_save_format,
-#         )
 
 
 @dataclass
@@ -64,7 +45,7 @@ class NeuralNetworkPotential:
     scalers_params: Dict[Element, Optional[ScalerParams]] = field(repr=False)
 
     @classmethod
-    def from_file(
+    def from_runner(
         cls,
         filename: Path,
     ) -> NeuralNetworkPotential:
@@ -91,7 +72,7 @@ class NeuralNetworkPotential:
         :return: total energy
         """
         self._check_scaler_params_exist()
-        return _compute_energy(
+        return _jitted_compute_energy(
             self.atomic_potentials,
             structure.get_positions_per_element(),
             self.models_params,

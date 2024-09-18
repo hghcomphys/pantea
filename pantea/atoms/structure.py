@@ -349,6 +349,7 @@ class Structure(BaseJaxPytreeDataClass):
             self.positions,
             self.atom_types,
             self.lattice,
+            self.total_energy,
             self.element_map.element_to_atom_type,
         )
 
@@ -382,6 +383,7 @@ class StructureAsKernelArgs(NamedTuple):
     positions: Array
     atom_types: Array
     lattice: Array
+    total_energy: Array
     element_map: Dict[Element, Array]
 
 

@@ -22,7 +22,7 @@ class UpdaterInterface(Protocol):
     def fit(
         self,
         dataset: Dataset,
-        trainer_params: TrainingParams,
+        training_params: TrainingParams,
     ) -> Dict[str, Any]: ...
 
 

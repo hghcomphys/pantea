@@ -42,7 +42,6 @@ def _compute_energy_per_atom(
 _jitted_compute_energy_per_atom = jit(_compute_energy_per_atom, static_argnums=(0,))
 
 
-@partial(jit, static_argnums=(0,))
 def _compute_energy(
     atomic_potentials: Dict[Element, AtomicPotentialInterface],
     positions: Dict[Element, Array],
@@ -62,3 +61,6 @@ def _compute_energy(
         )
         total_energy += energies.sum()
     return total_energy
+
+
+_jitted_compute_energy = jit(_compute_energy, static_argnums=(0,))

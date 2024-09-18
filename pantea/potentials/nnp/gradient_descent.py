@@ -17,7 +17,7 @@ from pantea.atoms.structure import Structure
 from pantea.datasets.dataset import Dataset
 from pantea.logger import logger
 from pantea.models.nn.model import ModelParams
-from pantea.potentials.nnp.energy import _compute_energy
+from pantea.potentials.nnp.energy import _jitted_compute_energy
 from pantea.potentials.nnp.force import _compute_forces
 from pantea.potentials.nnp.metrics import ErrorMetric
 from pantea.potentials.nnp.potential import NeuralNetworkPotential
@@ -195,7 +195,7 @@ class GradientDescent:
 
                 else:
                     # ------ energy ------
-                    energy = _compute_energy(
+                    energy = _jitted_compute_energy(
                         self.potential.atomic_potentials,
                         positions,
                         params,
