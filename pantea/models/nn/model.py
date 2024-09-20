@@ -18,7 +18,7 @@ class NeuralNetworkModel(nn.Module):
 
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "identity")
-    param_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
+    params_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
 
     def setup(self) -> None:
@@ -32,7 +32,7 @@ class NeuralNetworkModel(nn.Module):
         """
         return nn.Dense(
             features,
-            param_dtype=self.param_dtype,
+            param_dtype=self.params_dtype,
             kernel_init=self.kernel_initializer,
             bias_init=nn.initializers.zeros,
         )
@@ -61,7 +61,7 @@ class NeuralNetworkModel(nn.Module):
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
             # f", output_layer={self.output_layer}"
-            f", param_dtype={self.param_dtype.dtype}"  # type: ignore
+            f", dtype={self.params_dtype.dtype}"  # type: ignore
             ")"
         )
 

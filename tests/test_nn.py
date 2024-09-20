@@ -18,7 +18,7 @@ class TestNeuralNetworkModel:
     nn_1: NeuralNetworkModel = NeuralNetworkModel(hidden_layers=((2, "tanh"),))
     nn_2: NeuralNetworkModel = NeuralNetworkModel(
         hidden_layers=((4, "tanh"), (8, "identity")),
-        param_dtype=jnp.float64,  # type: ignore
+        params_dtype=jnp.float64,  # type: ignore
     )
     nn_3: NeuralNetworkModel = NeuralNetworkModel(
         hidden_layers=((8, "tanh"), (16, "tanh")),
@@ -65,7 +65,7 @@ class TestNeuralNetworkModel:
     ) -> None:
         assert network.hidden_layers == expected[0]
         assert network.output_layer == expected[1]
-        assert network.param_dtype, expected[2]
+        assert network.params_dtype, expected[2]
 
     @pytest.mark.parametrize(
         "network, expected",
