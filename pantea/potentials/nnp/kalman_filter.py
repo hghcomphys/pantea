@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
+from ctypes import Structure
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Protocol
+from typing import Any, Callable, Dict, NamedTuple, Protocol, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -29,6 +30,13 @@ class TrainingParamsInterface(Protocol):
     energy_fraction: float
     force_fraction: float
     epochs: int
+
+
+class KernelCommonArgs(NamedTuple):
+    atomic_potentials: Dict[Element, AtomicPotential]
+    positions: Dict[Element, Array]
+    scalers_params: Dict[Element, ScalerParams]
+    structure: StructureAsKernelArgs
 
 
 @dataclass
@@ -128,7 +136,7 @@ class KalmanFilter:
             for index in tqdm(indices):
 
                 structure = dataset[index]
-                kernel_common_args = (
+                kernel_common_args = KernelCommonArgs(
                     atomic_potentials,
                     structure.get_positions_per_element(),
                     scalers_params,
@@ -137,91 +145,23 @@ class KalmanFilter:
 
                 # Error and jacobian matrices
                 if np.random.rand() < training_params.force_fraction:
-                    # force error
-                    forces = structure.get_forces_per_element()
-                    forces_error = _jitted_compute_forces_error(
-                        *kernel_common_args,
-                        forces,
+                    loss, (Xi, H) = self.calculate_loss_force(
+                        kernel_common_args,
+                        structure.get_forces_per_element(),
                         self.unflatten_state_vector,
-                        self.W[..., 0],
+                        self.W,
                     )
-                    Xi = training_params.force_weight * forces_error.reshape(-1, 1)
-                    # gradient of force error
-                    gradients = _jitted_grad_compute_forces_error(
-                        *kernel_common_args,
-                        forces,
-                        self.unflatten_state_vector,
-                        self.W[..., 0],
-                    )
-                    H = -1.0 * training_params.force_weight * gradients.transpose()
-                    loss_force_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
+                    loss_force_per_epoch += loss
                     num_force_updates_per_epoch += 1
                 else:
-                    # energy error
-                    energy_error = _jitted_compute_energy_error(
-                        *kernel_common_args,
+                    loss, (Xi, H) = self.calculate_loss_energy(
+                        kernel_common_args,
                         models_params,
                     )
-                    Xi = energy_error.reshape(-1, 1)
-                    # gradient of energy error
-                    gradients = _jitted_grad_compute_energy_error(
-                        *kernel_common_args,
-                        models_params,
-                    )
-                    H = -1.0 * _tree_flatten(gradients)
-                    loss_energy_per_epoch += jnp.matmul(Xi.transpose(), Xi)[0, 0]
+                    loss_energy_per_epoch += loss
                     num_energy_updates_per_epoch += 1
 
-                num_observations = Xi.shape[0]
-
-                # A temporary matrix
-                X = self.P @ H
-
-                # Scaling matrix
-                A = H.transpose() @ X
-
-                # Update learning rate
-                if (self.kalman_type == 0) and (self.eta < self.eta_max):
-                    self.eta *= np.exp(self.eta_tau)
-
-                # Measurement noise
-                if self.kalman_type == 0:
-                    A += (1.0 / self.eta) * jnp.identity(
-                        num_observations, dtype=default_dtype.FLOATX
-                    )
-                elif self.kalman_type == 1:
-                    A += self.lambda0 * jnp.identity(
-                        num_observations, dtype=default_dtype.FLOATX
-                    )
-
-                # Kalman gain matrix
-                K = X @ jnp.linalg.inv(A)
-
-                # Update error covariance matrix
-                self.P -= K @ X.transpose()
-
-                # Forgetting factor
-                if self.kalman_type == 1:
-                    self.P *= 1.0 / self.lambda0
-
-                # Process noise.
-                self.P += self.q * jnp.identity(
-                    self.num_states, dtype=default_dtype.FLOATX
-                )
-
-                # Update state vector
-                self.W += K @ Xi
-
-                # Anneal process noise
-                if self.q > self.q_min:
-                    self.q *= np.exp(-self.q_tau)
-
-                # Update forgetting factor
-                if self.kalman_type == 1:
-                    self.lambda0 = self.neu * self.lambda0 + 1.0 - self.neu
-                    self.gamma = 1.0 / (1.0 + self.lambda0 / self.gamma)
-
-                # Get params from state vector
+                self.update_state_vector(Xi, H)
                 models_params = self.unflatten_state_vector(self.W)
 
             # Update model params
@@ -252,6 +192,81 @@ class KalmanFilter:
                 f", force_update_ratio: {num_force_updates_per_epoch/num_updates_per_epoch:.3f}"
             )
         return history
+
+    def update_state_vector(self, Xi: Array, H: Array) -> None:
+        """Update state vector using energy (force) error and its gradient."""
+        # A temporary matrix
+        X = self.P @ H
+        # Scaling matrix
+        A = H.transpose() @ X
+        # Update learning rate
+        if (self.kalman_type == 0) and (self.eta < self.eta_max):
+            self.eta *= np.exp(self.eta_tau)
+        # Measurement noise
+        num_observations = Xi.shape[0]
+        if self.kalman_type == 0:
+            A += (1.0 / self.eta) * jnp.identity(
+                num_observations, dtype=default_dtype.FLOATX
+            )
+        elif self.kalman_type == 1:
+            A += self.lambda0 * jnp.identity(
+                num_observations, dtype=default_dtype.FLOATX
+            )
+        # Kalman gain matrix
+        K = X @ jnp.linalg.inv(A)
+        # Update error covariance matrix
+        self.P -= K @ X.transpose()
+        # Forgetting factor
+        if self.kalman_type == 1:
+            self.P *= 1.0 / self.lambda0
+        # Process noise.
+        self.P += self.q * jnp.identity(self.num_states, dtype=default_dtype.FLOATX)
+        # Update state vector
+        self.W += K @ Xi
+        # Anneal process noise
+        if self.q > self.q_min:
+            self.q *= np.exp(-self.q_tau)
+        # Update forgetting factor
+        if self.kalman_type == 1:
+            self.lambda0 = self.neu * self.lambda0 + 1.0 - self.neu
+            self.gamma = 1.0 / (1.0 + self.lambda0 / self.gamma)
+
+    @classmethod
+    def calculate_loss_energy(
+        cls,
+        kernel_common_args: KernelCommonArgs,
+        models_params: Dict[Element, ModelParams],
+    ) -> Tuple[Array, Tuple[Array, Array]]:
+        kernel_args = (*kernel_common_args, models_params)
+        # energy error
+        Xi = _jitted_compute_energy_error(*kernel_args).reshape(-1, 1)
+        loss = jnp.matmul(Xi.transpose(), Xi)[0, 0]
+        # gradient of energy error
+        gradients = _jitted_grad_compute_energy_error(*kernel_args)
+        H = -1.0 * _tree_flatten(gradients)
+        return loss, (Xi, H)
+
+    @classmethod
+    def calculate_loss_force(
+        cls,
+        kernel_common_args: KernelCommonArgs,
+        forces: Dict[Element, Array],
+        unflatten_state_vector: Callable,
+        W: Array,
+    ) -> Tuple[Array, Tuple[Array, Array]]:
+        kernel_args = (*kernel_common_args, forces, unflatten_state_vector, W[..., 0])
+        # force error
+        Xi = _jitted_compute_forces_error(*kernel_args).reshape(-1, 1)
+        loss = jnp.matmul(Xi.transpose(), Xi)[0, 0]
+        # gradient of force error
+        gradients = _jitted_grad_compute_forces_error(
+            *kernel_common_args,
+            forces,
+            unflatten_state_vector,
+            W[..., 0],
+        )
+        H = -1.0 * gradients.transpose()
+        return loss, (Xi, H)
 
 
 def _tree_flatten(pytree: Dict) -> Array:
