@@ -5,24 +5,25 @@ from typing import Callable, List, Tuple
 
 from flax import linen as nn
 from frozendict import frozendict
+
 from pantea.logger import logger
-from pantea.models.model import ModelInterface
 from pantea.models.nn.activation import _activation_function_map
 from pantea.types import Array, Dtype, default_dtype
 
+ModelParams = frozendict[str, Array]
 
-class NeuralNetworkModel(nn.Module, ModelInterface):
+
+class NeuralNetworkModel(nn.Module):
     """Neural network model that outputs energy."""
 
     hidden_layers: Tuple[Tuple[int, str], ...]
     output_layer: Tuple[int, str] = (1, "identity")
-    param_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
+    params_dtype: Dtype = field(default_factory=lambda: default_dtype.FLOATX)
     kernel_initializer: Callable = nn.initializers.lecun_normal()
-    # bias_initializer: Callable = nn.initializers.zeros
 
     def setup(self) -> None:
         """Initialize neural network model."""
-        self.layers: List = self.create_network()
+        self.layers = self.create_network()
 
     def create_layer(self, features: int) -> nn.Dense:
         """
@@ -31,7 +32,7 @@ class NeuralNetworkModel(nn.Module, ModelInterface):
         """
         return nn.Dense(
             features,
-            param_dtype=self.param_dtype,
+            param_dtype=self.params_dtype,
             kernel_init=self.kernel_initializer,
             bias_init=nn.initializers.zeros,
         )
@@ -60,21 +61,21 @@ class NeuralNetworkModel(nn.Module, ModelInterface):
         return (
             f"{self.__class__.__name__}(hidden_layers={self.hidden_layers}"
             # f", output_layer={self.output_layer}"
-            f", param_dtype={self.param_dtype.dtype}"  # type: ignore
+            f", dtype={self.params_dtype.dtype}"  # type: ignore
             ")"
         )
 
-    def save(self, filename: Path, params: frozendict) -> None:
+    def save(self, filename: Path, params: ModelParams) -> None:
         """Save model weights."""
         file = str(Path(filename))
         logger.debug(f"Saving model weights into '{file}'")
         with open(file, "wb") as handle:
             pickle.dump(params, handle)
 
-    def load(self, filename: Path) -> frozendict:
+    def load(self, filename: Path) -> ModelParams:
         """Load model weights."""
         file = str(Path(filename))
         logger.debug(f"Loading model weights from '{file}'")
         with open(file, "rb") as handle:
-            params: frozendict = pickle.load(handle)
+            params = pickle.load(handle)
         return params

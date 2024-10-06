@@ -10,53 +10,43 @@ import pytest
 
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf import ACSF, G2, G3, CutoffFunction
-from pantea.descriptors.acsf.symmetry import EnvironmentElements
+from pantea.descriptors.acsf.symmetry import NeighborElements
 from pantea.types import Array
 
 
-# @pytest.fixture
 def lj_acsf() -> ACSF:
-    """Initialize using the `add` method."""
-    acsf: ACSF = ACSF("Ne")
-    cfn: CutoffFunction = CutoffFunction.from_cutoff_type(
-        r_cutoff=3.0, cutoff_type="tanhu"
+    cfn = CutoffFunction.from_type("tanhu", r_cutoff=3.0)
+    neighbor_elements = NeighborElements("Ne")
+    symmetry_functions = (
+        (G2(cfn, eta=1.00, r_shift=0.00), neighbor_elements),
+        (G2(cfn, eta=1.00, r_shift=0.25), neighbor_elements),
+        (G2(cfn, eta=1.00, r_shift=0.50), neighbor_elements),
+        (G2(cfn, eta=1.00, r_shift=0.75), neighbor_elements),
+        (G2(cfn, eta=1.00, r_shift=1.00), neighbor_elements),
     )
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.00), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.25), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.50), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=0.75), "Ne")
-    acsf.add(G2(cfn, eta=1.00, r_shift=1.00), "Ne")
-    return acsf
+    return ACSF(
+        central_element="Ne",
+        radial_symmetry_functions=symmetry_functions,
+        angular_symmetry_functions=(),
+    )
 
 
 def h2o_acsf() -> ACSF:
     """Initialize directly from the radial and angular terms."""
+    # r_cutoff = box.length / 2
+    cfn = CutoffFunction.from_type("tanhu", r_cutoff=5.9043202)
     return ACSF(
         central_element="O",
         radial_symmetry_functions=(
             (
-                EnvironmentElements(central="O", neighbor_j="H"),
-                G2(
-                    cfn=CutoffFunction.from_cutoff_type(
-                        r_cutoff=5.9043202, cutoff_type="tanhu"
-                    ),  # r_cutoff = box.length / 2
-                    r_shift=0.0,
-                    eta=0.001,
-                ),
+                G2(cfn, r_shift=0.0, eta=0.001),
+                NeighborElements("H"),
             ),
         ),
         angular_symmetry_functions=(
             (
-                EnvironmentElements(central="O", neighbor_j="H", neighbor_k="H"),
-                G3(
-                    cfn=CutoffFunction.from_cutoff_type(
-                        r_cutoff=5.9043202, cutoff_type="tanhu"
-                    ),  # r_cutoff = box.length / 2
-                    eta=0.07,
-                    zeta=1.0,
-                    lambda0=1.0,
-                    r_shift=0.0,
-                ),
+                G3(cfn, eta=0.07, zeta=1.0, lambda0=1.0, r_shift=0.0),
+                NeighborElements("H", "H"),
             ),
         ),
     )
@@ -180,4 +170,4 @@ class TestACSF:
         expected: Array,
     ) -> None:
         assert acsf(structure).shape == expected[0]
-        assert jnp.allclose(acsf(structure, atom_indices=jnp.array(0)), expected[1])
+        assert jnp.allclose(acsf(structure, atom_index=0), expected[1])

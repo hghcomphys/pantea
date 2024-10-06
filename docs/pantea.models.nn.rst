@@ -20,10 +20,10 @@ pantea.models.nn.initializer module
    :undoc-members:
    :show-inheritance:
 
-pantea.models.nn.network module
--------------------------------
+pantea.models.nn.model module
+-----------------------------
 
-.. automodule:: pantea.models.nn.network
+.. automodule:: pantea.models.nn.model
    :members:
    :undoc-members:
    :show-inheritance:

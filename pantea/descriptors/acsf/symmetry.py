@@ -18,20 +18,18 @@ class BaseSymmetryFunction(BaseJaxPytreeDataClass, metaclass=ABCMeta):
         logger.debug(repr(self))
 
     @abstractmethod
-    def __call__(self, *args, **kwargs) -> Array:
-        ...
+    def __call__(self, *args, **kwargs) -> Array: ...
 
     @property
     def r_cutoff(self) -> float:
         return self.cfn.r_cutoff
 
 
-class EnvironmentElements(NamedTuple):
+class NeighborElements(NamedTuple):
     """
-    Representative elements for the chemical environment including central
-    elements and its neighbors.
+    Represent the chemical environment including neighbor elements.
     """
 
-    central: Element
+    # central: Element
     neighbor_j: Element
     neighbor_k: Optional[Element] = None

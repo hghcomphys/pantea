@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, NamedTuple, Union
 
-from pydantic import Field, ValidationError, validator
+from pydantic import Field, ValidationError
 
 from pantea.atoms.element import ElementMap
 from pantea.config import _CFG
@@ -82,7 +82,7 @@ gradient_type_map: Mapping[str, str] = {
 
 class NeuralNetworkPotentialSettings(_CFG):
     """
-    A configuration class for neural network potential parameters.
+    A configuration class for neural network potential settings.
 
     It contains a collections of all potential setting keywords and their default values.
     """
@@ -91,15 +91,12 @@ class NeuralNetworkPotentialSettings(_CFG):
     # https://pypi.org/project/autodoc-pydantic/0.1.1/
 
     # General
-    random_seed: int = Field(
-        2023, description="determine initialize neural network weights."
-    )
-
+    random_seed: int = Field(2023)
     number_of_elements: int
     elements: List[Element] = Field(default_factory=list)
     atom_energy: Dict[Element, float] = Field(default_factory=dict)
-    scaler_save_naming_format: str = "scaling.{:03d}.data"
-    model_save_naming_format: str = "weights.{:03d}.pkl"
+    scaler_save_format: str = "scaling.{:03d}.json"
+    model_save_format: str = "weights.{:03d}.pkl"
     # Neural Network
     weights_min: float = -1.0
     weights_max: float = 1.0
@@ -141,6 +138,21 @@ class NeuralNetworkPotentialSettings(_CFG):
 
     @classmethod
     def from_file(cls, filename: Path) -> NeuralNetworkPotentialSettings:
+        file_extension = Path(filename).suffix
+        if file_extension == ".nn":
+            logger.info(f"Reading settings from RuNNer file: {str(filename)}")
+            return cls.from_nn(filename)
+        elif file_extension == ".json":
+            logger.info(f"Reading settings from JSON file: {str(filename)}")
+            return cls.from_json(filename)
+        else:
+            logger.error(
+                f"Unknown file format '{file_extension}': {str(filename)}",
+                exception=ValueError,
+            )
+
+    @classmethod
+    def from_nn(cls, filename: Path) -> NeuralNetworkPotentialSettings:
         """
         Read all potential settings from the input file.
 
@@ -295,13 +307,13 @@ class NeuralNetworkPotentialSettings(_CFG):
                         dict_[f"line{n_line:04d}_{keyword}"] = tokens
         return dict_
 
-    @validator("elements")
-    def number_of_elements_match(cls, v, values) -> Any:
-        if "number_of_elements" in values and len(v) != values["number_of_elements"]:
-            raise ValueError("number of elements is not consistent")
-        return v
+    # @validator("elements")
+    # def number_of_elements_match(cls, v, values) -> Any:
+    #     if "number_of_elements" in values and len(v) != values["number_of_elements"]:
+    #         raise ValueError("number of elements is not consistent")
+    #     return v
 
-    @validator("test_fraction")
-    def test_fraction_range(cls, v) -> Any:
-        assert 0.0 <= v <= 1.0, "must be between [0, 1]"
-        return v
+    # @validator("test_fraction")
+    # def test_fraction_range(cls, v) -> Any:
+    #     assert 0.0 <= v <= 1.0, "must be between [0, 1]"
+    #     return v

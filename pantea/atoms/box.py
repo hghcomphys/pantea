@@ -11,22 +11,6 @@ from pantea.pytree import BaseJaxPytreeDataClass, register_jax_pytree_node
 from pantea.types import Array, Dtype, default_dtype
 
 
-@jax.jit
-def _apply_pbc(dx: Array, lattice: Array) -> Array:
-    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
-    box = lattice.diagonal()
-    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
-    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
-    return dx
-
-
-@jax.jit
-def _shift_inside_box(positions: Array, lattice: Array) -> Array:
-    """Shift the input atom position inside the PBC simulation box."""
-    box = lattice.diagonal()
-    return jnp.remainder(positions, box)
-
-
 @dataclass
 class Box(BaseJaxPytreeDataClass):
     """
@@ -41,7 +25,6 @@ class Box(BaseJaxPytreeDataClass):
     lattice: Array
 
     def __post_init__(self) -> None:
-        """Post initialize simulation box (super-cell)."""
         self._assert_jit_static_attributes()
         self._assert_jit_dynamic_attributes(expected=("lattice",))
 
@@ -60,12 +43,12 @@ class Box(BaseJaxPytreeDataClass):
     @jax.jit
     def apply_pbc(self, dx: Array) -> Array:
         """
-        Apply the periodic boundary condition (PBC) on the input position array.
+        Apply periodic boundary condition (PBC) on the atom positions.
 
         For this method to function correctly, it is essential that all atoms are
         initially positioned within the boundaries of the box.
-        Otherwise, the results may not be as anticipated (this could happen for
-        when example time step is too large).
+        Otherwise, the results may not be as anticipated. This could happen for
+        when example time step is too large.
 
         :param dx: positional differences
         :type dx: Array
@@ -75,19 +58,19 @@ class Box(BaseJaxPytreeDataClass):
         return _apply_pbc(dx, self.lattice)
 
     @jax.jit
-    def shift_inside_box(self, positions: Array) -> Array:
+    def wrap_into_box(self, positions: Array) -> Array:
         """
-        Adjust the coordinates of the input atoms to ensure they fall
+        Adjust the coordinates of the atoms to ensure they fall
         within the boundaries of the simulation box that has
         periodic boundary conditions (PBC).
 
-        :param x: atom positions
-        :type x: Array
-        :return: shifted atom positions
+        :param positions: atom positions
+        :type positions: Array
+        :return: wrapped atom positions using the PBC.
         :rtype: Array
         """
         logger.debug("Shift all atoms within the simulation box")
-        return _shift_inside_box(positions, self.lattice)
+        return _wrap_into_box(positions, self.lattice)
 
     @property
     def lx(self) -> Array:
@@ -111,7 +94,7 @@ class Box(BaseJaxPytreeDataClass):
 
     @property
     def volume(self) -> Array:
-        """Return volume of the box."""
+        """Return calculated volume of the box."""
         return jnp.prod(self.length)
 
     @property
@@ -124,6 +107,26 @@ class Box(BaseJaxPytreeDataClass):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(lattice={self.lattice}, dtype={self.dtype})"
+
+
+def _apply_pbc(dx: Array, lattice: Array) -> Array:
+    """Apply periodic boundary condition (PBC) along x,y, and z directions."""
+    box = lattice.diagonal()
+    dx = jnp.where(dx > 0.5 * box, dx - box, dx)
+    dx = jnp.where(dx < -0.5 * box, dx + box, dx)
+    return dx
+
+
+_jitted_apply_pbc = jax.jit(_apply_pbc)
+
+
+def _wrap_into_box(positions: Array, lattice: Array) -> Array:
+    """Wrap atoms back into the simulation box using periodic boundary condition."""
+    box = lattice.diagonal()
+    return jnp.remainder(positions, box)
+
+
+_jitted_wrap_into_box = jax.jit(_wrap_into_box)
 
 
 register_jax_pytree_node(Box)

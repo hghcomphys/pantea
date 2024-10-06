@@ -82,7 +82,7 @@ class ElementMap:
 
     unique_elements: Tuple[Element, ...]
     element_to_atomic_number: Dict[Element, int]
-    element_to_atom_type: Dict[Element, int]
+    element_to_atom_type: Dict[Element, Array]
     atom_type_to_element: Dict[int, Element]
 
     @classmethod
@@ -91,14 +91,14 @@ class ElementMap:
         Create dictionary to map elements, atom types, and atomic numbers.
         The atom types are sorted based on elements' atomic number.
         """
-        logger.debug("Creating element map from list of elements")
+        logger.debug("Creating element map from the input list of elements")
         unique_elements: Tuple[Element, ...] = tuple(sorted(set(elements)))
         element_to_atomic_number = {
-            elem: _KNOWN_ELEMENTS_DICT[elem] for elem in unique_elements
+            element: _KNOWN_ELEMENTS_DICT[element] for element in unique_elements
         }
         element_to_atom_type = {
-            elem: atom_type
-            for atom_type, elem in enumerate(
+            element: atom_type
+            for atom_type, element in enumerate(
                 sorted(
                     element_to_atomic_number,
                     key=element_to_atomic_number.get,  # type: ignore
@@ -107,12 +107,12 @@ class ElementMap:
             )
         }
         atom_type_to_element = {
-            atom_type: elem for elem, atom_type in element_to_atom_type.items()
+            atom_type: element for element, atom_type in element_to_atom_type.items()
         }
         return cls(
             unique_elements,
             element_to_atomic_number,
-            element_to_atom_type,
+            jax.tree.map(lambda x: jnp.array(x), element_to_atom_type),
             atom_type_to_element,
         )
 

@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import pytest
 from jax import random
 
-from pantea.descriptors.scaler import DescriptorScaler
+from pantea.descriptors.scaler import DescriptorScaler, ScalerParams
 from pantea.types import Array, default_dtype
 from pantea.utils.batch import create_batch
 
@@ -38,27 +38,15 @@ class TestStructure:
             ),
         ],
     )
-    def test_general_attributes(
+    def test_params_sizes(
         self,
         data: Array,
         expected: Tuple,
     ) -> None:
-        scaler = DescriptorScaler()
-        scaler.fit(data)
-        assert scaler.dimension == expected[0]
-        assert scaler.stats.nsamples == expected[1]
-
-    def fit_scaler(
-        self, scaler: DescriptorScaler, data: Array, batch_size: int
-    ) -> None:
-        for batch in create_batch(data, batch_size=batch_size):
-            scaler.fit(batch)
-
-    def compare(self, scaler: DescriptorScaler, data: Array) -> None:
-        assert jnp.allclose(data.mean(axis=0), scaler.stats.mean)
-        assert jnp.allclose(data.max(axis=0), scaler.stats.maxval)
-        assert jnp.allclose(data.min(axis=0), scaler.stats.minval)
-        assert jnp.allclose(data.std(axis=0), scaler.stats.sigma)
+        scaler = DescriptorScaler.from_type("scale_center")
+        params = scaler.fit(data)
+        assert int(params.dimension) == expected[0]
+        assert int(params.nsamples) == expected[1]
 
     @pytest.mark.parametrize(
         "data",
@@ -76,9 +64,9 @@ class TestStructure:
             ("scale_center", "scale", "center"),
             (7, 10, 1),
         ):
-            scaler = DescriptorScaler(scale_type=scale_type)
-            self.fit_scaler(scaler, data, batch_size=batch_size)
-            self.compare(scaler, data)
+            scaler = DescriptorScaler.from_type(scale_type)
+            params = self.fit_scaler(scaler, data, batch_size=batch_size)
+            self.check_values(params, data)
 
     @pytest.mark.parametrize(
         "data",
@@ -92,17 +80,31 @@ class TestStructure:
         self,
         data: Array,
     ) -> None:
-        scaler = DescriptorScaler()
-        scaler.fit(data)
+        scaler = DescriptorScaler.from_type("scale_center")
+        params = scaler.fit(data)
+        warnings = scaler.initialize_warnings()
+        warnings = scaler.check_warnings(params, data, warnings)
+        assert warnings.max_number_of_warnings < 0
+        assert warnings.number_of_warnings == 0
 
-        assert scaler.max_number_of_warnings is None
-        assert scaler.number_of_warnings == 0
-        scaler.set_max_number_of_warnings(2)
-        assert scaler.max_number_of_warnings == 2
+        warnings = scaler.initialize_warnings(max_number_of_warnings=2)
+        assert warnings.max_number_of_warnings == 2
 
-        out_range_data: Array = jnp.ones_like(data) * 100
-        scaler(out_range_data)
-        assert scaler.number_of_warnings == 0
-        print(out_range_data)
-        scaler(out_range_data, warnings=True)
-        assert scaler.number_of_warnings == 1
+        outlier_data = jnp.ones_like(data) * 100
+        warnings = scaler.check_warnings(params, outlier_data, warnings)
+        assert warnings.number_of_warnings == 1
+
+    def fit_scaler(
+        self, scaler: DescriptorScaler, data: Array, batch_size: int
+    ) -> ScalerParams:
+        batches = create_batch(data, batch_size)
+        params = scaler.fit(data=next(batches))
+        for batch in batches:
+            params = scaler.partial_fit(params, batch)
+        return params
+
+    def check_values(self, params: ScalerParams, data: Array) -> None:
+        assert jnp.allclose(data.mean(axis=0), params.mean)
+        assert jnp.allclose(data.max(axis=0), params.maxval)
+        assert jnp.allclose(data.min(axis=0), params.minval)
+        assert jnp.allclose(data.std(axis=0), params.sigma)

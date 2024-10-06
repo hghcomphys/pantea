@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
+
 from pantea.descriptors.acsf.cutoff import CutoffFunction
 from pantea.descriptors.acsf.symmetry import BaseSymmetryFunction
 from pantea.pytree import register_jax_pytree_node
@@ -23,8 +24,7 @@ class AngularSymmetryFunction(BaseSymmetryFunction, metaclass=ABCMeta):
         rik: Array,
         rjk: Array,
         cost: Array,
-    ) -> Array:
-        ...
+    ) -> Array: ...
 
 
 @dataclass
@@ -36,6 +36,12 @@ class G3(AngularSymmetryFunction):
     zeta: float
     lambda0: float
     r_shift: float
+
+    def __post_init__(self) -> None:
+        self._assert_jit_dynamic_attributes()
+        self._assert_jit_static_attributes(
+            expected=("cfn", "eta", "zeta", "lambda0", "r_shift")
+        )
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""
@@ -60,12 +66,24 @@ class G3(AngularSymmetryFunction):
 
 
 @dataclass
-class G9(G3):
+class G9(AngularSymmetryFunction):
     """
     Modified angular symmetry function.
 
     J. Behler, J. Chem. Phys. 134, 074106 (2011).
     """
+
+    cfn: CutoffFunction
+    eta: float
+    zeta: float
+    lambda0: float
+    r_shift: float
+
+    def __post_init__(self) -> None:
+        self._assert_jit_dynamic_attributes()
+        self._assert_jit_static_attributes(
+            expected=("cfn", "eta", "zeta", "lambda0", "r_shift")
+        )
 
     def __hash__(self) -> int:
         """Enforce to use the parent class's hash method (JIT)."""

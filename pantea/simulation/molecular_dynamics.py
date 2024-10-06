@@ -5,7 +5,7 @@ from typing import Optional
 import jax
 import jax.numpy as jnp
 
-from pantea.atoms.box import _shift_inside_box
+from pantea.atoms.box import _wrap_into_box
 from pantea.logger import logger
 from pantea.simulation.system import System
 from pantea.simulation.thermostat import BrendsenThermostat
@@ -68,7 +68,7 @@ class MDSimulator:
             system.positions, system.velocities, system.forces, self.time_step
         )
         if system.box is not None:
-            new_positions = _shift_inside_box(new_positions, system.box.lattice)
+            new_positions = _wrap_into_box(new_positions, system.box.lattice)
         system.structure.positions = new_positions
         new_forces = system.potential.compute_forces(system.structure)
         system.velocities = _get_verlet_new_velocities(

@@ -4,6 +4,30 @@ pantea.potentials.nnp package
 Submodules
 ----------
 
+pantea.potentials.nnp.atomic\_potential module
+----------------------------------------------
+
+.. automodule:: pantea.potentials.nnp.atomic_potential
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pantea.potentials.nnp.energy module
+-----------------------------------
+
+.. automodule:: pantea.potentials.nnp.energy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pantea.potentials.nnp.force module
+----------------------------------
+
+.. automodule:: pantea.potentials.nnp.force
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pantea.potentials.nnp.gradient\_descent module
 ----------------------------------------------
 
@@ -28,14 +52,6 @@ pantea.potentials.nnp.metrics module
    :undoc-members:
    :show-inheritance:
 
-pantea.potentials.nnp.nnp module
---------------------------------
-
-.. automodule:: pantea.potentials.nnp.nnp
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pantea.potentials.nnp.potential module
 --------------------------------------
 
@@ -48,6 +64,14 @@ pantea.potentials.nnp.settings module
 -------------------------------------
 
 .. automodule:: pantea.potentials.nnp.settings
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pantea.potentials.nnp.trainer module
+------------------------------------
+
+.. automodule:: pantea.potentials.nnp.trainer
    :members:
    :undoc-members:
    :show-inheritance:
