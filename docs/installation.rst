@@ -13,25 +13,26 @@ Requirements
 `JAX`_ is the core of this package and its installation is necessary to use it.
 The CPU version of JAX is included, as dependency, in the default installation of Pantea.
 
-For machines with an NVIDIA **GPU**, it is recommended to install JAX separately 
-via `Conda` using the following command (only Linux users):
+For machines with an NVIDIA **GPU**, it is recommended to install JAX 
+using the following command (only Linux users):
 
 .. code-block:: bash
 
-    $ conda install jaxlib=*=*cuda* jax cuda-nvcc -c conda-forge -c nvidia
+    $ pip install 'jax[cuda12]'
 
 Please refer to the `JAX Install Guide`_ for full installation instructions.
 
-.. note::
-    Installation with `conda` sometime takes too much time, 
-    an alternative option is of course to use `mamba`_ instead.
-    If you don't have `mamba` installed, you can do it using `conda` itself by running.
 
-    .. code-block:: bash
+.. .. note::
+..     Installation with `conda` sometime takes too much time, 
+..     an alternative option is of course to use `mamba`_ instead.
+..     If you don't have `mamba` installed, you can do it using `conda` itself by running.
+
+..     .. code-block:: bash
         
-        conda install -c conda-forge mamba
+..         conda install -c conda-forge mamba
 
-    You can use now `mamba` to install, update, and manage packages just like `conda`.
+..     You can use now `mamba` to install, update, and manage packages just like `conda`.
 
 
 .. _JAX: https://github.com/google/jax

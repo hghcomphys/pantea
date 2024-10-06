@@ -21,7 +21,7 @@ Pantea
 Description
 -----------
 Pantea is an optimized Python library based on Google `JAX`_ that enables 
-development of machine learning interatomic potentials   
+development of machine learning interatomic potentials 
 for use in computational material science. 
 These potentials are particularly necessary for conducting large-scale molecular 
 dynamics simulations of complex materials with ab initio accuracy.
@@ -29,11 +29,12 @@ dynamics simulations of complex materials with ab initio accuracy.
 .. _JAX: https://github.com/google/jax
 
 
-See `documentation <https://pantea.readthedocs.io/en/latest/theory.html>`_ for more information.
+See `documentation <https://pantea.readthedocs.io/en/latest/readme.html>`_ for more information.
+
 
 
 -------------
-Main Features
+Key features
 -------------
 * The design of Pantea is `simple` and `flexible`, which makes it easy to incorporate atomic descriptors and potentials. 
 * It uses `automatic differentiation` to make defining new descriptors straightforward.
@@ -154,36 +155,36 @@ potential` (`HDNNP`_) instance from an input setting file.
         print(forces)
 
 
--------------------
-III. Training (NNP) 
--------------------
-This example shows the process of training a NNP potential on input structures. 
-The trained potential can then be used to evaluate the energy and force components for new structures.
+.. -------------------
+.. III. Training (NNP) 
+.. -------------------
+.. This example shows the process of training a NNP potential on input structures. 
+.. The trained potential can then be used to evaluate the energy and force components for new structures.
 
-.. code-block:: python
+.. .. code-block:: python
 
-        from pantea.datasets import Dataset
-        from pantea.potentials import NeuralNetworkPotential
-        from pantea.potentials.nnp import NeuralNetworkPotentialTrainer        
+..         from pantea.datasets import Dataset
+..         from pantea.potentials import NeuralNetworkPotential
+..         from pantea.potentials.nnp import NeuralNetworkPotentialTrainer        
 
-        # Dataset: reading structures from RuNNer input data file
-        structures = Dataset.from_runner("input.data", persist=True)
-        structures.preload()
+..         # Dataset: reading structures from RuNNer input data file
+..         structures = Dataset.from_runner("input.data", persist=True)
+..         structures.preload()
 
-        # Potential: creating a NNP from the RuNNer configuration file
-        nnp = NeuralNetworkPotential.from_runner("input.nn")
+..         # Potential: creating a NNP from the RuNNer configuration file
+..         nnp = NeuralNetworkPotential.from_runner("input.nn")
 
-        # Trainer: initializing a trainer from the NNP potential 
-        trainer = NeuralNetworkPotentialTrainer.from_runner(potential=nnp)
-        trainer.fit_scaler(structures)
-        trainer.fit_model(structures)
+..         # Trainer: initializing a trainer from the NNP potential 
+..         trainer = NeuralNetworkPotentialTrainer.from_runner(potential=nnp)
+..         trainer.fit_scaler(structures)
+..         trainer.fit_model(structures)
 
-        trainer.save()  # this will save scaler and model parameters into files
+..         trainer.save()  # this will save scaler and model parameters into files
 
 
-.. warning::
-        Please note that the above examples are just for demonstration. 
-        For training a NNP model in real world we surely need larger samples of data.
+.. .. warning::
+..         Please note that the above examples are just for demonstration. 
+..         For training a NNP model in real world we surely need larger samples of data.
 
 Download example input files from `here <https://drive.google.com/drive/folders/1vABOndAia41Bn0v1jPaJZmVGnbjg8UPE?usp=sharing>`_.
 

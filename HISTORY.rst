@@ -2,6 +2,13 @@
 History
 =======
 
+0.11
+-------------------
+* refactored Scaler, Potential, and Trainer
+* optimized Kalman Filter JIT kernels
+* separated scaler and model parameters from potential
+* bug fixes
+
 
 0.10
 -------------------

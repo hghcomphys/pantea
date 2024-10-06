@@ -49,4 +49,3 @@ Examples
 Below you will find a list of examples and tutorials to help you in using `Pantea`.
 
 * `Getting started with Pantea <https://pantea.readthedocs.io/en/latest/notebooks/getting_started.html>`_
-* `Potential traning <https://pantea.readthedocs.io/en/latest/notebooks/potential_training.html>`_

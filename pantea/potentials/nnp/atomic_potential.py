@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from pantea.atoms.structure import Structure
 from pantea.descriptors.acsf.acsf import ACSF
-from pantea.descriptors.scaler import DescriptorScaler
+from pantea.descriptors.scaler import DescriptorScaler, ScalerParams
 from pantea.models.nn.model import ModelParams, NeuralNetworkModel
 from pantea.potentials.nnp.energy import _compute_energy_per_atom
 from pantea.types import Array
@@ -24,6 +24,7 @@ class AtomicPotential:
     def apply(
         self,
         model_params: ModelParams,
+        scaler_params: ScalerParams,
         structure: Structure,
     ) -> Array:
         """
@@ -42,6 +43,7 @@ class AtomicPotential:
             self,
             structure.positions[atom_index],
             model_params,
+            scaler_params,
             structure.as_kernel_args(),
         )  # type: ignore
 
